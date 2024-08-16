@@ -32,10 +32,15 @@ jobs:
       run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
   
     - name: SFTP Deploy
-      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      uses: Dylan700/sftp-upload-action@latest
       with:
         server: ${{ secrets.SFTP_HOST }}
         username: ${{ secrets.SFTP_USER }}
         password: ${{ secrets.SFTP_PASSWORD }}
-        remote_path: ./
+        uploads: |
+          ./ => ./
+        ignore: |
+          .git*
+          composer.*
+          README.MD
           
