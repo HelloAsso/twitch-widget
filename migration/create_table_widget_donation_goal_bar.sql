@@ -7,6 +7,7 @@ CREATE TABLE widget_donation_goal_bar (
     goal INT NOT NULL,  -- Objectif de dons, représenté par un entier
     creation_date TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),  -- Date de création avec précision à la microseconde
     last_update TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) NOT NULL  -- Date de dernière mise à jour avec précision à la microseconde
+	CONSTRAINT fk_charity_stream_guid_donation_goal_bar FOREIGN KEY (charity_stream_guid) REFERENCES charity_stream(guid)
 );
 
 
