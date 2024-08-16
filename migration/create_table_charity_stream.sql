@@ -1,6 +1,7 @@
 CREATE TABLE charity_stream (
     id INT AUTO_INCREMENT PRIMARY KEY,
     guid BINARY(16) NOT NULL UNIQUE,  -- UUID en format binaire
+	title VARCHAR(500),  -- Titre avec une longueur maximale de 500 caractères
     owner_email VARCHAR(255) NOT NULL,  -- Email de l'utilisateur
     form_id VARCHAR(255) NOT NULL,  -- Identifiant du formulaire
     state TINYINT(1) NOT NULL,  -- État comme un entier (1 pour Enabled, 0 pour Disabled)
