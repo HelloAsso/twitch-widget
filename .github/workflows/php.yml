@@ -39,10 +39,8 @@ jobs:
     - name: SFTP Deploy
       uses: wlixcc/SFTP-Deploy-Action@v1.2.4
       with:
-        # your sftp server
         server: ${{ secrets.SFTP_HOST }}
-        # username
         username: ${{ secrets.SFTP_USER }}
-        # SSH passsword，If a password is set, the secret key pair is ignored
         password: ${{ secrets.SFTP_PASSWORD }}
+        remote_path: ./
           
