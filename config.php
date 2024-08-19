@@ -5,16 +5,18 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 // Déterminer l'environnement actuel
-$isLocal = $_ENV['DB_ENV'] === 'local';
-
-$ADMIN_USER = $_ENV['ADMIN_USER'];
-$ADMIN_PASSWORD = $_ENV['ADMIN_PASSWORD'];
+$environment = $_ENV['ENVIRONMENT'];
+$isLocal = $environment == "LOCAL";
 
 // Configurer les paramètres de connexion en fonction de l'environnement
 $host = $isLocal ? $_ENV['DBURL_LOCAL'] : $_ENV['DBURL'];
 $dbname = $isLocal ? $_ENV['DBNAME_LOCAL'] : $_ENV['DBNAME'];
 $user = $isLocal ? $_ENV['DBUSER_LOCAL'] : $_ENV['DBUSER'];
 $password = $isLocal ? $_ENV['DBPASSWORD_LOCAL'] : $_ENV['DBPASSWORD'];
+
+$blob_url = $_ENV['BLOB_URL_' . $environment];
+$blob_images_folder = $_ENV['IMAGES_FOLDER'];
+$blob_sounds_folder = $_ENV['SOUNDS_FOLDER'];
 
 // Options de connexion
 $options = [
