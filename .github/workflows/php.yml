@@ -28,6 +28,15 @@ jobs:
     - name: Run composer install if composer.json exists
       if: steps.check_files.outputs.files_exists == 'true'
       run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
+
+    - name: Set up Node.js version
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: npm install
+      run: |
+        npm install
   
     - name: SFTP Deploy
       uses: Dylan700/sftp-upload-action@latest
