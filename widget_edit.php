@@ -2,6 +2,19 @@
 require 'config.php';
 require 'db_helpers.php';
 
+// Récupérer l'environnement depuis les paramètres de requête, sinon utiliser la session
+$selectedEnvironment = $_GET['env'] ?? $_SESSION['environment'];
+
+// Vérifier si l'environnement est valide
+$validEnvironments = ['PROD', 'SANDBOX']; // Liste des environnements valides
+if (!in_array(strtoupper($selectedEnvironment), $validEnvironments)) {
+    die("Environnement invalide.");
+}
+
+// Mettre à jour la session avec l'environnement sélectionné
+$_SESSION['environment'] = strtoupper($selectedEnvironment);
+$environment = strtolower($_SESSION['environment']);
+
 // Récupérer le GUID depuis l'URL et le convertir en binaire
 $guidHex = $_GET['charity_stream_id'] ?? '';
 if (!$guidHex) {
@@ -10,23 +23,23 @@ if (!$guidHex) {
 $guidBinary = hex2bin($guidHex);
 
 // Récupérer les données actuelles des widgets depuis la base de données
-$donationGoalWidget = GetDonationGoalWidgetByGuid($db, $guidBinary);
-$alertBoxWidget = GetAlertBoxWidgetByGuid($db, $guidBinary);
+$donationGoalWidget = GetDonationGoalWidgetByGuid($db, $environment, $guidBinary);
+$alertBoxWidget = GetAlertBoxWidgetByGuid($db, $environment, $guidBinary);
 
 $widgetUrl = "widget_donation_bar_goal.php?charity_stream_id=" . $guidHex;
 
 // Traitement du formulaire de mise à jour pour chaque widget
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_donation_goal'])) {
-        UpdateDonationGoalWidget($db, $guidBinary, $_POST);
+        UpdateDonationGoalWidget($db, $environment, $guidBinary, $_POST);
     }
 
     if (isset($_POST['save_alert_box'])) {
-        UpdateAlertBoxWidget($db, $guidBinary, $_POST);
+        UpdateAlertBoxWidget($db, $environment, $guidBinary, $_POST);
     }
 
     // Redirection pour éviter de renvoyer les formulaires
-    header("Location: widget_edit.php?charity_stream_id=" . $guidHex);
+    header("Location: widget_edit.php?charity_stream_id=" . $guidHex . "&env=" . urlencode($environment));
     exit();
 }
 
@@ -41,6 +54,7 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Widgets</title>
+    <link href="styles/widget_donation_bar_goal.css" rel="stylesheet">
     <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <style>
@@ -62,70 +76,79 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
         <!-- Lien pour revenir à l'index -->
         <a href="index.php" class="btn btn-secondary mb-4">Back to Admin</a>
 
-        <!-- Formulaire pour widget_donation_goal_bar -->
-        <h2>Donation Goal Bar Widget</h2>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="text_color" class="form-label">Text Color</label>
-                <input type="color" class="form-control" id="text_color" name="text_color" value="<?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="bar_color" class="form-label">Bar Color</label>
-                <input type="color" class="form-control" id="bar_color" name="bar_color" value="<?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="background_color" class="form-label">Background Color</label>
-                <input type="color" class="form-control" id="background_color" name="background_color" value="<?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="goal" class="form-label">Goal Amount</label>
-                <input type="number" class="form-control" id="goal" name="goal" value="<?php echo htmlspecialchars($donationGoalWidget['goal']); ?>">
-            </div>
-            <!-- Boutons Save et Open Widget -->
-            <div class="d-flex justify-content-between align-items-center mt-3">
-            <button type="submit" class="btn btn-primary" name="save_donation_goal">Save Donation Goal Widget</button>
-            <a href="<?php echo $widgetUrl; ?>" class="btn btn-secondary" target="_blank">Open Widget</a>
-            </div>
-        </form>
+<!-- Formulaire pour widget_donation_goal_bar -->
+<h2>Donation Goal Bar Widget</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label for="text_color" class="form-label">Text Color</label>
+        <input type="color" class="form-control" id="text_color" name="text_color" value="<?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="bar_color" class="form-label">Bar Color</label>
+        <input type="color" class="form-control" id="bar_color" name="bar_color" value="<?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="background_color" class="form-label">Background Color</label>
+        <input type="color" class="form-control" id="background_color" name="background_color" value="<?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="goal" class="form-label">Goal Amount</label>
+        <input type="number" class="form-control" id="goal" name="goal" value="<?php echo htmlspecialchars($donationGoalWidget['goal']); ?>">
+    </div>
+    <!-- Boutons Save et Open Widget -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <button type="submit" class="btn btn-primary" name="save_donation_goal">Save Donation Goal Widget</button>
+        <a href="<?php echo $widgetUrl; ?>" class="btn btn-secondary" target="_blank">Open Widget</a>
+    </div>
+</form>
 
         <!-- Prévisualisation de la barre de donation -->
-        <div class="mt-4">
-            <h4>Donation goal bar preview:</h4>
-            <div id="donationGoalPreview" class="progress" style="background-color: <?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>;">
-                <div id="progressBar" class="progress-bar progress-bar-custom" role="progressbar" style="width: 50%; background-color: <?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>;">
-                    50%
+        <div class='goal-cont'>
+        <div style='position: relative'>
+            <div id='goal-bar' style="background-color: <?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>; border-color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
+                <p id='goal-current' style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
+                    <?php echo 1200; ?> €
+                </p>
+                <p id='title' style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
+                    Donations
+                </p>
+                <p id='goal-total' style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
+                    <?php echo 2000; ?> €
+                </p>
+                <div id='total-bar' style="background-color: <?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>; width: <?php echo (1200 / 2000) * 100; ?>%;">
                 </div>
             </div>
         </div>
+    </div>
 
 
         <hr class="my-5">
 
-        <!-- Formulaire pour widget_alert_box -->
-        <h2>Alert Box Widget</h2>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="image" class="form-label">Image File Name</label>
-                <input type="text" class="form-control" id="image" name="image" value="<?php echo htmlspecialchars($alertBoxWidget['image']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="alert_duration" class="form-label">Alert Duration (seconds)</label>
-                <input type="number" class="form-control" id="alert_duration" name="alert_duration" value="<?php echo htmlspecialchars($alertBoxWidget['alert_duration']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="message_template" class="form-label">Message Template</label>
-                <textarea class="form-control" id="message_template" name="message_template"><?php echo htmlspecialchars($alertBoxWidget['message_template']); ?></textarea>
-            </div>
-            <div class="mb-3">
-                <label for="sound" class="form-label">Sound File Name</label>
-                <input type="text" class="form-control" id="sound" name="sound" value="<?php echo htmlspecialchars($alertBoxWidget['sound']); ?>">
-            </div>
-            <div class="mb-3">
-                <label for="sound_volume" class="form-label">Sound Volume (0-100)</label>
-                <input type="number" class="form-control" id="sound_volume" name="sound_volume" value="<?php echo htmlspecialchars($alertBoxWidget['sound_volume']); ?>">
-            </div>
-            <button type="submit" class="btn btn-primary" name="save_donation_goal">Save Donation Goal Widget</button>
-        </form>
+<!-- Formulaire pour widget_alert_box -->
+<h2>Alert Box Widget</h2>
+<form method="POST">
+    <div class="mb-3">
+        <label for="image" class="form-label">Image File Name</label>
+        <input type="text" class="form-control" id="image" name="image" value="<?php echo htmlspecialchars($alertBoxWidget['image']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="alert_duration" class="form-label">Alert Duration (seconds)</label>
+        <input type="number" class="form-control" id="alert_duration" name="alert_duration" value="<?php echo htmlspecialchars($alertBoxWidget['alert_duration']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="message_template" class="form-label">Message Template</label>
+        <textarea class="form-control" id="message_template" name="message_template"><?php echo htmlspecialchars($alertBoxWidget['message_template']); ?></textarea>
+    </div>
+    <div class="mb-3">
+        <label for="sound" class="form-label">Sound File Name</label>
+        <input type="text" class="form-control" id="sound" name="sound" value="<?php echo htmlspecialchars($alertBoxWidget['sound']); ?>">
+    </div>
+    <div class="mb-3">
+        <label for="sound_volume" class="form-label">Sound Volume (0-100)</label>
+        <input type="number" class="form-control" id="sound_volume" name="sound_volume" value="<?php echo htmlspecialchars($alertBoxWidget['sound_volume']); ?>">
+    </div>
+    <button type="submit" class="btn btn-primary" name="save_alert_box">Save Alert Box Widget</button>
+</form>
 
         <!-- Bouton Preview -->
         <hr class="my-5">
@@ -138,27 +161,30 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
     </div>
 
     <script>
-        // Mise à jour de la prévisualisation de la Donation Goal Bar
-        document.getElementById('goal').addEventListener('input', updateDonationGoalPreview);
+        // Écouter les changements des couleurs
         document.getElementById('bar_color').addEventListener('input', updateDonationGoalPreview);
         document.getElementById('background_color').addEventListener('input', updateDonationGoalPreview);
         document.getElementById('text_color').addEventListener('input', updateDonationGoalPreview);
 
         function updateDonationGoalPreview() {
-            var goal = parseInt(document.getElementById('goal').value) || 100;
-            var current = goal / 2;  // Suppose that the current amount is half of the goal for preview
-            var percentage = (current / goal) * 100;
+            // Récupérer les éléments de la barre de donation
+            var goalBar = document.getElementById('goal-bar');
+            var totalBar = document.getElementById('total-bar');
+            var goalCurrent = document.getElementById('goal-current');
+            var goalTotal = document.getElementById('goal-total');
+            var title = document.getElementById('title');
 
-            var progressBar = document.getElementById('progressBar');
-            var donationGoalPreview = document.getElementById('donationGoalPreview');
+            // Mettre à jour les couleurs des éléments
+            goalBar.style.backgroundColor = document.getElementById('background_color').value;
+            goalBar.style.borderColor = document.getElementById('text_color').value;
+            totalBar.style.backgroundColor = document.getElementById('bar_color').value;
 
-            progressBar.style.width = percentage + '%';
-            progressBar.style.backgroundColor = document.getElementById('bar_color').value;
-            donationGoalPreview.style.backgroundColor = document.getElementById('background_color').value;
-            progressBar.style.color = document.getElementById('text_color').value;
-            progressBar.innerText = percentage.toFixed(0) + '%';
+            // Mettre à jour les couleurs de texte
+            goalCurrent.style.color = document.getElementById('text_color').value;
+            goalTotal.style.color = document.getElementById('text_color').value;
+            title.style.color = document.getElementById('text_color').value;
         }
-
+        
         // Prévisualisation de l'Alert Box Widget (inchangé)
         document.getElementById('previewBtn').addEventListener('click', function() {
             var previewContainer = document.getElementById('previewContainer');
