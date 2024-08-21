@@ -2,7 +2,7 @@
 
 function GetCharityStreamsList($db, $environment) {
     // Requête pour récupérer les charity streams
-    $stmt = $db->query('SELECT id, owner_email, title, guid, form_id FROM '. strtolower($environment) .'_charity_stream');
+    $stmt = $db->query('SELECT id, owner_email, title, guid, form_id, organization_slug FROM '. strtolower($environment) .'_charity_stream');
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -48,15 +48,16 @@ function UpdateAlertBoxWidget($db, $environment, $guidBinary, $data) {
     ]);
 }
 
-function CreateCharityStream($db, $environment, $guid, $owner_email, $form_id, $title, $creation_date, $last_update) {
+function CreateCharityStream($db, $environment, $guid, $owner_email, $form_id, $organization_id, $title, $creation_date, $last_update) {
     // Insérer le nouveau Charity Stream
-    $query = 'INSERT INTO  '. strtolower($environment) .'_charity_stream (guid, owner_email, form_id, title, state, creation_date, last_update) 
-              VALUES (:guid, :owner_email, :form_id, :title, 1, :creation_date, :last_update)';
+    $query = 'INSERT INTO  '. strtolower($environment) .'_charity_stream (guid, owner_email, form_id, organization_id, title, state, creation_date, last_update) 
+              VALUES (:guid, :owner_email, :form_id, :organization_id, :title, 1, :creation_date, :last_update)';
     $stmt = $db->prepare($query);
     $stmt->execute([
         ':guid' => hex2bin($guid),
         ':owner_email' => $owner_email,
         ':form_id' => $form_id,
+        ':organization_id' => $organization_id,
         ':title' => $title,
         ':creation_date' => $creation_date,
         ':last_update' => $last_update,
@@ -83,4 +84,52 @@ function CreateCharityStream($db, $environment, $guid, $owner_email, $form_id, $
     ]);
 }
 
+function InsertAccessToken($db, $accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt, $environment) {
+    $query = 'INSERT INTO  '. strtolower($environment) .'_access_token_partner_organization 
+        (access_token, refresh_token, organization_slug, access_token_expires_at, refresh_token_expires_at, created_at, updated_at)
+        VALUES (:access_token, :refresh_token, :organization_slug, :access_token_expires_at, :refresh_token_expires_at, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))';
+    $stmt = $db->prepare($query);
 
+    // Exécuter la requête avec les valeurs
+    $stmt->execute([
+        ':access_token' => $accessToken,
+        ':refresh_token' => $refreshToken,
+        ':organization_slug' => $organization_slug,
+        ':access_token_expires_at' => $accessTokenExpiresAt->format('Y-m-d H:i:s.u'), // Format pour DATETIME(6)
+        ':refresh_token_expires_at' => $refreshTokenExpiresAt->format('Y-m-d H:i:s.u') // Format pour DATETIME(6)
+    ]);
+}
+
+function InsertAuthorizationCode($db, $id, $randomString, $redirect_uri, $organizationSlug, $environment) {
+    $query = 'INSERT INTO  '. strtolower($environment) .'_authorization_code (id, random_string, redirect_uri, organization_slug, creation_date, last_update)
+        VALUES (:id, :random_string, :redirect_uri, :organization_slug, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+    $stmt = $db->prepare($query);
+    $stmt->execute([
+        ':id' => $id,
+        ':random_string' => $randomString,
+        ':redirect_uri' => $redirect_uri,
+        ':organization_slug' => $organizationSlug
+    ]);
+}
+
+function GetAccessToken($db, $organization_slug, $environment) {
+    $query = 'SELECT * FROM '. strtolower($environment) .'_access_token_partner_organization 
+              WHERE organization_slug = :organization_slug LIMIT 1';
+    $stmt = $db->prepare($query);
+
+    // Exécuter la requête avec le slug de l'organisation
+    $stmt->execute([
+        ':organization_slug' => $organization_slug
+    ]);
+
+    // Retourner le résultat
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+
+function GetAuthorizationCodeById($db, $id, $environment) {
+    $query = 'SELECT * FROM ' . $environment .'_authorization_code WHERE id = ? LIMIT 1';
+    $stmt = $db->prepare($query);
+    $stmt->execute([$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}

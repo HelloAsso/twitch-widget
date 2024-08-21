@@ -1,6 +1,6 @@
 <?php
 require 'config.php';
-require 'db_helpers.php';
+require 'helpers/db_helpers.php';
 
 $charityStreamId = $_GET['charity_stream_id'] ?? '';
 if (!$charityStreamId) {

@@ -1,22 +1,26 @@
 <?php
 require 'config.php';
-require 'db_helpers.php';
+require 'helpers/db_helpers.php';
+require 'helpers/session_helpers.php';
 
 // Récupérer l'environnement depuis les paramètres de requête, sinon utiliser la session
 $selectedEnvironment = $_GET['env'] ?? $_SESSION['environment'];
 
-// Vérifier si l'environnement est valide
-$validEnvironments = ['PROD', 'SANDBOX']; // Liste des environnements valides
-if (!in_array(strtoupper($selectedEnvironment), $validEnvironments)) {
-    die("Environnement invalide.");
+try {
+    // Appeler la fonction pour mettre à jour les variables de session
+    updateSessionVariables($selectedEnvironment);
+} catch (Exception $e) {
+    // Gérer l'erreur si nécessaire
+    echo "Erreur: " . $e->getMessage();
 }
 
-// Mettre à jour la session avec l'environnement sélectionné
-$_SESSION['environment'] = strtoupper($selectedEnvironment);
-$environment = strtolower($_SESSION['environment']);
+$environment = $_SESSION['environment'];
+$clientId = $_SESSION['client_id'];
+$clientSecret = $_SESSION['client_secret'];
+$blob_url = $_SESSION['blob_url'];
 
 // Récupérer le GUID depuis l'URL et le convertir en binaire
-$guidHex = $_GET['charity_stream_id'] ?? '';
+$guidHex = $_GET['charityStreamId'] ?? '';
 if (!$guidHex) {
     die("GUID manquant ou incorrect.");
 }
@@ -78,6 +82,7 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
 
 <!-- Formulaire pour widget_donation_goal_bar -->
 <h2>Donation Goal Bar Widget</h2>
+<h2><?php echo $_SESSION['client_id'] ?></h2>
 <form method="POST">
     <div class="mb-3">
         <label for="text_color" class="form-label">Text Color</label>
@@ -223,7 +228,7 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
                 setTimeout(function() {
                     previewContainer.innerHTML = '<p class="text-muted">La prévisualisation apparaîtra ici</p>';
                 }, 1000); // Attendre que le fondu soit terminé avant de vider le conteneur
-            }, 3000);
+            }, <?php echo $alertBoxWidget['alert_duration'] * 1000; ?>);
         });
 
         // Appeler la fonction pour initialiser la prévisualisation au chargement de la page
