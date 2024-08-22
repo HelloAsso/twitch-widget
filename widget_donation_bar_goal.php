@@ -2,7 +2,7 @@
 require 'config.php';
 require 'helpers/db_helpers.php';
 
-$charityStreamId = $_GET['charity_stream_id'] ?? '';
+$charityStreamId = $_GET['charityStreamId'] ?? '';
 if (!$charityStreamId) {
     die("Charity Stream ID manquant ou incorrect.");
 }

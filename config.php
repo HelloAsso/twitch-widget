@@ -1,4 +1,5 @@
 <?php
+
 // Vérifier si une session est déjà active avant d'appeler session_start()
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,19 +24,22 @@ $isLocal = $_ENV['IS_LOCAL'] === 'TRUE';
 // Configurer les paramètres de connexion en fonction de l'environnement sélectionné
 $host = $isLocal ? $_ENV['DBURL_LOCAL'] : $_ENV['DBURL'];
 $dbname = $isLocal ? $_ENV['DBNAME_LOCAL'] : $_ENV['DBNAME'];
-$user = $isLocal ? $_ENV['DBUSER_LOCAL'] : $_ENV['DBUSER'];
-$password = $isLocal ? $_ENV['DBPASSWORD_LOCAL'] : $_ENV['DBPASSWORD'];
-
+$dbUser = $isLocal ? $_ENV['DBUSER_LOCAL'] : $_ENV['DBUSER'];
+$dbPassword = $isLocal ? $_ENV['DBPASSWORD_LOCAL'] : $_ENV['DBPASSWORD'];
 $blob_url = $_ENV['BLOB_URL_' . $environment];
 $blob_images_folder = $_ENV['IMAGES_FOLDER'];
 $blob_sounds_folder = $_ENV['SOUNDS_FOLDER'];
 $encryption_key = $_ENV['ENCRYPTION_KEY'];
 
-// Initialiser les variables de session pour les clés d'API
-$_SESSION['client_id'] = $_ENV['CLIENT_ID_' . $environment];
-$_SESSION['client_secret'] = $_ENV['CLIENT_SECRET_' . $environment];
-$_SESSION['api_url'] = $_ENV['API_URL_' . $environment];
-$_SESSION['api_auth_url'] = $_ENV['API_AUTH_URL_' . $environment];
+// Initialiser les variables de session
+    // Mettre à jour la variable de session pour l'environnement
+    $_SESSION['environment'] = $environment;
+    $_SESSION['client_id'] = $_ENV['CLIENT_ID_' . $environment];
+    $_SESSION['client_secret'] = $_ENV['CLIENT_SECRET_' . $environment];
+    $_SESSION['blob_url'] = $_ENV['BLOB_URL_' . $environment];
+    $_SESSION['api_url'] = $_ENV['API_URL_' . $environment];
+    $_SESSION['api_auth_url'] = $_ENV['API_AUTH_URL_' . $environment];
+    $_SESSION['website_domain'] = $isLocal == true ? $_ENV['WEBSITE_LOCAL_DOMAIN'] : $_ENV['WEBSITE_DOMAIN'];
 
 // Options de connexion
 $options = [
@@ -46,8 +50,8 @@ $options = [
 try {
     $db = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $user,
-        $password,
+        $dbUser,
+        $dbPassword,
         $options
     );
 } catch (PDOException $e) {

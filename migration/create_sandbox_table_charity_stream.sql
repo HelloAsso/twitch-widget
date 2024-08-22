@@ -3,7 +3,7 @@ CREATE TABLE sandbox_charity_stream (
     guid BINARY(16) NOT NULL UNIQUE,  -- UUID en format binaire
 	title VARCHAR(500),  -- Titre avec une longueur maximale de 500 caractères
     owner_email VARCHAR(255) NOT NULL,  -- Email de l'utilisateur
-    form_id VARCHAR(255) NOT NULL,  -- Identifiant du formulaire
+    form_slug VARCHAR(255) NOT NULL,  -- Slug du formulaire,
     organization_slug VARCHAR(255) NOT NULL,  -- Identifiant de l'association
     state TINYINT(1) NOT NULL,  -- État comme un entier (1 pour Enabled, 0 pour Disabled)
     creation_date TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),  -- Date de création avec précision à la microseconde

@@ -8,7 +8,7 @@ require 'helpers/grant_authorization_helpers.php';
 if (isset($_POST['environment'])) {
     try {
         // Appeler la fonction pour mettre à jour les variables de session
-        updateSessionVariables($_POST['environment']);
+        UpdatePhpSessionVariables($_POST['environment']);
     } catch (Exception $e) {
         // Gérer l'erreur si nécessaire
         echo "Erreur: " . $e->getMessage();
@@ -30,8 +30,8 @@ $api_auth_url = $_SESSION['api_auth_url'];
 // Traitement du formulaire de création de Charity Stream
 if (isset($_POST['create_charity_stream'])) {
     $ownerEmail = $_POST['owner_email'];
-    $formId = $_POST['form_id'];
-    $organizationId = $_POST['organization_id'];
+    $formSlug = $_POST['form_slug'];
+    $organizationSlug = $_POST['organization_slug'];
     $title = $_POST['title'];
 
     // Générer un GUID unique pour le nouveau Charity Stream
@@ -41,7 +41,7 @@ if (isset($_POST['create_charity_stream'])) {
     $lastUpdate = $creationDate;
 
     // Appeler la fonction pour créer le Charity Stream
-    CreateCharityStream($db, $environment, $guid, $ownerEmail, $formId, $organizationId, $title, $creationDate, $lastUpdate);
+    CreateCharityStream($db, $environment, $guid, $ownerEmail, $formSlug, $organizationSlug, $title, $creationDate, $lastUpdate);
 }
 
 // Utilisation de la fonction GetCharityStreamsList pour récupérer les données mises à jour
@@ -79,12 +79,12 @@ $charityStreams = GetCharityStreamsList($db, $environment);
                     <input type="email" class="form-control" id="owner_email" name="owner_email" required>
                 </div>
                 <div class="mb-3">
-                    <label for="organization_id" class="form-label">Organization ID</label>
-                    <input type="text" class="form-control" id="organization_id" name="organization_id" required>
+                    <label for="organization_id" class="form-label">Organization Slug</label>
+                    <input type="text" class="form-control" id="organization_slug" name="organization_slug" required>
                 </div>
                 <div class="mb-3">
-                    <label for="form_id" class="form-label">Form ID</label>
-                    <input type="text" class="form-control" id="form_id" name="form_id" required>
+                    <label for="form_slug" class="form-label">Form Slug</label>
+                    <input type="text" class="form-control" id="form_id" name="form_slug" required>
                 </div>
                 <div class="mb-3">
                     <label for="title" class="form-label">Title</label>
@@ -103,7 +103,7 @@ $charityStreams = GetCharityStreamsList($db, $environment);
                     <th>GUID</th>
                     <th>Owner Email</th>
                     <th>Title</th>
-                    <th>FormID</th>
+                    <th>FormSlug</th>
                     <th>OrganizationSlug</th>
                     <th>Widgets</th>
                     <th>GrantAuthorizationLink</th>
@@ -116,13 +116,13 @@ $charityStreams = GetCharityStreamsList($db, $environment);
                         <td><?php echo htmlspecialchars(bin2hex($stream['guid'])); ?></td>
                         <td><?php echo htmlspecialchars($stream['owner_email']); ?></td>
                         <td><?php echo htmlspecialchars($stream['title']); ?></td>
-                        <td><?php echo htmlspecialchars($stream['form_id']); ?></td>
+                        <td><?php echo htmlspecialchars($stream['form_slug']); ?></td>
                         <td><?php echo htmlspecialchars($stream['organization_slug']); ?></td>
                         <td>
-                            <a href="widget_edit.php?env=<?php echo strtolower($environment); ?>&charityStreamId=<?php echo bin2hex($stream['guid']); ?>" class="btn btn-primary">Edit Widgets</a>
+                            <a href="widget_edit.php?env=<?php echo strtolower($environment); ?>&charityStreamId=<?php echo bin2hex($stream['guid']); ?>" class="btn btn-primary" target="_blank">Edit Widgets</a>
                         </td>
                         <td>
-                        <a href="redirect_auth_page.php?env=<?php echo strtolower($environment); ?>&organizationSlug=<?php echo $stream['organization_slug']; ?>" class="btn btn-primary">Generate Link</a>
+                        <a href="redirect_auth_page.php?env=<?php echo strtolower($environment); ?>&organizationSlug=<?php echo $stream['organization_slug']; ?>" class="btn btn-primary" target="_blank">Generate Link</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

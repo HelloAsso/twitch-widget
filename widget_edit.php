@@ -8,7 +8,7 @@ $selectedEnvironment = $_GET['env'] ?? $_SESSION['environment'];
 
 try {
     // Appeler la fonction pour mettre à jour les variables de session
-    updateSessionVariables($selectedEnvironment);
+    UpdatePhpSessionVariables($selectedEnvironment);
 } catch (Exception $e) {
     // Gérer l'erreur si nécessaire
     echo "Erreur: " . $e->getMessage();
@@ -26,11 +26,16 @@ if (!$guidHex) {
 }
 $guidBinary = hex2bin($guidHex);
 
-// Récupérer les données actuelles des widgets depuis la base de données
+$charityStream = GetCharityStreamByGuid($db, $environment, $guidBinary);
 $donationGoalWidget = GetDonationGoalWidgetByGuid($db, $environment, $guidBinary);
 $alertBoxWidget = GetAlertBoxWidgetByGuid($db, $environment, $guidBinary);
+$helloassoDomain = $environment == 'PROD' 
+? 'https://www.helloasso.com'
+: 'https://www.helloasso-'. strtolower($environment) .'.com'    ;
 
-$widgetUrl = "widget_donation_bar_goal.php?charity_stream_id=" . $guidHex;
+$donationUrl = $helloassoDomain . '/associations/'. $charityStream['organization_slug'] . '/formulaires/' . $charityStream['form_slug'];
+
+$widgetUrl = $_SESSION['website_domain'] . 'widget_donation_bar_goal.php?charityStreamId=' . $guidHex;
 
 // Traitement du formulaire de mise à jour pour chaque widget
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -43,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Redirection pour éviter de renvoyer les formulaires
-    header("Location: widget_edit.php?charity_stream_id=" . $guidHex . "&env=" . urlencode($environment));
+    header("Location: widget_edit.php?charityStreamId=" . $guidHex . "&env=" . urlencode($environment));
     exit();
 }
 
@@ -81,8 +86,14 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
         <a href="index.php" class="btn btn-secondary mb-4">Back to Admin</a>
 
 <!-- Formulaire pour widget_donation_goal_bar -->
+
+<h5><?php echo 'Environnement : ' . strtolower($environment) ?></h5>
+<h5>
+    <?php echo 'Formulaire de don Helloasso: '; ?>
+    <a href="<?php echo $donationUrl; ?>" target="_blank"><?php echo $donationUrl; ?></a>
+</h5>
+<hr class="my-4">
 <h2>Donation Goal Bar Widget</h2>
-<h2><?php echo $_SESSION['client_id'] ?></h2>
 <form method="POST">
     <div class="mb-3">
         <label for="text_color" class="form-label">Text Color</label>
@@ -100,13 +111,7 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
         <label for="goal" class="form-label">Goal Amount</label>
         <input type="number" class="form-control" id="goal" name="goal" value="<?php echo htmlspecialchars($donationGoalWidget['goal']); ?>">
     </div>
-    <!-- Boutons Save et Open Widget -->
-    <div class="d-flex justify-content-between align-items-center mt-3">
-        <button type="submit" class="btn btn-primary" name="save_donation_goal">Save Donation Goal Widget</button>
-        <a href="<?php echo $widgetUrl; ?>" class="btn btn-secondary" target="_blank">Open Widget</a>
-    </div>
-</form>
-
+    <br/>
         <!-- Prévisualisation de la barre de donation -->
         <div class='goal-cont'>
         <div style='position: relative'>
@@ -125,9 +130,18 @@ $soundUrl = $blob_url . $blob_sounds_folder . $alertBoxWidget['sound'];
             </div>
         </div>
     </div>
+    <br/>
+    <div class="align-items-center mt-3">
+    <h5>
+        <?php echo 'URL du widget : '; ?>
+        <a href="<?php echo $widgetUrl; ?>" target="_blank"><?php echo $widgetUrl; ?></a>
+    </h5>
+    <br/>
+        <button type="submit" class="btn btn-primary" name="save_donation_goal">Save Donation Goal Widget</button>
+    </div>
+</form>
 
-
-        <hr class="my-5">
+<hr class="my-5">
 
 <!-- Formulaire pour widget_alert_box -->
 <h2>Alert Box Widget</h2>
