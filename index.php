@@ -41,11 +41,11 @@ if (isset($_POST['create_charity_stream'])) {
     $lastUpdate = $creationDate;
 
     // Appeler la fonction pour créer le Charity Stream
-    CreateCharityStream($db, $environment, $guid, $ownerEmail, $formSlug, $organizationSlug, $title, $creationDate, $lastUpdate);
+    CreateCharityStreamDB($db, $environment, $guid, $ownerEmail, $formSlug, $organizationSlug, $title, $creationDate, $lastUpdate);
 }
 
 // Utilisation de la fonction GetCharityStreamsList pour récupérer les données mises à jour
-$charityStreams = GetCharityStreamsList($db, $environment);
+$charityStreams = GetCharityStreamsListDB($db, $environment);
 
 ?>
 

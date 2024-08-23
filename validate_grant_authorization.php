@@ -18,7 +18,7 @@ try {
 }
 
 // Récupérer la randomString depuis le cache avec l'id 'state'
-$authorizationCodeData = GetAuthorizationCodeById($db, $state, $env);
+$authorizationCodeData = GetAuthorizationCodeByIdDB($db, $state, $env);
 $redirect_uri = $authorizationCodeData['redirect_uri'];
 $codeVerifier = $authorizationCodeData['code_verifier'];
 
@@ -43,13 +43,13 @@ if (!isset($tokenDataGrantAuthorization['access_token'],
 $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'))->format('Y-m-d H:i:s');
 $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'))->format('Y-m-d H:i:s');
 
-$existingOrganizationToken = GetAccessToken($db, $tokenDataGrantAuthorization['organization_slug'], $environment);
+$existingOrganizationToken = GetAccessTokensAndRefreshIfNecessary($db, $environment, $tokenDataGrantAuthorization['organization_slug']);
 
 if($existingOrganizationToken != null)
 {
     try 
     {
-        UpdateAccessToken($db,
+        UpdateAccessTokenDB($db,
         $tokenDataGrantAuthorization['access_token'],
         $tokenDataGrantAuthorization['refresh_token'],
         $tokenDataGrantAuthorization['organization_slug'],
@@ -68,7 +68,7 @@ else
 {
     try 
     {
-        InsertAccessToken($db,
+        InsertAccessTokenDB($db,
         EncryptToken($tokenDataGrantAuthorization['access_token']),
         EncryptToken($tokenDataGrantAuthorization['refresh_token']),
         $tokenDataGrantAuthorization['organization_slug'],

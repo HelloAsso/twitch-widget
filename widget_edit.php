@@ -26,25 +26,25 @@ if (!$guidHex) {
 }
 $guidBinary = hex2bin($guidHex);
 
-$charityStream = GetCharityStreamByGuid($db, $environment, $guidBinary);
-$donationGoalWidget = GetDonationGoalWidgetByGuid($db, $environment, $guidBinary);
-$alertBoxWidget = GetAlertBoxWidgetByGuid($db, $environment, $guidBinary);
+$charityStream = GetCharityStreamByGuidDB($db, $environment, $guidBinary);
+$donationGoalWidget = GetDonationGoalWidgetByGuidDB($db, $environment, $guidBinary);
+$alertBoxWidget = GetAlertBoxWidgetByGuidDB($db, $environment, $guidBinary);
 $helloassoDomain = $environment == 'PROD' 
 ? 'https://www.helloasso.com'
 : 'https://www.helloasso-'. strtolower($environment) .'.com'    ;
 
 $donationUrl = $helloassoDomain . '/associations/'. $charityStream['organization_slug'] . '/formulaires/' . $charityStream['form_slug'];
 
-$widgetUrl = $_SESSION['website_domain'] . 'widget_donation_bar_goal.php?charityStreamId=' . $guidHex;
+$widgetUrl = $_SESSION['website_domain'] . 'widget_donation_bar_goal.php?charityStreamId=' . $guidHex . '&env=' . $environment;
 
 // Traitement du formulaire de mise à jour pour chaque widget
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_donation_goal'])) {
-        UpdateDonationGoalWidget($db, $environment, $guidBinary, $_POST);
+        UpdateDonationGoalWidgetDB($db, $environment, $guidBinary, $_POST);
     }
 
     if (isset($_POST['save_alert_box'])) {
-        UpdateAlertBoxWidget($db, $environment, $guidBinary, $_POST);
+        UpdateAlertBoxWidgetDB($db, $environment, $guidBinary, $_POST);
     }
 
     // Redirection pour éviter de renvoyer les formulaires

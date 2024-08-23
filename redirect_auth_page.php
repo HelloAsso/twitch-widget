@@ -7,15 +7,15 @@ require 'helpers/db_helpers.php';
 $organizationSlug = $_GET['organizationSlug'];
 $environment = $_SESSION['environment'];
 
-$tokenData = GetGlobalAccessToken($db, $environment);
+$PartnerTokenData = GetAccessTokensAndRefreshIfNecessary($db, $environment, null);
 
 // Vérifiez si $tokenData est un tableau, sinon gérez l'erreur
-if (!is_array($tokenData)) {
+if (!is_array($PartnerTokenData)) {
     // Affichez l'erreur ou gérez-la de manière appropriée
-    die('Erreur lors de la récupération du jeton d\'accès : ' . $tokenData);
+    die('Erreur lors de la récupération du jeton d\'accès : ' . $PartnerTokenData);
 }
 
-$accessToken = $tokenData['access_token'];
+$accessToken = $PartnerTokenData['access_token'];
 $domain = $isLocal == true ? 'https://localhost' : 'https://twitch.helloasso.blog';
 
 SetClientDomain($domain, $accessToken);

@@ -1,5 +1,4 @@
 <?php
-
 require 'config.php';
 
 // Clé de chiffrement secrète (ne la partagez pas publiquement et stockez-la de manière sécurisée)
@@ -13,28 +12,37 @@ function EncryptToken($token) {
     return base64_encode($encryptedToken . '::' . $iv);
 }
 
-function decryptToken($encryptedToken) {
+function DecryptToken($encryptedToken) {
     // Décodage base64
     list($encryptedData, $iv) = explode('::', base64_decode($encryptedToken), 2);
     return openssl_decrypt($encryptedData, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
 }
 
-function GetGlobalAccessToken($db, $env){
-    $tokenData = GetAccessToken($db, null, $env);
+function GetAccessTokensAndRefreshIfNecessary($db, $env, $organization_slug)
+{
+    $tokenData = GetAccessTokensDB($db, $env, $organization_slug);
 
-    if($tokenData == null){
-        $tokenData = GenerateGlobalAccessToken($db, $env);
-        return $tokenData;
+    if($tokenData == null)
+    {
+        if($organization_slug == null)
+        {
+            $tokenData = GenerateGlobalAccessToken($db, $env);
+            return $tokenData;
+        }
+        else
+        {
+            return null;
+        }
     }
     else 
     {
-        $tokenData['refresh_token'] = decryptToken($tokenData['refresh_token']);
+        $tokenData['access_token'] = DecryptToken($tokenData['access_token']);
+        $tokenData['refresh_token'] = DecryptToken($tokenData['refresh_token']);
         if($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s'))
         {
             $tokenData = RefreshToken($tokenData['refresh_token'], $env, null, $db);
             return $tokenData;
         }
-        $tokenData['access_token'] = decryptToken($tokenData['access_token']);
         return $tokenData;
     }
 }
@@ -91,7 +99,7 @@ function GenerateGlobalAccessToken($db, $env) {
     $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P29D'));
 
     // Insérer les tokens en base de données
-    InsertAccessToken(
+    InsertAccessTokenDB(
         $db,
         EncryptToken($responseData['access_token']),
         EncryptToken($responseData['refresh_token']),
@@ -139,7 +147,7 @@ function RefreshToken($refreshToken, $env, $organization_slug, $db){
     $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'))->format('Y-m-d H:i:s');
     $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'))->format('Y-m-d H:i:s');
 
-    UpdateAccessToken($db,
+    UpdateAccessTokenDB($db,
     EncryptToken($responseData['access_token']),
     EncryptToken($responseData['refresh_token']),
     $organization_slug,

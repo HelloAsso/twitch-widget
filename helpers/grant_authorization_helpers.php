@@ -2,11 +2,11 @@
 
 require 'config.php';
 
-function generateUUID() {
+function GenerateUUID() {
     return bin2hex(random_bytes(16));
 }
 
-function generatePKCEChallenge($plainText) {
+function GeneratePKCEChallenge($plainText) {
     // Étape 1 : Hacher la chaîne avec SHA-256
     $hashed = hash('sha256', $plainText, true);
 
@@ -16,7 +16,7 @@ function generatePKCEChallenge($plainText) {
     return $base64Encoded;
 }
 
-function generateRandomString($length = 80) {
+function GenerateRandomString($length = 80) {
     $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     $charactersLength = strlen($characters);
     $randomString = '';
@@ -32,13 +32,13 @@ function generateRandomString($length = 80) {
 function GenerateAuthorizationUrl( $isLocal, $environment, $organization_slug, $db) {
     $env = strtolower($environment);
     error_log($env);
-    $uniqueUUID = generateUUID();
-    $codeVerifier = generateRandomString();
+    $uniqueUUID = GenerateUUID();
+    $codeVerifier = GenerateRandomString();
     $redirectUri = $isLocal 
     ? 'https://localhost/validate_grant_authorization.php?env=' . $environment
     : 'https://twitch.helloasso.blog/validate_grant_authorization.php?env=' . $environment;
 
-    InsertAuthorizationCode($db, $uniqueUUID, $codeVerifier, $redirectUri, $organization_slug, $environment);
+    InsertAuthorizationCodeDB($db, $uniqueUUID, $codeVerifier, $redirectUri, $organization_slug, $environment);
 
     // Définir l'URL de base selon la valeur de $isLocal
     $baseUrl = $env == "prod" 
@@ -46,7 +46,7 @@ function GenerateAuthorizationUrl( $isLocal, $environment, $organization_slug, $
     : 'https://auth.helloasso-' . $environment . '.com';
 
     // Générer le code challenge
-    $codeChallenge = generatePKCEChallenge($codeVerifier);
+    $codeChallenge = GeneratePKCEChallenge($codeVerifier);
 
     // Construire l'URL finale
     $authorizationUrl = $baseUrl . "/authorize?" . http_build_query([

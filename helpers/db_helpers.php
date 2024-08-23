@@ -1,30 +1,30 @@
 <?php
 
-function GetCharityStreamsList($db, $environment) {
+function GetCharityStreamsListDB($db, $environment) {
     // Requête pour récupérer les charity streams
     $stmt = $db->query('SELECT * FROM '. strtolower($environment) .'_charity_stream');
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function GetCharityStreamByGuid($db, $environment, $guidBinary) {
+function GetCharityStreamByGuidDB($db, $environment, $guidBinary) {
     $stmt = $db->prepare('SELECT * FROM '. strtolower($environment) .'_charity_stream WHERE guid = ? LIMIT 1');
     $stmt->execute([$guidBinary]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function GetDonationGoalWidgetByGuid($db, $environment, $guidBinary) {
+function GetDonationGoalWidgetByGuidDB($db, $environment, $guidBinary) {
     $stmt = $db->prepare('SELECT * FROM '. strtolower($environment) .'_widget_donation_goal_bar WHERE charity_stream_guid = ? LIMIT 1');
     $stmt->execute([$guidBinary]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function GetAlertBoxWidgetByGuid($db, $environment, $guidBinary) {
+function GetAlertBoxWidgetByGuidDB($db, $environment, $guidBinary) {
     $stmt = $db->prepare('SELECT * FROM '. strtolower($environment) .'_widget_alert_box WHERE charity_stream_guid = ? LIMIT 1');
     $stmt->execute([$guidBinary]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function UpdateDonationGoalWidget($db, $environment, $guidBinary, $data) {
+function UpdateDonationGoalWidgetDB($db, $environment, $guidBinary, $data) {
     $stmt = $db->prepare('
         UPDATE  '. strtolower($environment) .'_widget_donation_goal_bar
         SET text_color = ?, bar_color = ?, background_color = ?, goal = ?, last_update = CURRENT_TIMESTAMP(6)
@@ -39,7 +39,7 @@ function UpdateDonationGoalWidget($db, $environment, $guidBinary, $data) {
     ]);
 }
 
-function UpdateAlertBoxWidget($db, $environment, $guidBinary, $data) {
+function UpdateAlertBoxWidgetDB($db, $environment, $guidBinary, $data) {
     $stmt = $db->prepare('
         UPDATE  '. strtolower($environment) .'_widget_alert_box
         SET image = ?, alert_duration = ?, message_template = ?, sound = ?, sound_volume = ?, last_update = CURRENT_TIMESTAMP(6)
@@ -55,7 +55,7 @@ function UpdateAlertBoxWidget($db, $environment, $guidBinary, $data) {
     ]);
 }
 
-function CreateCharityStream($db, $environment, $guid, $owner_email, $form_slug, $organization_slug, $title, $creation_date, $last_update) {
+function CreateCharityStreamDB($db, $environment, $guid, $owner_email, $form_slug, $organization_slug, $title, $creation_date, $last_update) {
     // Insérer le nouveau Charity Stream
     $query = 'INSERT INTO  '. strtolower($environment) .'_charity_stream (guid, owner_email, form_slug, organization_slug, title, state, creation_date, last_update) 
               VALUES (:guid, :owner_email, :form_slug, :organization_slug, :title, 1, :creation_date, :last_update)';
@@ -91,7 +91,7 @@ function CreateCharityStream($db, $environment, $guid, $owner_email, $form_slug,
     ]);
 }
 
-function InsertAccessToken($db, $accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt, $environment) {
+function InsertAccessTokenDB($db, $accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt, $environment) {
     $query = 'INSERT INTO  '. strtolower($environment) .'_access_token_partner_organization 
         (access_token, refresh_token, organization_slug, access_token_expires_at, refresh_token_expires_at, created_at, last_update)
         VALUES (:access_token, :refresh_token, :organization_slug, :access_token_expires_at, :refresh_token_expires_at, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))';
@@ -107,7 +107,7 @@ function InsertAccessToken($db, $accessToken, $refreshToken, $organization_slug,
     ]);
 }
 
-function UpdateAccessToken($db, $access_token, $refresh_token, $organization_slug, $access_token_expires_at, $refresh_token_expires_at, $environment) {
+function UpdateAccessTokenDB($db, $access_token, $refresh_token, $organization_slug, $access_token_expires_at, $refresh_token_expires_at, $environment) {
     if (is_null($organization_slug)) 
     {
         $query = 'UPDATE ' . strtolower($environment) . '_access_token_partner_organization 
@@ -149,7 +149,7 @@ function UpdateAccessToken($db, $access_token, $refresh_token, $organization_slu
 }
 
 
-function InsertAuthorizationCode($db, $id, $codeVerifier, $redirect_uri, $organizationSlug, $environment) {
+function InsertAuthorizationCodeDB($db, $id, $codeVerifier, $redirect_uri, $organizationSlug, $environment) {
     $query = 'INSERT INTO  '. strtolower($environment) .'_authorization_code (id, code_verifier, redirect_uri, organization_slug, creation_date, last_update)
         VALUES (:id, :code_verifier, :redirect_uri, :organization_slug, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
     $stmt = $db->prepare($query);
@@ -161,7 +161,7 @@ function InsertAuthorizationCode($db, $id, $codeVerifier, $redirect_uri, $organi
     ]);
 }
 
-function GetAccessToken($db, $organization_slug, $environment) {
+function GetAccessTokensDB($db, $environment, $organization_slug) {
     if (is_null($organization_slug)) {
         $query = 'SELECT * FROM '. strtolower($environment) .'_access_token_partner_organization 
                   WHERE organization_slug IS NULL LIMIT 1';
@@ -181,7 +181,7 @@ function GetAccessToken($db, $organization_slug, $environment) {
 }
 
 
-function GetAuthorizationCodeById($db, $id, $environment) {
+function GetAuthorizationCodeByIdDB($db, $id, $environment) {
     $query = 'SELECT * FROM ' . strtolower($environment) .'_authorization_code WHERE id = ? LIMIT 1';
     $stmt = $db->prepare($query);
     $stmt->execute([$id]);
