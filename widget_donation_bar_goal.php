@@ -17,12 +17,6 @@ if (!$donationGoalWidget) {
     die("Aucun widget trouvé pour le Charity Stream ID fourni.");
 }
 
-// Récupérer les données du charity stream en fonction du GUID
-$charityStream = GetCharityStreamByGuidDB($db, $environment, $guidBinary);
-if (!$charityStream) {
-    die("Aucun charity stream trouvé pour le Charity Stream ID fourni.");
-}
-
 // Initialisation des valeurs de départ
 $goalAmount = (int)$donationGoalWidget['goal'];
 $currentAmount = 0;
@@ -73,7 +67,7 @@ $backgroundColor = htmlspecialchars($donationGoalWidget['background_color']);
 
         async function fetchDonationAmount() {
             try {
-                // Appel AJAX vers un script PHP pour récupérer les données de l'API côté serveur
+                // Appel AJAX vers un script PHP pour récupérer les données de l'API côté serveur                
                 const response = await fetch('fetch_donations.php?charityStreamId=<?php echo $charityStreamId; ?>');
                 const data = await response.json();
 
@@ -87,7 +81,7 @@ $backgroundColor = htmlspecialchars($donationGoalWidget['background_color']);
         }
 
         // Appel API toutes les 15 secondes
-        setInterval(fetchDonationAmount, 2000);
+        setInterval(fetchDonationAmount, 10000);
     </script>
 </body>
 </html>
