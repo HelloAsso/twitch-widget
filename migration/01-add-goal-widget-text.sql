@@ -1,0 +1,1 @@
+ALTER TABLE {prefix}widget_donation_goal_bar ADD text_content varchar(255) AFTER text_color;

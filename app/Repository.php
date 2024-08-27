@@ -1,0 +1,224 @@
+<?php
+
+class Repository
+{
+
+    private $db;
+    private $prefix;
+
+    public function __construct($db, $prefix)
+    {
+        $this->db = $db;
+        $this->prefix = $prefix;
+    }
+
+    function getCharityStreamsListDB()
+    {
+        $stmt = $this->db->query('SELECT * FROM ' . $this->prefix . 'charity_stream');
+        return $stmt->fetchAll();
+    }
+
+    function getCharityStreamByGuidDB($guidBinary)
+    {
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'charity_stream WHERE guid = ? LIMIT 1');
+        $stmt->execute([$guidBinary]);
+        return $stmt->fetch();
+    }
+
+    function getDonationGoalWidgetByGuidDB($guidBinary)
+    {
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_donation_goal_bar WHERE charity_stream_guid = ? LIMIT 1');
+        $stmt->execute([$guidBinary]);
+        return $stmt->fetch();
+    }
+
+    function getAlertBoxWidgetByGuidDB($guidBinary)
+    {
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_alert_box WHERE charity_stream_guid = ? LIMIT 1');
+        $stmt->execute([$guidBinary]);
+        return $stmt->fetch();
+    }
+
+    function updateDonationGoalWidgetDB($guidBinary, $data)
+    {
+        $stmt = $this->db->prepare('
+            UPDATE ' . $this->prefix . 'widget_donation_goal_bar
+            SET text_color = ?, text_content = ?, bar_color = ?, background_color = ?, goal = ?
+            WHERE charity_stream_guid = ?
+        ');
+        $stmt->execute([
+            $data['text_color'],
+            $data['text_content'],
+            $data['bar_color'],
+            $data['background_color'],
+            $data['goal'],
+            $guidBinary
+        ]);
+    }
+
+    function updateAlertBoxWidgetDB($guidBinary, $postData, $image = null, $sound = null)
+    {
+        $stmt = $this->db->prepare('
+            UPDATE ' . $this->prefix . 'widget_alert_box
+            SET alert_duration = ?, message_template = ?, sound_volume = ?
+            WHERE charity_stream_guid = ?
+        ');
+        $stmt->execute([
+            $postData['alert_duration'],
+            $postData['message_template'],
+            $postData['sound_volume'],
+            $guidBinary
+        ]);
+
+        if(isset($image)) {
+            $stmt = $this->db->prepare('
+                UPDATE ' . $this->prefix . 'widget_alert_box
+                SET image = ?
+                WHERE charity_stream_guid = ?
+            ');
+            $stmt->execute([
+                $image,
+                $guidBinary
+            ]);
+        }
+
+        if(isset($sound)) {
+            $stmt = $this->db->prepare('
+                UPDATE ' . $this->prefix . 'widget_alert_box
+                SET sound = ?
+                WHERE charity_stream_guid = ?
+            ');
+            $stmt->execute([
+                $sound,
+                $guidBinary
+            ]);
+        }
+    }
+
+    function createCharityStreamDB($guid, $owner_email, $form_slug, $organization_slug, $title)
+    {
+        $query = 'INSERT INTO ' . $this->prefix . 'charity_stream (guid, owner_email, form_slug, organization_slug, title, state) 
+                VALUES (:guid, :owner_email, :form_slug, :organization_slug, :title, 1)';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':guid' => hex2bin($guid),
+            ':owner_email' => $owner_email,
+            ':form_slug' => $form_slug,
+            ':organization_slug' => $organization_slug,
+            ':title' => $title
+        ]);
+
+        $query = 'INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_stream_guid, goal, text_color, text_content, bar_color, background_color)
+                VALUES (:guid, 1000, "#FFFFFF", "", "#FF0000", "#000000")';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':guid' => hex2bin($guid)
+        ]);
+
+        $query = 'INSERT INTO ' . $this->prefix . 'widget_alert_box (charity_stream_guid, image, alert_duration, message_template, sound, sound_volume)
+                VALUES (:guid, "default_image.gif", 5, "{pseudo} vient de donner {amount}<br/>{message}", "default_sound.mp3", 50)';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':guid' => hex2bin($guid)
+        ]);
+    }
+
+    function insertAccessTokenDB($accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt)
+    {
+        $query = 'INSERT INTO ' . $this->prefix . 'access_token_partner_organization 
+            (access_token, refresh_token, organization_slug, access_token_expires_at, refresh_token_expires_at)
+            VALUES (:access_token, :refresh_token, :organization_slug, :access_token_expires_at, :refresh_token_expires_at)';
+        $stmt = $this->db->prepare($query);
+
+        $stmt->execute([
+            ':access_token' => $accessToken,
+            ':refresh_token' => $refreshToken,
+            ':organization_slug' => $organization_slug,
+            ':access_token_expires_at' => $accessTokenExpiresAt->format('Y-m-d H:i:s'),
+            ':refresh_token_expires_at' => $refreshTokenExpiresAt->format('Y-m-d H:i:s')
+        ]);
+    }
+
+    function updateAccessTokenDB($access_token, $refresh_token, $organization_slug, $access_token_expires_at, $refresh_token_expires_at)
+    {
+        if (is_null($organization_slug)) {
+            $query = 'UPDATE ' . $this->prefix . 'access_token_partner_organization 
+            SET access_token = :access_token, 
+                refresh_token = :refresh_token, 
+                access_token_expires_at = :access_token_expires_at, 
+                organization_slug = :organization_slug,
+                refresh_token_expires_at = :refresh_token_expires_at
+            WHERE organization_slug IS NULL';
+
+            $stmt = $this->db->prepare($query);
+
+            $stmt->execute([
+                ':access_token' => $access_token,
+                ':refresh_token' => $refresh_token,
+                ':organization_slug' => $organization_slug,
+                ':access_token_expires_at' => $access_token_expires_at->format('Y-m-d H:i:s'),
+                ':refresh_token_expires_at' => $refresh_token_expires_at->format('Y-m-d H:i:s')
+            ]);
+        } else {
+            $query = 'UPDATE ' . $this->prefix . 'access_token_partner_organization 
+            SET access_token = :access_token, 
+                refresh_token = :refresh_token, 
+                access_token_expires_at = :access_token_expires_at, 
+                organization_slug = :organization_slug,
+                refresh_token_expires_at = :refresh_token_expires_at
+            WHERE organization_slug = :organization_slug';
+
+            $stmt = $this->db->prepare($query);
+
+            $stmt->execute([
+                ':access_token' => $access_token,
+                ':refresh_token' => $refresh_token,
+                ':organization_slug' => $organization_slug,
+                ':access_token_expires_at' => $access_token_expires_at->format('Y-m-d H:i:s'),
+                ':refresh_token_expires_at' => $refresh_token_expires_at->format('Y-m-d H:i:s')
+            ]);
+        }
+    }
+
+
+    function insertAuthorizationCodeDB($id, $codeVerifier, $redirect_uri, $organizationSlug)
+    {
+        $query = 'INSERT INTO ' . $this->prefix . 'authorization_code (id, code_verifier, redirect_uri, organization_slug)
+            VALUES (:id, :code_verifier, :redirect_uri, :organization_slug)';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':id' => $id,
+            ':code_verifier' => $codeVerifier,
+            ':redirect_uri' => $redirect_uri,
+            ':organization_slug' => $organizationSlug
+        ]);
+    }
+
+    function getAccessTokensDB($organization_slug)
+    {
+        if (is_null($organization_slug)) {
+            $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
+                    WHERE organization_slug IS NULL LIMIT 1';
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+        } else {
+            $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
+                    WHERE organization_slug = :organization_slug LIMIT 1';
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                ':organization_slug' => $organization_slug
+            ]);
+        }
+
+        return $stmt->fetch();
+    }
+
+
+    function getAuthorizationCodeByIdDB($id)
+    {
+        $query = 'SELECT * FROM ' . $this->prefix . 'authorization_code WHERE id = ? LIMIT 1';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+}

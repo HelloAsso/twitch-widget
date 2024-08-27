@@ -2,3 +2,10 @@
     Order allow,deny
     Deny from all
 </Files>
+
+<Directory admin>
+    Order allow,deny
+    allow from 90.63.182.86
+    allow from 217.128.58.80
+    Deny from all
+</Directory>

@@ -1,85 +1,66 @@
 <?php
-require 'config.php';
-require 'helpers/db_helpers.php';   
-require 'helpers/session_helpers.php';   
-require 'helpers/authentication_helpers.php';   
-require 'helpers/grant_authorization_helpers.php';   
+require 'app/Config.php';
+
+$repository = Config::getInstance()->repo;
+$apiWrapper = Config::getInstance()->apiWrapper;
 
 // Récupérer le paramètre 'state' depuis l'URL
-$state =  $_GET['state'];
-$env = $_GET['env'];
-
-try {
-    // Appeler la fonction pour mettre à jour les variables de session
-    UpdatePhpSessionVariables($env);
-} catch (Exception $e) {
-    // Gérer l'erreur si nécessaire
-    echo "Erreur: " . $e->getMessage();
-}
+$state = $_GET['state'];
 
 // Récupérer la randomString depuis le cache avec l'id 'state'
-$authorizationCodeData = GetAuthorizationCodeByIdDB($db, $state, $env);
+$authorizationCodeData = $repository->getAuthorizationCodeByIdDB($state);
 $redirect_uri = $authorizationCodeData['redirect_uri'];
 $codeVerifier = $authorizationCodeData['code_verifier'];
 
 // Le code est normalement renvoyé par la mire d'authentication
 $code = $_GET['code'];
 
-// Appel API pour obtenir l'access_token et refresh_token
-$client_id = $_SESSION['client_id'];
-$client_secret = $_SESSION['client_secret'];
-
-$tokenDataGrantAuthorization = ExchangeAuthorizationCode($client_id, $client_secret, $code, $redirect_uri, $codeVerifier);
+$tokenDataGrantAuthorization = $apiWrapper->exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier);
 
 // Vérifier que les tokens sont présents dans la réponse
-if (!isset($tokenDataGrantAuthorization['access_token'],
- $tokenDataGrantAuthorization['refresh_token'],
-  $tokenDataGrantAuthorization['expires_in'],
-  $tokenDataGrantAuthorization['organization_slug'])) {
+if (
+    !isset(
+    $tokenDataGrantAuthorization['access_token'],
+    $tokenDataGrantAuthorization['refresh_token'],
+    $tokenDataGrantAuthorization['expires_in'],
+    $tokenDataGrantAuthorization['organization_slug']
+)
+) {
     die("Erreur : Réponse API invalide, tokens manquants.");
 }
 
 // Calculer les dates d'expiration des tokens
-$accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'))->format('Y-m-d H:i:s');
-$refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'))->format('Y-m-d H:i:s');
+$accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
+$refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
 
-$existingOrganizationToken = GetAccessTokensAndRefreshIfNecessary($db, $environment, $tokenDataGrantAuthorization['organization_slug']);
+$existingOrganizationToken = $apiWrapper->getAccessTokensAndRefreshIfNecessary($tokenDataGrantAuthorization['organization_slug']);
 
-if($existingOrganizationToken != null)
-{
-    try 
-    {
-        UpdateAccessTokenDB($db,
-        $tokenDataGrantAuthorization['access_token'],
-        $tokenDataGrantAuthorization['refresh_token'],
-        $tokenDataGrantAuthorization['organization_slug'],
-        $accessTokenExpiresAt,
-        $refreshTokenExpiresAt,
-        $env);
+if ($existingOrganizationToken != null) {
+    try {
+        $repository->updateAccessTokenDB(
+            Helpers::encryptToken($tokenDataGrantAuthorization['access_token']),
+            Helpers::encryptToken($tokenDataGrantAuthorization['refresh_token']),
+            $tokenDataGrantAuthorization['organization_slug'],
+            $accessTokenExpiresAt,
+            $refreshTokenExpiresAt
+        );
 
-     echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'].' été déjà lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
-    } 
-    catch (Exception $e) 
-    {
+        echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' été déjà lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
+    } catch (Exception $e) {
         die("Erreur de MAJ en base de données : " . $e->getMessage());
     }
-}
-else
-{
-    try 
-    {
-        InsertAccessTokenDB($db,
-        EncryptToken($tokenDataGrantAuthorization['access_token']),
-        EncryptToken($tokenDataGrantAuthorization['refresh_token']),
-        $tokenDataGrantAuthorization['organization_slug'],
-        $accessTokenExpiresAt,
-        $refreshTokenExpiresAt,
-        $env);
-        
-        echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'].' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
-    } 
-    catch (Exception $e) 
-    {
+} else {
+    try {
+        $repository->insertAccessTokenDB(
+            Helpers::encryptToken($tokenDataGrantAuthorization['access_token']),
+            Helpers::encryptToken($tokenDataGrantAuthorization['refresh_token']),
+            $tokenDataGrantAuthorization['organization_slug'],
+            $accessTokenExpiresAt,
+            $refreshTokenExpiresAt
+        );
+
+        echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
+    } catch (Exception $e) {
         die("Erreur lors de l'insertion en base de données : " . $e->getMessage());
     }
 }

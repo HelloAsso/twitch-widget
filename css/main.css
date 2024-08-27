@@ -1,0 +1,66 @@
+/* General styles */
+.widget-donation-goal {
+  margin: 10px;
+  color: white;
+  -webkit-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
+  -moz-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
+  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
+}
+
+#title {
+  font-size: 28px;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-family: Roboto, sans-serif;
+  text-align: center;
+  text-shadow: 0px 0px 10px #000;
+  margin: 0;
+  width: 70%;
+  z-index: 1;
+}
+
+#goal-bar {
+  border: 4px solid white;
+  padding: 16px;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+#goal-current,
+#goal-total {
+  margin: 0;
+  font-family: Roboto, sans-serif;
+  font-weight: bold;
+  font-size: 28px;
+  text-shadow: 0px 0px 10px #000;
+  width: 15%;
+  z-index: 1;
+}
+
+#goal-total {
+  text-align: right;
+}
+
+#total-bar {
+  position: absolute;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  max-width: 100%;
+  top: 4px;
+  left: 4px;
+  overflow: hidden;
+}
+
+.fade {
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.fade.show {
+  opacity: 1;
+}
+
+.widget-alert-box {
+  text-align: center;
+}

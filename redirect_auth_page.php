@@ -1,13 +1,11 @@
 <?php
-require 'config.php';
-require 'helpers/grant_authorization_helpers.php';
-require 'helpers/authentication_helpers.php';
-require 'helpers/db_helpers.php';
+require 'app/Config.php';
+
+$apiWrapper = Config::getInstance()->apiWrapper;
 
 $organizationSlug = $_GET['organizationSlug'];
-$environment = $_SESSION['environment'];
 
-$PartnerTokenData = GetAccessTokensAndRefreshIfNecessary($db, $environment, null);
+$PartnerTokenData = $apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
 
 // Vérifiez si $tokenData est un tableau, sinon gérez l'erreur
 if (!is_array($PartnerTokenData)) {
@@ -16,12 +14,11 @@ if (!is_array($PartnerTokenData)) {
 }
 
 $accessToken = $PartnerTokenData['access_token'];
-$domain = $isLocal == true ? 'https://localhost' : 'https://twitch.helloasso.blog';
 
-SetClientDomain($domain, $accessToken);
+$apiWrapper->setClientDomain(Config::getInstance()->webSiteDomain, $accessToken);
 
 // Générer l'URL d'autorisation
-$authorizationUrl = GenerateAuthorizationUrl($isLocal, $environment, $organizationSlug, $db);
+$authorizationUrl = $apiWrapper->generateAuthorizationUrl($organizationSlug);
 
 // Rediriger vers l'URL générée
 header('Location: ' . $authorizationUrl);
