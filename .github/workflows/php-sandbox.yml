@@ -1,0 +1,74 @@
+name: PHP Composer
+
+on:
+  push:
+    branches: [ "develop" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+
+    - name: Check if composer.json exists
+      id: check_files
+      uses: andstor/file-existence-action@v1
+      with:
+        files: 'composer.json'
+
+    - name: Run composer install if composer.json exists
+      if: steps.check_files.outputs.files_exists == 'true'
+      run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
+
+    - name: Set up Node.js version
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: npm install
+      run: |
+        npm install
+
+    - name: Make envfile
+      uses: SpicyPizza/create-envfile@v2.0
+      with:
+        envkey_DBURL: ${{ secrets.SANDBOX_DBURL }}
+        envkey_DBNAME: ${{ secrets.SANDBOX_DBNAME }}
+        envkey_DBUSER: ${{ secrets.SANDBOX_DBUSER }}
+        envkey_DBPASSWORD: ${{ secrets.SANDBOX_DBPASSWORD }}
+        envkey_DBPREFIX: "sandbox_"
+        envkey_BLOB_URL: "https://stockagehelloassoprod.blob.core.windows.net"
+        envkey_BLOB_CONNECTION_STRING: ${{ secrets.SANDBOX_BLOB_CONNECTION_STRING }}
+        envkey_HA_URL: "https://www.helloasso-sandbox.com"
+        envkey_HA_AUTH_URL: "https://auth.helloasso-sandbox.com"
+        envkey_API_AUTH_URL: "https://api.helloasso-sandbox.com/oauth2/token"
+        envkey_API_URL: "https://api.helloasso-sandbox.com/v5"
+        envkey_CLIENT_ID: ${{ secrets.SANDBOX_CLIENT_ID }}
+        envkey_CLIENT_SECRET: ${{ secrets.SANDBOX_CLIENT_SECRET }}
+        envkey_ENCRYPTION_KEY: ${{ secrets.SANDBOX_ENCRYPTION_KEY }}
+        envkey_WEBSITE_DOMAIN: ${{ vars.SANDBOX_WEBSITE_DOMAIN }}
+        file_name: .env
+  
+    - name: SFTP Deploy
+      uses: Dylan700/sftp-upload-action@latest
+      with:
+        server: ${{ secrets.SANDBOX_SFTP_HOST }}
+        username: ${{ secrets.SANDBOX_SFTP_USER }}
+        password: ${{ secrets.SANDBOX_SFTP_PASSWORD }}
+        uploads: |
+          ./ => ./
+        ignore: |
+          .git*
+          composer.*
+          package*
+          README.MD
+          
