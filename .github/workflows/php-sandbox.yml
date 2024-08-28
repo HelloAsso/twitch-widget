@@ -49,6 +49,7 @@ jobs:
         envkey_BLOB_URL: "https://stockagehelloassoprod.blob.core.windows.net"
         envkey_BLOB_CONNECTION_STRING: ${{ secrets.SANDBOX_BLOB_CONNECTION_STRING }}
         envkey_HA_URL: "https://www.helloasso-sandbox.com"
+        envkey_HA_IPS: ${{ vars.SANDBOX_HA_IPS }}
         envkey_HA_AUTH_URL: "https://auth.helloasso-sandbox.com"
         envkey_API_AUTH_URL: "https://api.helloasso-sandbox.com/oauth2/token"
         envkey_API_URL: "https://api.helloasso-sandbox.com/v5"
