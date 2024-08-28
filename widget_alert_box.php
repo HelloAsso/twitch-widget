@@ -32,7 +32,6 @@ $sound_volume = (int) $alertBoxWidget['sound_volume'];
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alert Box Widget</title>
     <link rel="stylesheet" href="/css/main.min.css">
 </head>

@@ -20,21 +20,28 @@ class Repository
 
     function getCharityStreamByGuidDB($guidBinary)
     {
-        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'charity_stream WHERE guid = ? LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'charity_stream WHERE guid = ?');
         $stmt->execute([$guidBinary]);
         return $stmt->fetch();
     }
 
+    function getCharityStreamByEmail($email)
+    {
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'charity_stream WHERE owner_email = ?');
+        $stmt->execute([$email]);
+        return $stmt->fetchAll();
+    }
+
     function getDonationGoalWidgetByGuidDB($guidBinary)
     {
-        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_donation_goal_bar WHERE charity_stream_guid = ? LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_donation_goal_bar WHERE charity_stream_guid = ?');
         $stmt->execute([$guidBinary]);
         return $stmt->fetch();
     }
 
     function getAlertBoxWidgetByGuidDB($guidBinary)
     {
-        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_alert_box WHERE charity_stream_guid = ? LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'widget_alert_box WHERE charity_stream_guid = ?');
         $stmt->execute([$guidBinary]);
         return $stmt->fetch();
     }
@@ -97,6 +104,16 @@ class Repository
 
     function createCharityStreamDB($guid, $owner_email, $form_slug, $organization_slug, $title)
     {
+        $password = Helpers::generateRandomString(30);
+        
+        $query = 'INSERT INTO ' . $this->prefix . 'users (email, password) 
+                VALUES (:email, :password)';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':email' => $owner_email,
+            ':password' => password_hash($password, PASSWORD_DEFAULT)
+        ]);
+        
         $query = 'INSERT INTO ' . $this->prefix . 'charity_stream (guid, owner_email, form_slug, organization_slug, title, state) 
                 VALUES (:guid, :owner_email, :form_slug, :organization_slug, :title, 1)';
         $stmt = $this->db->prepare($query);
@@ -121,6 +138,34 @@ class Repository
         $stmt->execute([
             ':guid' => hex2bin($guid)
         ]);
+
+        // This seems to be a bad pratice but we will display password to user only one time
+        // Consider it like a secret key revealed one time at creation
+        // Only way to recover is to regenerate new one
+        return $password;
+    }
+
+    function getUser($email)
+    {
+        $stmt = $this->db->prepare('SELECT * FROM ' . $this->prefix . 'users WHERE email = ?');
+        $stmt->execute([$email]);
+        return $stmt->fetch();
+    }
+
+    function updateUserPassword($email)
+    {
+        $password = Helpers::generateRandomString(30);
+        
+        $query = 'UPDATE ' . $this->prefix . 'users
+                SET password = :password
+                WHERE email = :email';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':email' => $email,
+            ':password' => password_hash($password, PASSWORD_DEFAULT)
+        ]);
+
+        return $password;
     }
 
     function insertAccessTokenDB($accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt)
@@ -198,12 +243,12 @@ class Repository
     {
         if (is_null($organization_slug)) {
             $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
-                    WHERE organization_slug IS NULL LIMIT 1';
+                    WHERE organization_slug IS NULL';
             $stmt = $this->db->prepare($query);
             $stmt->execute();
         } else {
             $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
-                    WHERE organization_slug = :organization_slug LIMIT 1';
+                    WHERE organization_slug = :organization_slug';
             $stmt = $this->db->prepare($query);
             $stmt->execute([
                 ':organization_slug' => $organization_slug
@@ -216,7 +261,7 @@ class Repository
 
     function getAuthorizationCodeByIdDB($id)
     {
-        $query = 'SELECT * FROM ' . $this->prefix . 'authorization_code WHERE id = ? LIMIT 1';
+        $query = 'SELECT * FROM ' . $this->prefix . 'authorization_code WHERE id = ?';
         $stmt = $this->db->prepare($query);
         $stmt->execute([$id]);
         return $stmt->fetch();

@@ -5,12 +5,6 @@ RewriteEngine On
 RewriteCond %{REQUEST_URI} ^/.env
 RewriteRule ^ - [F]
 
-# Restrict access to the admin directory, allow only two specific IPs
-RewriteCond %{REQUEST_URI} ^/admin
-RewriteCond %{REMOTE_ADDR} !^90\.63\.182\.86$
-RewriteCond %{REMOTE_ADDR} !^217\.128\.58\.80$
-RewriteRule ^ - [F]
-
 # Block access to specific code directories
 RewriteCond %{REQUEST_URI} ^/(app|migration|vendor)/
 RewriteRule ^ - [F]

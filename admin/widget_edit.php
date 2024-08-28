@@ -1,15 +1,27 @@
 <?php
 require '../app/Config.php';
 
+$canAccess = isset($_SESSION['user_email']) || 
+    in_array($_SERVER['REMOTE_ADDR'], Config::getInstance()->haIps);
+
+if(!$canAccess) {
+    header("Location: /index.php");
+}
+
 $repository = Config::getInstance()->repo;
 $fileManager = Config::getInstance()->fileManager;
 
-// Récupérer le GUID depuis l'URL et le convertir en binaire
-$guidHex = $_GET['charityStreamId'] ?? '';
-if (!$guidHex) {
-    die("GUID manquant ou incorrect.");
+if(isset($_SESSION['user_email'])) {
+    $charityStreams = $repository->getCharityStreamByEmail($_SESSION['user_email']);
+    $guidBinary = $charityStreams[0]['guid'];
+    $guidHex = bin2hex($charityStreams[0]['guid']);
+} else {
+    $guidHex = $_GET['charityStreamId'] ?? '';
+    if (!$guidHex) {
+        die("GUID manquant ou incorrect.");
+    }
+    $guidBinary = hex2bin($guidHex);
 }
-$guidBinary = hex2bin($guidHex);
 
 $charityStream = $repository->getCharityStreamByGuidDB($guidBinary);
 $donationGoalWidget = $repository->getDonationGoalWidgetByGuidDB($guidBinary);
@@ -46,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Édition</title>
     <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/main.min.css">

@@ -21,6 +21,7 @@ class Config
     public $fileManager = null;
     public $encryptionKey = null;
     public $haUrl = null;
+    public $haIps = null;
     public $webSiteDomain = null;
 
     private function getDb()
@@ -59,6 +60,7 @@ class Config
         $this->encryptionKey = $_ENV['ENCRYPTION_KEY'];
 
         $this->haUrl = $_ENV['HA_URL'];
+        $this->haIps = isset($_ENV['HA_IPS']) ? explode(",", $_ENV['HA_IPS']) : [];
         $this->webSiteDomain = $_ENV['WEBSITE_DOMAIN'];
     }
 

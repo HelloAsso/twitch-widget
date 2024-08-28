@@ -1,6 +1,12 @@
 <?php
 require '../app/Config.php';
 
+$canAccess = in_array($_SERVER['REMOTE_ADDR'], Config::getInstance()->haIps);
+
+if(!$canAccess) {
+    header("Location: /index.php");
+}
+
 $repository = Config::getInstance()->repo;
 
 // Traitement du formulaire de création de Charity Stream
@@ -14,7 +20,18 @@ if (isset($_POST['create_charity_stream'])) {
     $guid = bin2hex(random_bytes(16)); // Utilisation de bin2hex pour obtenir une chaîne hexadécimale
 
     // Appeler la fonction pour créer le Charity Stream
-    $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
+    $_SESSION[$guid . 'password'] = $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
+    header("Location: /admin/index.php");
+    exit();
+}
+
+if (isset($_POST['refresh_password'])) {
+    $email = $_POST['email'];
+    $guid = $_POST['guid'];
+
+    $_SESSION[$guid . 'password'] = $repository->updateUserPassword($email);
+    header("Location: /admin/index.php");
+    exit();
 }
 
 // Utilisation de la fonction GetCharityStreamsList pour récupérer les données mises à jour
@@ -27,10 +44,8 @@ $charityStreams = $repository->getCharityStreamsListDB();
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administration des Charity Streams</title>
-    <link href="/node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
 </head>
 
 <body class="bg-light">
@@ -68,6 +83,7 @@ $charityStreams = $repository->getCharityStreamsListDB();
                     <th>ID</th>
                     <th>GUID</th>
                     <th>Email</th>
+                    <th>Mot de passe</th>
                     <th>Titre</th>
                     <th>Slug formuaire</th>
                     <th>Slug association</th>
@@ -80,6 +96,20 @@ $charityStreams = $repository->getCharityStreamsListDB();
                         <td><?php echo htmlspecialchars($stream['id']); ?></td>
                         <td><?php echo htmlspecialchars(bin2hex($stream['guid'])); ?></td>
                         <td><?php echo htmlspecialchars($stream['owner_email']); ?></td>
+                        <?php if(isset($_SESSION[bin2hex($stream['guid']) . 'password'])) { 
+                            $password = $_SESSION[bin2hex($stream['guid']) . 'password'];
+                            unset($_SESSION[bin2hex($stream['guid']) . 'password']); 
+                        ?>
+                            <td><?php echo $password; ?></td>
+                        <?php } else { ?>
+                            <td>
+                                <form method="POST">
+                                    <input type="hidden" name="guid" value="<?php echo bin2hex($stream['guid']) ?>"/>
+                                    <input type="hidden" name="email" value="<?php echo $stream['owner_email'] ?>"/>
+                                    <button type="submit" class="btn btn-warning" name="refresh_password">Regénérer</button>
+                                </form>
+                            </td>
+                        <?php } ?>
                         <td><?php echo htmlspecialchars($stream['title']); ?></td>
                         <td><?php echo htmlspecialchars($stream['form_slug']); ?></td>
                         <td><?php echo htmlspecialchars($stream['organization_slug']); ?></td>
@@ -94,6 +124,8 @@ $charityStreams = $repository->getCharityStreamsListDB();
             </tbody>
         </table>
     </div>
+
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

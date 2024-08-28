@@ -1,0 +1,9 @@
+CREATE TABLE {prefix}users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    creation_date DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    last_update DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) NOT NULL
+);
+
+ALTER TABLE ADD CONSTRAINT fk_{prefix}charity_stream_users FOREIGN KEY (owner_email) REFERENCES {prefix}users(email),
