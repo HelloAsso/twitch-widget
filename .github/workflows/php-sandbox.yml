@@ -1,4 +1,4 @@
-name: PHP Composer
+name: Build & deploy sandbox
 
 on:
   push:
