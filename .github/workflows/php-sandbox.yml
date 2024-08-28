@@ -71,4 +71,5 @@ jobs:
           composer.*
           package*
           README.MD
+        delete: true
           
