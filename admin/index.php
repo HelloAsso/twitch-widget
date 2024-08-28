@@ -83,7 +83,7 @@ $charityStreams = $repository->getCharityStreamsListDB();
                     <th>ID</th>
                     <th>GUID</th>
                     <th>Email</th>
-                    <th>Mot de passe</th>
+                    <th>Mot de passe<br/><i>(apparait uniquement lors de la création ou de la regénération, notez-le bien)</i></th>
                     <th>Titre</th>
                     <th>Slug formuaire</th>
                     <th>Slug association</th>
@@ -115,9 +115,9 @@ $charityStreams = $repository->getCharityStreamsListDB();
                         <td><?php echo htmlspecialchars($stream['organization_slug']); ?></td>
                         <td>
                             <a href="/admin/widget_edit.php?charityStreamId=<?php echo bin2hex($stream['guid']); ?>"
-                                class="btn btn-primary">Édition</a>
+                                class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
                             <a href="/redirect_auth_page.php?organizationSlug=<?php echo $stream['organization_slug']; ?>"
-                                class="btn btn-primary" target="_blank">Mire d'authorisation</a>
+                                class="btn btn-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -126,6 +126,10 @@ $charityStreams = $repository->getCharityStreamsListDB();
     </div>
 
     <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+    </script>
 </body>
 
 </html>
