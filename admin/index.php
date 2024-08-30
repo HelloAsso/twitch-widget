@@ -8,6 +8,7 @@ if(!$canAccess) {
 }
 
 $repository = Config::getInstance()->repo;
+$apiWrapper = Config::getInstance()->apiWrapper;
 
 // Traitement du formulaire de création de Charity Stream
 if (isset($_POST['create_charity_stream'])) {
@@ -19,10 +20,17 @@ if (isset($_POST['create_charity_stream'])) {
     // Générer un GUID unique pour le nouveau Charity Stream
     $guid = bin2hex(random_bytes(16)); // Utilisation de bin2hex pour obtenir une chaîne hexadécimale
 
-    // Appeler la fonction pour créer le Charity Stream
-    $_SESSION[$guid . 'password'] = $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
-    header("Location: /admin/index.php");
-    exit();
+    // Check if form exist
+    $data = $apiWrapper->GetDonationForm($organizationSlug, $formSlug);
+
+    if(!$data) {
+        echo '<div class="alert alert-danger" role="alert">Ce formulaire n\'existe pas</div>';
+    } else {
+        // Appeler la fonction pour créer le Charity Stream
+        $_SESSION[$guid . 'password'] = $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
+        header("Location: /admin/index.php");
+        exit();
+    }
 }
 
 if (isset($_POST['refresh_password'])) {
@@ -57,19 +65,19 @@ $charityStreams = $repository->getCharityStreamsListDB();
             <form method="POST">
                 <div class="mb-3">
                     <label for="owner_email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="owner_email" name="owner_email" required>
+                    <input type="email" class="form-control" id="owner_email" name="owner_email" value="<?php echo $ownerEmail ?? "" ?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="organization_id" class="form-label">Slug association</label>
-                    <input type="text" class="form-control" id="organization_slug" name="organization_slug" required>
+                    <input type="text" class="form-control" id="organization_slug" name="organization_slug" value="<?php echo $organizationSlug ?? "" ?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="form_slug" class="form-label">Slug formulaire</label>
-                    <input type="text" class="form-control" id="form_id" name="form_slug" required>
+                    <input type="text" class="form-control" id="form_id" name="form_slug" value="<?php echo $formSlug ?? "" ?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="title" class="form-label">Titre</label>
-                    <input type="text" class="form-control" id="title" name="title" required>
+                    <input type="text" class="form-control" id="title" name="title" value="<?php echo $title ?? "" ?>" required>
                 </div>
                 <button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
             </form>

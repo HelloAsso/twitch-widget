@@ -144,8 +144,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="image" class="form-label">Fichier image</label>
-                <input type="file" class="form-control" id="image" name="image"
-                    value="<?php echo htmlspecialchars($alertBoxWidget['image']); ?>">
+                <?php if(isset($alertBoxWidget['image'])) { ?>
+                    <div class="form-text">
+                        Déjà chargé: <a href="<?php echo $fileManager->getPictureUrl($alertBoxWidget['image']); ?>" target="_blank"><?php echo htmlspecialchars($alertBoxWidget['image']); ?></a>
+                    </div>
+                <?php } ?>
+                <input type="file" class="form-control" id="image" name="image" />
             </div>
             <div class="mb-3">
                 <label for="alert_duration" class="form-label">Durée de l'alerte (secondes)</label>
@@ -168,8 +172,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="mb-3">
                 <label for="sound" class="form-label">Fichier de son</label>
-                <input type="file" class="form-control" id="sound" name="sound"
-                    value="<?php echo htmlspecialchars($alertBoxWidget['sound']); ?>">
+                <?php if(isset($alertBoxWidget['sound'])) { ?>
+                    <div class="form-text">
+                        Déjà chargé: <a href="<?php echo $fileManager->getPictureUrl($alertBoxWidget['sound']); ?>" target="_blank"><?php echo htmlspecialchars($alertBoxWidget['sound']); ?></a>
+                    </div>
+                <?php } ?>
+                <input type="file" class="form-control" id="sound" name="sound" />
             </div>
             <div class="mb-3">
                 <label for="sound_volume" class="form-label">Volume du son (0-100)</label>

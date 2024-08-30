@@ -41,10 +41,10 @@ CREATE TABLE {prefix}charity_stream (
 CREATE TABLE {prefix}widget_alert_box (
     id INT AUTO_INCREMENT PRIMARY KEY,
     charity_stream_guid BINARY(16) NOT NULL,
-    image VARCHAR(255) NOT NULL,
+    image VARCHAR(255) NULL,
     alert_duration INT NOT NULL,
     message_template TEXT NOT NULL,
-    sound VARCHAR(255) NOT NULL,
+    sound VARCHAR(255) NULL,
     sound_volume INT NOT NULL,
     creation_date DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     last_update DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) NOT NULL,

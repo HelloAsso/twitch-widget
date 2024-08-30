@@ -261,6 +261,41 @@ class ApiWrapper
 
     // Organizations
 
+    function GetDonationForm($organizationSlug, $donationSlug)
+    {
+        $accessToken = $this->getAccessTokensAndRefreshIfNecessary(null);
+        if (!$accessToken || !isset($accessToken['access_token'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);
+            exit;
+        }
+
+        $curl = curl_init();
+
+        // Construire l'URL avec ou sans continuationToken
+        $url = $this->apiUrl . '/organizations/' . $organizationSlug . '/forms/donation/' . $donationSlug . '/public';
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+            CURLOPT_HTTPHEADER => array(
+                'Authorization: Bearer ' . $accessToken['access_token']
+            ),
+        ));
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+
+        $response_data = json_decode($response, true);
+        return $response_data;
+    }
+
     function GetDonationFormOrders($organizationSlug, $donationSlug, $accessToken, $continuationToken = null, $from = null)
     {
         $curl = curl_init();

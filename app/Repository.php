@@ -132,8 +132,8 @@ class Repository
             ':guid' => hex2bin($guid)
         ]);
 
-        $query = 'INSERT INTO ' . $this->prefix . 'widget_alert_box (charity_stream_guid, image, alert_duration, message_template, sound, sound_volume)
-                VALUES (:guid, "default_image.gif", 5, "{pseudo} vient de donner {amount}<br/>{message}", "default_sound.mp3", 50)';
+        $query = 'INSERT INTO ' . $this->prefix . 'widget_alert_box (charity_stream_guid, alert_duration, message_template, sound_volume)
+                VALUES (:guid, 5, "{pseudo} vient de donner {amount}<br/>{message}", 50)';
         $stmt = $this->db->prepare($query);
         $stmt->execute([
             ':guid' => hex2bin($guid)

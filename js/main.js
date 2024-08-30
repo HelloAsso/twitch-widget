@@ -36,6 +36,8 @@ function displayAlertBox(pseudo, message, amount) {
     setTimeout(function () {
         img.classList.remove('show');
         messageTemplate.classList.remove('show');
+        audio.pause();
+        audio.currentTime = 0;
 
         setTimeout(function () {
             container.innerHTML = oldContent;
