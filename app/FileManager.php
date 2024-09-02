@@ -44,13 +44,14 @@ class FileManager
 
     private function isPicture($formdata)
     {
-        $ext = ["jpg", "jpeg", "png", "gif", "heic", "heif"];
+        $ext = ["gif", "heic", "heif", "jpg", "jpeg", "png", "webp"];
         $mimes = [
-            "image/jpeg",
-            "image/png",
             "image/gif",
             "image/heic",
-            "image/heif"
+            "image/heif",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
         ];
         $this->checkType($formdata, $ext, $mimes);
     }

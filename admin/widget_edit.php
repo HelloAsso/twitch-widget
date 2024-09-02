@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="sound" class="form-label">Fichier de son</label>
                 <?php if(isset($alertBoxWidget['sound'])) { ?>
                     <div class="form-text">
-                        Déjà chargé: <a href="<?php echo $fileManager->getPictureUrl($alertBoxWidget['sound']); ?>" target="_blank"><?php echo htmlspecialchars($alertBoxWidget['sound']); ?></a>
+                        Déjà chargé: <a href="<?php echo $fileManager->getSoundUrl($alertBoxWidget['sound']); ?>" target="_blank"><?php echo htmlspecialchars($alertBoxWidget['sound']); ?></a>
                     </div>
                 <?php } ?>
                 <input type="file" class="form-control" id="sound" name="sound" />

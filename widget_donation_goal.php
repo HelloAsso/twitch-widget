@@ -75,6 +75,7 @@ $backgroundColor = htmlspecialchars($donationGoalWidget['background_color']);
         var continuationToken = '<?php echo $continuationToken; ?>';
     </script>
 
+    <script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
     <script src="/js/main.min.js"></script>
 
     <script>

@@ -126,7 +126,7 @@ class Repository
         ]);
 
         $query = 'INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_stream_guid, goal, text_color, text_content, bar_color, background_color)
-                VALUES (:guid, 1000, "#FFFFFF", "", "#FF0000", "#000000")';
+                VALUES (:guid, 1000, "#2f2f5e", "", "#49d38a", "#4c3ccf")';
         $stmt = $this->db->prepare($query);
         $stmt->execute([
             ':guid' => hex2bin($guid)
@@ -143,6 +143,31 @@ class Repository
         // Consider it like a secret key revealed one time at creation
         // Only way to recover is to regenerate new one
         return $password;
+    }
+
+    public function deleteCharityStream($guid)
+    {
+        $stream = $this->getCharityStreamByGuidDB(hex2bin($guid));
+
+        $query = 'DELETE FROM ' . $this->prefix . 'users
+                WHERE email = ?';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$stream['owner_email']]);
+
+        $query = 'DELETE FROM ' . $this->prefix . 'widget_donation_goal_bar
+                WHERE charity_stream_guid = ?';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$stream['guid']]);
+
+        $query = 'DELETE FROM ' . $this->prefix . 'widget_alert_box
+                WHERE charity_stream_guid = ?';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$stream['guid']]);
+
+        $query = 'DELETE FROM ' . $this->prefix . 'charity_stream
+                WHERE guid = ?';
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$stream['guid']]);
     }
 
     function getUser($email)
@@ -255,7 +280,11 @@ class Repository
             ]);
         }
 
-        return $stmt->fetch();
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetch();
+        }
+
+        return null;
     }
 
 

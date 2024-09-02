@@ -2,9 +2,6 @@
 .widget-donation-goal {
   margin: 10px;
   color: white;
-  -webkit-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
-  -moz-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
-  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
 }
 
 #title {
@@ -13,7 +10,6 @@
   font-weight: bold;
   font-family: Roboto, sans-serif;
   text-align: center;
-  text-shadow: 0px 0px 10px #000;
   margin: 0;
   width: 70%;
   z-index: 1;
@@ -25,6 +21,7 @@
   display: flex;
   position: relative;
   overflow: hidden;
+  border-radius: 20px;
 }
 
 #goal-current,
@@ -33,7 +30,6 @@
   font-family: Roboto, sans-serif;
   font-weight: bold;
   font-size: 28px;
-  text-shadow: 0px 0px 10px #000;
   width: 15%;
   z-index: 1;
 }
@@ -50,6 +46,7 @@
   top: 4px;
   left: 4px;
   overflow: hidden;
+  border-radius: 13px;
 }
 
 .fade {

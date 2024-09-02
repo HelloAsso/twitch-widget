@@ -1,4 +1,23 @@
+var alertQueue = [];
+var isAlertActive = false;
+
 function displayAlertBox(pseudo, message, amount) {
+    alertQueue.push({ pseudo, message, amount });
+
+    if (!isAlertActive) {
+        processAlertQueue();
+    }
+}
+
+function processAlertQueue() {
+    if (alertQueue.length === 0) {
+        isAlertActive = false;
+        return;
+    }
+
+    isAlertActive = true;
+    const alert = alertQueue.shift();
+    const { pseudo, message, amount } = alert;
     var container = document.querySelector('.widget-alert-box');
     var oldContent = container.innerHTML;
     container.innerHTML = '';
@@ -21,42 +40,44 @@ function displayAlertBox(pseudo, message, amount) {
     messageTemplate.classList.add('fade');
     container.appendChild(messageTemplate);
 
-    // Appliquer l'effet de fondu
-    setTimeout(function () {
-        img.classList.add('show');
-        messageTemplate.classList.add('show');
-    }, 100); // Délai pour déclencher la transition
+    img.classList.add('show');
+    messageTemplate.classList.add('show');
 
-    // Jouer le son
     var audio = new Audio(window.sound);
     audio.volume = window.sound_volume;
     audio.play();
 
-    // Retirer l'image et le message après 3 secondes avec un effet de fondu
     setTimeout(function () {
         img.classList.remove('show');
         messageTemplate.classList.remove('show');
         audio.pause();
         audio.currentTime = 0;
 
-        setTimeout(function () {
-            container.innerHTML = oldContent;
-        }, 1000); // Attendre que le fondu soit terminé avant de vider le conteneur
+        container.innerHTML = oldContent;
+        processAlertQueue();
     }, window.alert_duration);
 }
+
+const options = {
+    separator: ' ',
+    separator: ' ',
+    decimal: ',',
+    suffix: ' €',
+};
+var counter = new countUp.CountUp('goal-current', window.currentAmount, options);
 
 function updateDonationBar() {
     const currentAmountUnit = window.currentAmount / 100;
     const percentage = Math.min(100, (currentAmountUnit / window.goalAmount) * 100);
-    document.getElementById('goal-current').textContent = currentAmountUnit + ' €';
-    document.getElementById('total-bar').style.width = percentage + '%';
+    counter.update(currentAmountUnit);
+    document.getElementById('total-bar').style.width = 'calc(' + percentage + '% - 8px)';
 }
 
 function fetchDonation() {
     const request = new XMLHttpRequest()
-    request.open("GET", 'fetch_donations.php?charityStreamId=' + window.charityStreamId + 
-        (window.continuationToken ? ('&continuationToken=' + window.continuationToken) : '') + 
-        (window.currentAmount ? ('&currentAmount=' + window.currentAmount) : '') + 
+    request.open("GET", 'fetch_donations.php?charityStreamId=' + window.charityStreamId +
+        (window.continuationToken ? ('&continuationToken=' + window.continuationToken) : '') +
+        (window.currentAmount ? ('&currentAmount=' + window.currentAmount) : '') +
         (window.from ? ('&from=' + window.from) : ''), true)
     request.onload = () => {
         if (request.status === 200) {
