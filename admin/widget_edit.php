@@ -18,7 +18,7 @@ if(isset($_SESSION['user_email'])) {
 } else {
     $guidHex = $_GET['charityStreamId'] ?? '';
     if (!$guidHex) {
-        die("GUID manquant ou incorrect.");
+        throw new Exception("GUID manquant ou incorrect.");
     }
     $guidBinary = hex2bin($guidHex);
 }

@@ -28,11 +28,16 @@ $currentAmount = $_GET['currentAmount'] ?? 0;
 $continuationToken = $_GET['continuationToken'] ?? null;
 $from = $_GET['from'] ?? null;
 
-$result = $apiWrapper->GetAllOrders(
-    $charityStream['organization_slug'], 
-    $charityStream['form_slug'], 
-    $currentAmount,
-    $continuationToken,
-    $from);
+try {
+    $result = $apiWrapper->GetAllOrders(
+        $charityStream['organization_slug'], 
+        $charityStream['form_slug'], 
+        $currentAmount,
+        $continuationToken,
+        $from);
 
-echo json_encode($result);
+    echo json_encode($result);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Impossible de récupérer les commandes.']);
+}

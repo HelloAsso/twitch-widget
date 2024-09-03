@@ -17,18 +17,6 @@ $code = $_GET['code'];
 
 $tokenDataGrantAuthorization = $apiWrapper->exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier);
 
-// Vérifier que les tokens sont présents dans la réponse
-if (
-    !isset(
-    $tokenDataGrantAuthorization['access_token'],
-    $tokenDataGrantAuthorization['refresh_token'],
-    $tokenDataGrantAuthorization['expires_in'],
-    $tokenDataGrantAuthorization['organization_slug']
-)
-) {
-    die("Erreur : Réponse API invalide, tokens manquants.");
-}
-
 // Calculer les dates d'expiration des tokens
 $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
 $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
@@ -47,7 +35,7 @@ if ($existingOrganizationToken != null) {
 
         echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' été déjà lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
     } catch (Exception $e) {
-        die("Erreur de MAJ en base de données : " . $e->getMessage());
+        throw new Exception("Erreur de MAJ en base de données : $e->getMessage()");
     }
 } else {
     try {
@@ -61,6 +49,6 @@ if ($existingOrganizationToken != null) {
 
         echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
     } catch (Exception $e) {
-        die("Erreur lors de l'insertion en base de données : " . $e->getMessage());
+        throw new Exception("Erreur lors de l'insertion en base de données : $e->getMessage()");
     }
 }

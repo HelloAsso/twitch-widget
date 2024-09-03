@@ -38,6 +38,7 @@ class ApiWrapper
         } else {
             $tokenData['access_token'] = Helpers::decryptToken($tokenData['access_token']);
             $tokenData['refresh_token'] = Helpers::decryptToken($tokenData['refresh_token']);
+
             if ($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s')) {
                 $tokenData = $this->refreshToken($tokenData['refresh_token'], null);
                 return $tokenData;
@@ -76,7 +77,7 @@ class ApiWrapper
         if (curl_errno($curl)) {
             $error_msg = curl_error($curl);
             curl_close($curl);
-            return 'Erreur cURL : ' . $error_msg;
+            throw new Exception("Erreur cURL : $error_msg");
         }
 
         // Fermer cURL
@@ -87,12 +88,12 @@ class ApiWrapper
 
         // Vérifier si la réponse a bien été décodée
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return 'Erreur de décodage JSON : ' . json_last_error_msg();
+            throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
         }
 
         // Vérifier que les tokens sont présents dans la réponse
         if (!isset($responseData['access_token']) || !isset($responseData['refresh_token'])) {
-            return 'Erreur : Les tokens ne sont pas présents dans la réponse.';
+            throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
         }
 
         $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT1700S'));
@@ -132,15 +133,28 @@ class ApiWrapper
 
         $response = curl_exec($curl);
 
+        // Gérer les erreurs cURL
+        if (curl_errno($curl)) {
+            $error_msg = curl_error($curl);
+            curl_close($curl);
+            throw new Exception("Erreur cURL : $error_msg");
+        }
+
+        // Fermer cURL
+        curl_close($curl);
+
         // Décoder la réponse JSON
         $responseData = json_decode($response, true);
 
         // Vérifier si la réponse a bien été décodée
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return 'Erreur de décodage JSON : ' . json_last_error_msg();
+            throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
         }
 
-        curl_close($curl);
+        // Vérifier que les tokens sont présents dans la réponse
+        if (!isset($responseData['access_token']) || !isset($responseData['refresh_token'])) {
+            throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
+        }
 
         // Calculer les dates d'expiration des tokens
         $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
@@ -204,12 +218,12 @@ class ApiWrapper
             ),
         ));
 
-        $response = curl_exec($curl);
+        curl_exec($curl);
         $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
 
         if ($http_code !== 200) {
-            die("Erreur Set Domain : L'appel API a échoué avec le code HTTP " . $http_code);
+            throw new Exception("Erreur Set Domain : L'appel API a échoué avec le code HTTP  $http_code");
         }
     }
 
@@ -245,7 +259,15 @@ class ApiWrapper
         curl_close($curl);
 
         if ($http_code !== 200) {
-            die("Erreur : L'appel API a échoué avec le code HTTP " . $http_code);
+            throw new Exception("Erreur : L'appel API a échoué avec le code HTTP $http_code");
+        }
+
+        // Vérifier que les tokens sont présents dans la réponse
+        if (!isset($responseData['access_token']) || 
+            !isset($responseData['refresh_token']) || 
+            !isset($responseData['expires_in']) || 
+            !isset($responseData['organization_slug'])) {
+            throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
         }
 
         // Décoder la réponse JSON
@@ -253,7 +275,7 @@ class ApiWrapper
 
         // Vérifier si la réponse a bien été décodée
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return 'Erreur de décodage JSON : ' . json_last_error_msg();
+            throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
         }
 
         return $responseData;
@@ -335,6 +357,7 @@ class ApiWrapper
         $donations = [];
 
         $organizationAccessToken = $this->getAccessTokensAndRefreshIfNecessary($organizationSlug);
+
         if (!$organizationAccessToken || !isset($organizationAccessToken['access_token'])) {
             http_response_code(401);
             echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);

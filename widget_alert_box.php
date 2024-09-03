@@ -6,7 +6,7 @@ $fileManager = Config::getInstance()->fileManager;
 
 $charityStreamId = $_GET['charityStreamId'] ?? '';
 if (!$charityStreamId) {
-    die("Charity Stream ID manquant ou incorrect.");
+    throw new Exception("Charity Stream ID manquant ou incorrect.");
 }
 
 // Récupérer le GUID correspondant au charity_stream_id
@@ -15,7 +15,7 @@ $guidBinary = hex2bin($charityStreamId);
 // Récupérer les données du widget donation goal en fonction du GUID
 $alertBoxWidget = $repository->getAlertBoxWidgetByGuidDB($guidBinary);
 if (!$alertBoxWidget) {
-    die("Aucun widget trouvé pour le Charity Stream ID fourni.");
+    throw new Exception("Aucun widget trouvé pour le Charity Stream ID fourni.");
 }
 
 // Initialisation des valeurs de départ

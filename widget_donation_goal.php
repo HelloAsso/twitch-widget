@@ -6,7 +6,7 @@ $apiWrapper = Config::getInstance()->apiWrapper;
 
 $charityStreamId = $_GET['charityStreamId'] ?? '';
 if (!$charityStreamId) {
-    die("Charity Stream ID manquant ou incorrect.");
+    throw new Exception("Charity Stream ID manquant ou incorrect.");
 }
 
 // Récupérer le GUID correspondant au charity_stream_id
@@ -15,12 +15,12 @@ $guidBinary = hex2bin($charityStreamId);
 // Récupérer les données du widget donation goal en fonction du GUID
 $donationGoalWidget = $repository->getDonationGoalWidgetByGuidDB($guidBinary);
 if (!$donationGoalWidget) {
-    die("Aucun widget trouvé pour le Charity Stream ID fourni.");
+    throw new Exception("Aucun widget trouvé pour le Charity Stream ID fourni.");
 }
 
 $charityStream = $repository->getCharityStreamByGuidDB($guidBinary);
 if (!$charityStream) {
-    die("Charity Stream non trouvé.");
+    throw new Exception("Charity Stream non trouvé.");
 }
 
 // Initialisation des valeurs de départ
