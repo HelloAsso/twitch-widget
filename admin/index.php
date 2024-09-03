@@ -141,7 +141,7 @@ $charityStreams = $repository->getCharityStreamsListDB();
                             <?php } ?>
                             <form method="POST">
                                 <input type="hidden" name="guid" value="<?php echo bin2hex($stream['guid']) ?>"/>
-                                <button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression">🗑️</button>
+                                <button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
                             </form>
                         </td>
                     </tr>
@@ -154,6 +154,12 @@ $charityStreams = $repository->getCharityStreamsListDB();
     <script>
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
         const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
+        function confirmDelete(event) {
+            if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
+                event.preventDefault();
+            }
+        }
     </script>
 </body>
 
