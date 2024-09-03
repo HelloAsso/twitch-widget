@@ -40,12 +40,15 @@ function processAlertQueue() {
     messageTemplate.classList.add('fade');
     container.appendChild(messageTemplate);
 
-    img.classList.add('show');
-    messageTemplate.classList.add('show');
-
-    var audio = new Audio(window.sound);
-    audio.volume = window.sound_volume;
-    audio.play();
+    // Wait to hide display between alert
+    setTimeout(function () {
+        img.classList.add('show');
+        messageTemplate.classList.add('show');
+    
+        var audio = new Audio(window.sound);
+        audio.volume = window.sound_volume;
+        audio.play();
+    }, 100)
 
     setTimeout(function () {
         img.classList.remove('show');
