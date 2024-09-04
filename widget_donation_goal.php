@@ -34,7 +34,8 @@ $currentAmount = $result['amount'];
 $continuationToken = $result['continuationToken'];
 
 // Appliquer les couleurs du widget
-$textColor = htmlspecialchars($donationGoalWidget['text_color']);
+$textColorMain = htmlspecialchars($donationGoalWidget['text_color_main']);
+$textColorAlt = htmlspecialchars($donationGoalWidget['text_color_alt']);
 $textContent = htmlspecialchars($donationGoalWidget['text_content']);
 $barColor = htmlspecialchars($donationGoalWidget['bar_color']);
 $backgroundColor = htmlspecialchars($donationGoalWidget['background_color']);
@@ -47,25 +48,30 @@ $backgroundColor = htmlspecialchars($donationGoalWidget['background_color']);
 <head>
     <meta charset="UTF-8">
     <title>Donation Goal Widget</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/css/main.min.css">
+    <style>
+      body {
+        background-color: #2e2f5e;
+      }
+    </style>
 </head>
 
 <body>
-    <div class='widget-donation-goal'>
-        <div id='goal-bar'
-            style="background-color: <?php echo $backgroundColor; ?>; border-color: <?php echo $textColor; ?>;">
-            <p id='goal-current' style="color: <?php echo $textColor; ?>;">
-                <?php echo $currentAmount / 100; ?> €
-            </p>
-            <p id='title' style="color: <?php echo $textColor; ?>;">
-                <?php echo $textContent; ?>
-            </p>
-            <p id='goal-total' style="color: <?php echo $textColor; ?>;">
-                <?php echo $goalAmount; ?> €
-            </p>
-            <div id='total-bar' style="background-color: <?php echo $barColor; ?>; width: 0%;">
-            </div>
-        </div>
+    <div class="progress">
+      <div class="back" style="background:<?php echo $backgroundColor; ?>;color:<?php echo $textColorMain; ?>">
+        <p id="back-goal-current"><?php echo $currentAmount / 100; ?> €</p>
+        <p id="back-title"><?php echo $textContent; ?></p>
+        <p id="back-goal-total"><?php echo $goalAmount; ?> €</p>
+      </div>
+      <div class="front" style="background:<?php echo $barColor; ?>;color:<?php echo $textColorAlt; ?>">
+        <p id="front-goal-current"><?php echo $currentAmount / 100; ?> €</p>
+        <p id="front-title"><?php echo $textContent; ?></p>
+        <p id="front-goal-total"><?php echo $goalAmount; ?> €</p>
+      </div>
     </div>
 
     <script>

@@ -50,11 +50,12 @@ class Repository
     {
         $stmt = $this->db->prepare('
             UPDATE ' . $this->prefix . 'widget_donation_goal_bar
-            SET text_color = ?, text_content = ?, bar_color = ?, background_color = ?, goal = ?
+            SET text_color_main = ?, text_color_alt = ?, text_content = ?, bar_color = ?, background_color = ?, goal = ?
             WHERE charity_stream_guid = ?
         ');
         $stmt->execute([
-            $data['text_color'],
+            $data['text_color_main'],
+            $data['text_color_alt'],
             $data['text_content'],
             $data['bar_color'],
             $data['background_color'],
@@ -125,8 +126,8 @@ class Repository
             ':title' => $title
         ]);
 
-        $query = 'INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_stream_guid, goal, text_color, text_content, bar_color, background_color)
-                VALUES (:guid, 1000, "#2f2f5e", "", "#49d38a", "#4c3ccf")';
+        $query = 'INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_stream_guid)
+                VALUES (:guid)';
         $stmt = $this->db->prepare($query);
         $stmt->execute([
             ':guid' => hex2bin($guid)

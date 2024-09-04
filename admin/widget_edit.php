@@ -59,6 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>Édition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/main.min.css">
 </head>
@@ -79,9 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2>Widget barre de don</h2>
         <form method="POST">
             <div class="mb-3">
-                <label for="text_color" class="form-label">Couleur du texte</label>
-                <input type="color" class="form-control form-control-color" id="text_color" name="text_color"
-                    value="<?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>">
+                <label for="text_color_main" class="form-label">Couleur du texte primaire</label>
+                <input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main"
+                    value="<?php echo htmlspecialchars($donationGoalWidget['text_color_main']); ?>">
+            </div>
+            <div class="mb-3">
+                <label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
+                <input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt"
+                    value="<?php echo htmlspecialchars($donationGoalWidget['text_color_alt']); ?>">
             </div>
             <div class="mb-3">
                 <label for="text_content" class="form-label">Texte</label>
@@ -106,23 +115,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <br />
             <!-- Prévisualisation de la barre de donation -->
-            <div class='widget-donation-goal'>
-                <div id='goal-bar'
-                    style="background-color: <?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>; border-color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
-                    <p id='goal-current'
-                        style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
-                        <?php echo 1200; ?> €
-                    </p>
-                    <p id='title' style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
-                        <?php echo htmlspecialchars($donationGoalWidget['text_content']); ?>
-                    </p>
-                    <p id='goal-total'
-                        style="color: <?php echo htmlspecialchars($donationGoalWidget['text_color']); ?>;">
-                        <?php echo 2000; ?> €
-                    </p>
-                    <div id='total-bar'
-                        style="background-color: <?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>; width: <?php echo (1200 / 2000) * 100; ?>%;">
-                    </div>
+            <div class="progress">
+                <div class="back" style="background:<?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>;color:<?php echo htmlspecialchars($donationGoalWidget['text_color_main']); ?>">
+                    <p id="back-goal-current"><?php echo 1000; ?> €</p>
+                    <p id="back-title"><?php echo htmlspecialchars($donationGoalWidget['text_content']); ?></p>
+                    <p id="back-goal-total"><?php echo 2000; ?> €</p>
+                </div>
+                <div class="front" style="background:<?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>;color:<?php echo htmlspecialchars($donationGoalWidget['text_color_alt']); ?>">
+                    <p id="front-goal-current"><?php echo 1000; ?> €</p>
+                    <p id="front-title"><?php echo htmlspecialchars($donationGoalWidget['text_content']); ?></p>
+                    <p id="front-goal-total"><?php echo 2000; ?> €</p>
                 </div>
             </div>
             <br />

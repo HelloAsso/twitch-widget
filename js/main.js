@@ -39,13 +39,13 @@ function processAlertQueue() {
     messageTemplate.style.marginTop = '10px';
     messageTemplate.classList.add('fade');
     container.appendChild(messageTemplate);
+    var audio = new Audio(window.sound);
 
     // Wait to hide display between alert
     setTimeout(function () {
         img.classList.add('show');
         messageTemplate.classList.add('show');
-    
-        var audio = new Audio(window.sound);
+        
         audio.volume = window.sound_volume;
         audio.play();
     }, 100)
@@ -67,13 +67,15 @@ const options = {
     decimal: ',',
     suffix: ' €',
 };
-var counter = new countUp.CountUp('goal-current', window.currentAmount, options);
+var counterback = new countUp.CountUp('back-goal-current', window.currentAmount, options);
+var counterfront = new countUp.CountUp('front-goal-current', window.currentAmount, options);
 
 function updateDonationBar() {
     const currentAmountUnit = window.currentAmount / 100;
     const percentage = Math.min(100, (currentAmountUnit / window.goalAmount) * 100);
-    counter.update(currentAmountUnit);
-    document.getElementById('total-bar').style.width = 'calc(' + percentage + '% - 8px)';
+    counterback.update(currentAmountUnit);
+    counterfront.update(currentAmountUnit);
+    document.querySelector('div.front').style["-webkit-clip-path"] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
 }
 
 function fetchDonation() {
