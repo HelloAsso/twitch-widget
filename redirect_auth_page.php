@@ -5,8 +5,8 @@ $apiWrapper = Config::getInstance()->apiWrapper;
 
 $organizationSlug = $_GET['organizationSlug'];
 
-$PartnerTokenData = $apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
-$accessToken = $PartnerTokenData['access_token'];
+$partnerTokenData = $apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
+$accessToken = $partnerTokenData['access_token'];
 
 $apiWrapper->setClientDomain(Config::getInstance()->webSiteDomain, $accessToken);
 

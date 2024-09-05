@@ -261,17 +261,17 @@ class ApiWrapper
         if ($http_code !== 200) {
             throw new Exception("Erreur : L'appel API a échoué avec le code HTTP $http_code");
         }
+        // Décoder la réponse JSON
+        $responseData = json_decode($response, true);
 
         // Vérifier que les tokens sont présents dans la réponse
         if (!isset($responseData['access_token']) || 
             !isset($responseData['refresh_token']) || 
             !isset($responseData['expires_in']) || 
             !isset($responseData['organization_slug'])) {
+                print_r($responseData);
             throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
         }
-
-        // Décoder la réponse JSON
-        $responseData = json_decode($response, true);
 
         // Vérifier si la réponse a bien été décodée
         if (json_last_error() !== JSON_ERROR_NONE) {
