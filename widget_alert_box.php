@@ -19,10 +19,10 @@ if (!$alertBoxWidget) {
 }
 
 // Initialisation des valeurs de départ
-$image = htmlspecialchars($alertBoxWidget['image']);
+$image = htmlspecialchars($alertBoxWidget['image'] ?? '');
 $alert_duration = (int) $alertBoxWidget['alert_duration'];
 $message_template = htmlspecialchars($alertBoxWidget['message_template']);
-$sound = htmlspecialchars($alertBoxWidget['sound']);
+$sound = htmlspecialchars($alertBoxWidget['sound'] ?? '');
 $sound_volume = (int) $alertBoxWidget['sound_volume'];
 
 ?>

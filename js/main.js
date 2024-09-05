@@ -87,15 +87,15 @@ function fetchDonation() {
     request.onload = () => {
         if (request.status === 200) {
             const json = JSON.parse(request.response);
-            if (document.querySelector('.widget-donation-goal'))
+            window.currentAmount = json.amount;
+            window.continuationToken = json.continuationToken;
+
+            if (document.querySelector('.progress'))
                 updateDonationBar();
             if (document.querySelector('.widget-alert-box') && json.donations && json.donations.length > 0)
                 json.donations.forEach(donation => {
                     displayAlertBox(donation.pseudo, donation.message, donation.amount);
                 });
-
-            window.currentAmount = json.amount;
-            window.continuationToken = json.continuationToken;
         }
         else {
             console.error('Erreur lors de la récupération des données de donation:', request.response);
