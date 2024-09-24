@@ -61,3 +61,7 @@
 .widget-alert-box {
   text-align: center;
 }
+
+.widget-alert-box p {
+  word-wrap: break-word;
+}

@@ -2,6 +2,7 @@ var alertQueue = [];
 var isAlertActive = false;
 
 function displayAlertBox(pseudo, message, amount) {
+    message = message.substring(0, 255);
     alertQueue.push({ pseudo, message, amount });
 
     if (!isAlertActive) {
@@ -19,7 +20,6 @@ function processAlertQueue() {
     const alert = alertQueue.shift();
     const { pseudo, message, amount } = alert;
     var container = document.querySelector('.widget-alert-box');
-    var oldContent = container.innerHTML;
     container.innerHTML = '';
 
     // Afficher l'image
@@ -56,7 +56,7 @@ function processAlertQueue() {
         audio.pause();
         audio.currentTime = 0;
 
-        container.innerHTML = oldContent;
+        container.innerHTML = '';
         processAlertQueue();
     }, window.alert_duration);
 }

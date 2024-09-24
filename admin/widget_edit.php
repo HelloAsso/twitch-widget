@@ -201,7 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Espace réservé pour la prévisualisation -->
         <div class="widget-alert-box mt-3 mb-5"
             style="min-height: 300px; border: 1px dashed #ccc; padding: 10px">
-            <p class="text-muted">La prévisualisation apparaîtra ici</p>
         </div>
     </div>
 
