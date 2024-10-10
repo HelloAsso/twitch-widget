@@ -1,7 +1,6 @@
 <?php
 
 /*
-
 Enable to debug
 
 ini_set('display_errors', 1);

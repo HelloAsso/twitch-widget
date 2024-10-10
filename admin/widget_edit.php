@@ -65,6 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/main.min.css">
+    <style>
+        .front {
+            clip-path: inset(0 50% 0 0 round 999px);
+            -webkit-clip-path: inset(0 50% 0 0 round 999px);
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -117,14 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Prévisualisation de la barre de donation -->
             <div class="progress">
                 <div class="back" style="background:<?php echo htmlspecialchars($donationGoalWidget['background_color']); ?>;color:<?php echo htmlspecialchars($donationGoalWidget['text_color_main']); ?>">
-                    <p id="back-goal-current"><?php echo 1000; ?> €</p>
+                    <p id="back-goal-current"><?php echo ($donationGoalWidget['goal'] / 2); ?> €</p>
                     <p id="back-title"><?php echo htmlspecialchars($donationGoalWidget['text_content']); ?></p>
-                    <p id="back-goal-total"><?php echo 2000; ?> €</p>
+                    <p id="back-goal-total"><?php echo $donationGoalWidget['goal']; ?> €</p>
                 </div>
                 <div class="front" style="background:<?php echo htmlspecialchars($donationGoalWidget['bar_color']); ?>;color:<?php echo htmlspecialchars($donationGoalWidget['text_color_alt']); ?>">
-                    <p id="front-goal-current"><?php echo 1000; ?> €</p>
+                    <p id="front-goal-current"><?php echo ($donationGoalWidget['goal'] / 2); ?> €</p>
                     <p id="front-title"><?php echo htmlspecialchars($donationGoalWidget['text_content']); ?></p>
-                    <p id="front-goal-total"><?php echo 2000; ?> €</p>
+                    <p id="front-goal-total"><?php echo $donationGoalWidget['goal']; ?> €</p>
                 </div>
             </div>
             <br />
@@ -168,6 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li>{amount} le montant du don</li>
                         <li>{message} si le donateur a laissé un message</li>
                     </ul>
+                    Vous pouvez ensuite formater le texte avec du html.
+                    <br />
+                    <br />
                 </div>
                 <textarea class="form-control" id="message_template"
                     name="message_template"><?php echo htmlspecialchars($alertBoxWidget['message_template']); ?></textarea>
