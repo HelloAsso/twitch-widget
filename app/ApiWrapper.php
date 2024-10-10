@@ -24,27 +24,67 @@ class ApiWrapper
 
     // Authentification
 
-    function getAccessTokensAndRefreshIfNecessary($organization_slug)
+    function getGlobalTokensAndRefreshIfNecessary()
     {
-        $tokenData = $this->repository->getAccessTokensDB($organization_slug);
+        $tokenData = $this->repository->getAccessTokensDB(null);
 
-        if ($tokenData == null) {
-            if ($organization_slug == null) {
-                $tokenData = $this->generateGlobalAccessToken();
-                return $tokenData;
-            } else {
-                return null;
-            }
-        } else {
+        if ($tokenData == null) 
+        {            
+            $tokenData = $this->generateGlobalAccessToken();
+            return $tokenData;            
+        } 
+        else 
+        {
             $tokenData['access_token'] = Helpers::decryptToken($tokenData['access_token']);
             $tokenData['refresh_token'] = Helpers::decryptToken($tokenData['refresh_token']);
 
-            if ($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s')) {
-                $tokenData = $this->refreshToken($tokenData['refresh_token'], null);
-                return $tokenData;
+            if ($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s')) 
+            {
+                try
+                {
+                    $tokenData = $this->refreshToken($tokenData['refresh_token'], null);
+                    return $tokenData;
+                }
+                catch (Exception $e)
+                {
+                    // Impossible de refresh le token global, il faut en générer un nouveau
+                    $newToken = $this->generateGlobalAccessToken();
+
+                    $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
+                    $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
+
+                    $this->repository->updateAccessTokenDB(
+                        Helpers::encryptToken($newToken['access_token']),
+                        Helpers::encryptToken($newToken['refresh_token']),
+                        null,
+                        $accessTokenExpiresAt,
+                        $refreshTokenExpiresAt
+                    );
+                }
+
             }
             return $tokenData;
         }
+    }
+
+    function getOrganizationTokensAndRefreshIfNecessary($organization_slug)
+    {
+        $tokenData = $this->repository->getAccessTokensDB($organization_slug);
+
+        if ($tokenData == null) 
+        {                       
+            throw new Exception("Aucun token trouvé pour cette association");
+        } 
+
+        $tokenData['access_token'] = Helpers::decryptToken($tokenData['access_token']);
+        $tokenData['refresh_token'] = Helpers::decryptToken($tokenData['refresh_token']);
+        
+        if ($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s')) 
+        {
+            $tokenData = $this->refreshToken($tokenData['refresh_token'], null);
+            return $tokenData;
+        }
+        return $tokenData;
     }
 
     function generateGlobalAccessToken()
@@ -99,14 +139,28 @@ class ApiWrapper
         $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT1700S'));
         $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P29D'));
 
-        // Insérer les tokens en base de données
-        $this->repository->insertAccessTokenDB(
-            Helpers::encryptToken($responseData['access_token']),
-            Helpers::encryptToken($responseData['refresh_token']),
-            null,
-            $accessTokenExpiresAt,
-            $refreshTokenExpiresAt
-        );
+        //Nous devons définir si nous devons insérer le token global ou le mettre à jour en l'écrasant (possible si le refresh est expiré)
+        $existingGlobalToken = $this->repository->getAccessTokensDB(null);
+        if($existingGlobalToken == null)
+        {
+            $this->repository->insertAccessTokenDB(
+                Helpers::encryptToken($responseData['access_token']),
+                Helpers::encryptToken($responseData['refresh_token']),
+                null,
+                $accessTokenExpiresAt,
+                $refreshTokenExpiresAt
+            );
+        }
+        else
+        {
+            $this->repository->updateAccessTokenDB(
+                Helpers::encryptToken($responseData['access_token']),
+                Helpers::encryptToken($responseData['refresh_token']),
+                null,
+                $accessTokenExpiresAt,
+                $refreshTokenExpiresAt
+            );
+        }
 
         return $responseData;
     }
@@ -134,7 +188,8 @@ class ApiWrapper
         $response = curl_exec($curl);
 
         // Gérer les erreurs cURL
-        if (curl_errno($curl)) {
+        if (curl_errno($curl)) 
+        {
             $error_msg = curl_error($curl);
             curl_close($curl);
             throw new Exception("Erreur cURL : $error_msg");
@@ -285,7 +340,7 @@ class ApiWrapper
 
     function GetDonationForm($organizationSlug, $donationSlug)
     {
-        $accessToken = $this->getAccessTokensAndRefreshIfNecessary(null);
+        $accessToken = $this->getGlobalTokensAndRefreshIfNecessary();
         if (!$accessToken || !isset($accessToken['access_token'])) {
             http_response_code(401);
             echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);
@@ -356,7 +411,7 @@ class ApiWrapper
         $previousToken = '';
         $donations = [];
 
-        $organizationAccessToken = $this->getAccessTokensAndRefreshIfNecessary($organizationSlug);
+        $organizationAccessToken = $this->getOrganizationTokensAndRefreshIfNecessary($organizationSlug);
 
         if (!$organizationAccessToken || !isset($organizationAccessToken['access_token'])) {
             http_response_code(401);
@@ -384,16 +439,23 @@ class ApiWrapper
                 $pseudo = "anonyme";
                 $message = "";
         
-                foreach ($order['items'] as $item) {
-                    foreach ($item['customFields'] as $field) {
-                        if ($field['name'] == 'pseudo') {
-                            $pseudo = $field['answer'];
-                        }
-                        if ($field['name'] == 'message') {
-                            $message = $field['answer'];
+                foreach ($order['items'] as $item) 
+                {
+                    if (array_key_exists('customFields', $item)) 
+                    {
+                        foreach ($item['customFields'] as $field) 
+                        {
+                            if (strcasecmp($field['name'], 'pseudo') == 0) 
+                            {
+                                $pseudo = $field['answer'];
+                            }
+                            if (strcasecmp($field['name'], 'message') == 0) 
+                            {
+                                $message = $field['answer'];
+                            }
                         }
                     }
-                }
+                }                
         
                 $amount = isset($order['amount']['total']) && is_numeric($order['amount']['total']) ? $order['amount']['total'] : 0;
                 $currentAmount += $amount;

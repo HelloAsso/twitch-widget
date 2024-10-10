@@ -42,8 +42,8 @@
   bottom: 0;
   background: #4c40cf;
   color: white;
-  clip-path: inset(0 50% 0 0 round 999px);
-  -webkit-clip-path: inset(0 50% 0 0 round 999px);
+  clip-path: inset(0 100% 0 0 round 999px);
+  -webkit-clip-path: inset(0 100% 0 0 round 999px);
   transition: clip-path 1s linear;
 }
 

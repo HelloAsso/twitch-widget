@@ -108,9 +108,7 @@ $charityStreams = $repository->getCharityStreamsListDB();
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($charityStreams as $stream): 
-                    $token = $repository->getAccessTokensDB($stream['organization_slug']);
-                ?>
+                <?php foreach ($charityStreams as $stream): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($stream['id']); ?></td>
                         <td><?php echo htmlspecialchars(bin2hex($stream['guid'])); ?></td>
@@ -135,10 +133,8 @@ $charityStreams = $repository->getCharityStreamsListDB();
                         <td>
                             <a href="/admin/widget_edit.php?charityStreamId=<?php echo bin2hex($stream['guid']); ?>"
                                 class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-                            <?php if(!isset($token)) { ?>
-                                <a href="/redirect_auth_page.php?organizationSlug=<?php echo $stream['organization_slug']; ?>"
+                            <a href="/redirect_auth_page.php?organizationSlug=<?php echo $stream['organization_slug']; ?>"
                                 class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-                            <?php } ?>
                             <form method="POST">
                                 <input type="hidden" name="guid" value="<?php echo bin2hex($stream['guid']) ?>"/>
                                 <button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
