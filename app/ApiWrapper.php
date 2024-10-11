@@ -81,7 +81,7 @@ class ApiWrapper
         
         if ($tokenData['access_token_expires_at'] < date('Y-m-d H:i:s')) 
         {
-            $tokenData = $this->refreshToken($tokenData['refresh_token'], null);
+            $tokenData = $this->refreshToken($tokenData['refresh_token'], $organization_slug);
             return $tokenData;
         }
         return $tokenData;
