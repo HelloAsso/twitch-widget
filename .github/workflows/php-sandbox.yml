@@ -57,6 +57,7 @@ jobs:
         envkey_CLIENT_SECRET: ${{ secrets.SANDBOX_CLIENT_SECRET }}
         envkey_ENCRYPTION_KEY: ${{ secrets.SANDBOX_ENCRYPTION_KEY }}
         envkey_WEBSITE_DOMAIN: ${{ vars.SANDBOX_WEBSITE_DOMAIN }}
+        envkey_MANDRILL_API: ${{ vars.SANDBOX_MANDRILL_API }}
         file_name: .env
   
     - name: SFTP Deploy
@@ -71,5 +72,5 @@ jobs:
           .git*
           composer.*
           package*
-          README.MD
+          *.MD
           
