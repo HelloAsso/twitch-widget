@@ -78,7 +78,7 @@ class Repository
             $guidBinary
         ]);
 
-        if(isset($image)) {
+        if (isset($image)) {
             $stmt = $this->db->prepare('
                 UPDATE ' . $this->prefix . 'widget_alert_box
                 SET image = ?
@@ -90,7 +90,7 @@ class Repository
             ]);
         }
 
-        if(isset($sound)) {
+        if (isset($sound)) {
             $stmt = $this->db->prepare('
                 UPDATE ' . $this->prefix . 'widget_alert_box
                 SET sound = ?
@@ -106,7 +106,7 @@ class Repository
     function createCharityStreamDB($guid, $owner_email, $form_slug, $organization_slug, $title)
     {
         $password = Helpers::generateRandomString(30);
-        
+
         $query = 'INSERT INTO ' . $this->prefix . 'users (email, password) 
                 VALUES (:email, :password)';
         $stmt = $this->db->prepare($query);
@@ -114,7 +114,7 @@ class Repository
             ':email' => $owner_email,
             ':password' => password_hash($password, PASSWORD_DEFAULT)
         ]);
-        
+
         $query = 'INSERT INTO ' . $this->prefix . 'charity_stream (guid, owner_email, form_slug, organization_slug, title, state) 
                 VALUES (:guid, :owner_email, :form_slug, :organization_slug, :title, 1)';
         $stmt = $this->db->prepare($query);
@@ -181,7 +181,7 @@ class Repository
     function updateUserPassword($email)
     {
         $password = Helpers::generateRandomString(30);
-        
+
         $query = 'UPDATE ' . $this->prefix . 'users
                 SET password = :password
                 WHERE email = :email';
@@ -283,6 +283,22 @@ class Repository
 
         if ($stmt->rowCount() > 0) {
             return $stmt->fetch();
+        }
+
+        return null;
+    }
+
+    function getAccessTokensToRefresh()
+    {
+        $stmt = $this->db->prepare('SELECT * 
+            FROM ' . $this->prefix . 'access_token_partner_organization 
+            WHERE organization_slug IS NOT NULL
+            AND refresh_token_expires_at > now()
+            AND refresh_token_expires_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR);');
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetchAll();
         }
 
         return null;
