@@ -73,7 +73,7 @@ else
                 "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . Config::getInstance()->webSiteDomain . "</p>",
                 "to" => [
                     [
-                        "email" => "helloasso.stream@helloasso.org "
+                        "email" => "helloasso.stream@helloasso.org"
                     ]
                 ],
             ]
