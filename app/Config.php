@@ -31,6 +31,7 @@ class Config
     public $haUrl = null;
     public $haIps = null;
     public $webSiteDomain = null;
+    public $mandrillApi = null;
 
     private function getDb()
     {
@@ -70,6 +71,7 @@ class Config
         $this->haUrl = $_ENV['HA_URL'];
         $this->haIps = isset($_ENV['HA_IPS']) ? explode(",", $_ENV['HA_IPS']) : [];
         $this->webSiteDomain = $_ENV['WEBSITE_DOMAIN'];
+        $this->mandrillApi = $_ENV['MANDRILL_API'];
     }
 
     public static function getInstance()
