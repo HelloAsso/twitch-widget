@@ -70,7 +70,7 @@ else
                 "from_email" => "contact@helloasso.io",
                 "from_name" => "HelloAsso",
                 "subject" => "Une association vient de valider sa mire" ,
-                "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . . Config::getInstance()->webSiteDomain . "</p>",
+                "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . Config::getInstance()->webSiteDomain . "</p>",
                 "to" => [
                     [
                         "email" => "helloasso.stream@helloasso.org "
