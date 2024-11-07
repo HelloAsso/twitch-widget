@@ -20,17 +20,10 @@ if (isset($_POST['create_charity_stream'])) {
     // Générer un GUID unique pour le nouveau Charity Stream
     $guid = bin2hex(random_bytes(16)); // Utilisation de bin2hex pour obtenir une chaîne hexadécimale
 
-    // Check if form exist
-    $data = $apiWrapper->GetDonationForm($organizationSlug, $formSlug);
-
-    if(!$data) {
-        echo '<div class="alert alert-danger" role="alert">Ce formulaire n\'existe pas</div>';
-    } else {
-        // Appeler la fonction pour créer le Charity Stream
-        $_SESSION[$guid . 'password'] = $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
-        header("Location: /admin/index.php");
-        exit();
-    }
+    // Appeler la fonction pour créer le Charity Stream
+    $_SESSION[$guid . 'password'] = $repository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
+    header("Location: /admin/index.php");
+    exit();
 }
 
 if (isset($_POST['refresh_password'])) {
