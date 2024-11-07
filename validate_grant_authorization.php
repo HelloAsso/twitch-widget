@@ -45,7 +45,7 @@ if ($existingOrganizationToken != null)
     } 
     catch (Exception $e) 
     {
-        throw new Exception("Erreur de MAJ en base de données : $e->getMessage()");
+        throw new Exception("Erreur de MAJ en base de données : " . $e->getMessage());
     }
 } 
 else 
@@ -61,9 +61,26 @@ else
         );
 
         echo 'Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.';
+    
+        $mailchimp = new \MailchimpTransactional\ApiClient();
+        $mailchimp->setApiKey(Config::getInstance()->mandrillApi);
+
+        $mailchimp->messages->send([
+            "message" => [
+                "from_email" => "contact@helloasso.io",
+                "from_name" => "HelloAsso",
+                "subject" => "Une association vient de valider sa mire" ,
+                "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . Config::getInstance()->webSiteDomain . "</p>",
+                "to" => [
+                    [
+                        "email" => "helloasso.stream@helloasso.org "
+                    ]
+                ],
+            ]
+        ]);
     } 
     catch (Exception $e) 
     {
-        throw new Exception("Erreur lors de l'insertion en base de données : $e->getMessage()");
+        throw new Exception("Erreur lors de l'insertion en base de données : " . $e->getMessage());
     }
 }
