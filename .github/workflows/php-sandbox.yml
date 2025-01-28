@@ -66,9 +66,9 @@ jobs:
 
     - name: Upload
       run : |
-        scp artifact.tar.gz ${{ secrets.SANDBOX_SFTP_USER }}:${{ secrets.SANDBOX_SFTP_PASSWORD }}@${{ secrets.SANDBOX_SFTP_HOST }}:/home/socialgo/www
+        scp artifact.tar.gz ${{ secrets.SANDBOX_SSH_USER }}:${{ secrets.SANDBOX_SSH_PASSWORD }}@${{ secrets.SANDBOX_SSH_HOST }}:/home/socialgo/www
 
     - name: Extract
       run : |
-        ssh ${{ secrets.SANDBOX_SFTP_USER }}:${{ secrets.SANDBOX_SFTP_PASSWORD }}@${{ secrets.SANDBOX_SFTP_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz && rm artifact.tar.gz && sudo cp -r artifact/* twitch-widget-sandbox/ && sudo rm -R artifact"
+        ssh ${{ secrets.SANDBOX_SSH_USER }}:${{ secrets.SANDBOX_SSH_PASSWORD }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz && rm artifact.tar.gz && sudo cp -r artifact/* twitch-widget-sandbox/ && sudo rm -R artifact"
           
