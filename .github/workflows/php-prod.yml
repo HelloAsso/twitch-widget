@@ -42,11 +42,13 @@ jobs:
       uses: SpicyPizza/create-envfile@v2.0
       with:
         envkey_DBURL: ${{ secrets.PROD_DBURL }}
+        envkey_DBPORT: 3306
         envkey_DBNAME: ${{ secrets.PROD_DBNAME }}
         envkey_DBUSER: ${{ secrets.PROD_DBUSER }}
         envkey_DBPASSWORD: ${{ secrets.PROD_DBPASSWORD }}
         envkey_DBPREFIX: "prod_"
-        envkey_BLOB_URL: "https://stockagehelloassoprod.blob.core.windows.net"
+        envkey_LOGLEVEL: "ERROR"
+        envkey_BLOB_URL: "https://stockagehaovh.blob.core.windows.net"
         envkey_BLOB_CONNECTION_STRING: ${{ secrets.PROD_BLOB_CONNECTION_STRING }}
         envkey_HA_URL: "https://www.helloasso.com"
         envkey_HA_IPS: ${{ vars.PROD_HA_IPS }}
@@ -60,17 +62,15 @@ jobs:
         envkey_MANDRILL_API: ${{ secrets.PROD_MANDRILL_API }}
         file_name: .env
   
-    - name: SFTP Deploy
-      uses: Dylan700/sftp-upload-action@latest
-      with:
-        server: ${{ secrets.PROD_SFTP_HOST }}
-        username: ${{ secrets.PROD_SFTP_USER }}
-        password: ${{ secrets.PROD_SFTP_PASSWORD }}
-        uploads: |
-          ./ => ./
-        ignore: |
-          .git*
-          composer.*
-          package*
-          *.MD
+    - name: Tar
+      run : |
+        tar czvf artifact.tar.gz migrations public src vendor .env
+
+    - name: Upload
+      run : |
+        sshpass -p ${{ secrets.PROD_SSH_PASSWORD }} scp -o StrictHostKeyChecking=no artifact.tar.gz ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:/home/socialgo/www
+
+    - name: Extract
+      run : |
+        sshpass -p ${{ secrets.PROD_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz -C twitch-widget && rm artifact.tar.gz"
           
