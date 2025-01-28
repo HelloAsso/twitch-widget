@@ -3,5 +3,8 @@
     "bootstrap": "^5.3.3",
     "countup.js": "^2.8.0",
     "moment": "^2.30.1"
+  },
+  "scripts": {
+    "postinstall": "rm -rf public/node_modules && mv node_modules public/node_modules"
   }
 }

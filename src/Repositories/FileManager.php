@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Repositories;
+
 use League\MimeTypeDetection\FinfoMimeTypeDetector;
 use MicrosoftAzure\Storage\Blob\Models\CreateBlockBlobOptions;
 
@@ -28,7 +30,7 @@ class FileManager
     private function checkSize($formdata, $size)
     {
         if ($formdata['size'] <= 0 || $formdata['size'] > $size * 1024 * 1024)
-            throw new InvalidArgumentException("Ce fichier est trop volumineux, taille maximum " . $size . "M");
+            throw new \InvalidArgumentException("Ce fichier est trop volumineux, taille maximum " . $size . "M");
     }
 
     private function checkType($formdata, $ext, $mimes)
@@ -39,7 +41,7 @@ class FileManager
             !in_array(strtolower(pathinfo($formdata["name"], PATHINFO_EXTENSION)), $ext) ||
             !in_array($mimeType, $mimes)
         )
-            throw new InvalidArgumentException("Ce fichier n'est pas au bon format");
+            throw new \InvalidArgumentException("Ce fichier n'est pas au bon format");
     }
 
     private function isPicture($formdata)
