@@ -48,7 +48,7 @@ jobs:
         envkey_DBPASSWORD: ${{ secrets.SANDBOX_DBPASSWORD }}
         envkey_DBPREFIX: "sandbox_"
         envkey_LOGLEVEL: "ERROR"
-        envkey_BLOB_URL: "https://stockagehelloassoprod.blob.core.windows.net"
+        envkey_BLOB_URL: "https://stockagehaovh.blob.core.windows.net"
         envkey_BLOB_CONNECTION_STRING: ${{ secrets.SANDBOX_BLOB_CONNECTION_STRING }}
         envkey_HA_URL: "https://www.helloasso-sandbox.com"
         envkey_HA_IPS: ${{ vars.SANDBOX_HA_IPS }}
