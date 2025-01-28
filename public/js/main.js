@@ -45,7 +45,7 @@ function processAlertQueue() {
     setTimeout(function () {
         img.classList.add('show');
         messageTemplate.classList.add('show');
-        
+
         audio.volume = window.sound_volume;
         audio.play();
     }, 100)
@@ -80,7 +80,7 @@ function updateDonationBar() {
 
 function fetchDonation() {
     const request = new XMLHttpRequest()
-    request.open("GET", 'fetch_donations.php?charityStreamId=' + window.charityStreamId +
+    request.open("GET", '/widget/' + window.charityStreamId + '/fetchDonation?a=0' +
         (window.continuationToken ? ('&continuationToken=' + window.continuationToken) : '') +
         (window.currentAmount ? ('&currentAmount=' + window.currentAmount) : '') +
         (window.from ? ('&from=' + window.from) : ''), true)

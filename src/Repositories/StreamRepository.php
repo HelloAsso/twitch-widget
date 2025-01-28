@@ -1,8 +1,9 @@
 <?php
 
-class Repository
-{
+namespace App\Repositories;
 
+class StreamRepository
+{
     private $db;
     private $prefix;
 
@@ -105,7 +106,7 @@ class Repository
 
     function createCharityStreamDB($guid, $owner_email, $form_slug, $organization_slug, $title)
     {
-        $password = Helpers::generateRandomString(30);
+        $password = bin2hex(random_bytes(15));
 
         $query = 'INSERT INTO ' . $this->prefix . 'users (email, password) 
                 VALUES (:email, :password)';
@@ -180,7 +181,7 @@ class Repository
 
     function updateUserPassword($email)
     {
-        $password = Helpers::generateRandomString(30);
+        $password = bin2hex(random_bytes(15));
 
         $query = 'UPDATE ' . $this->prefix . 'users
                 SET password = :password
@@ -192,124 +193,5 @@ class Repository
         ]);
 
         return $password;
-    }
-
-    function insertAccessTokenDB($accessToken, $refreshToken, $organization_slug, $accessTokenExpiresAt, $refreshTokenExpiresAt)
-    {
-        $query = 'INSERT INTO ' . $this->prefix . 'access_token_partner_organization 
-            (access_token, refresh_token, organization_slug, access_token_expires_at, refresh_token_expires_at)
-            VALUES (:access_token, :refresh_token, :organization_slug, :access_token_expires_at, :refresh_token_expires_at)';
-        $stmt = $this->db->prepare($query);
-
-        $stmt->execute([
-            ':access_token' => $accessToken,
-            ':refresh_token' => $refreshToken,
-            ':organization_slug' => $organization_slug,
-            ':access_token_expires_at' => $accessTokenExpiresAt->format('Y-m-d H:i:s'),
-            ':refresh_token_expires_at' => $refreshTokenExpiresAt->format('Y-m-d H:i:s')
-        ]);
-    }
-
-    function updateAccessTokenDB($access_token, $refresh_token, $organization_slug, $access_token_expires_at, $refresh_token_expires_at)
-    {
-        if (is_null($organization_slug)) {
-            $query = 'UPDATE ' . $this->prefix . 'access_token_partner_organization 
-            SET access_token = :access_token, 
-                refresh_token = :refresh_token, 
-                access_token_expires_at = :access_token_expires_at, 
-                organization_slug = :organization_slug,
-                refresh_token_expires_at = :refresh_token_expires_at
-            WHERE organization_slug IS NULL';
-
-            $stmt = $this->db->prepare($query);
-
-            $stmt->execute([
-                ':access_token' => $access_token,
-                ':refresh_token' => $refresh_token,
-                ':organization_slug' => $organization_slug,
-                ':access_token_expires_at' => $access_token_expires_at->format('Y-m-d H:i:s'),
-                ':refresh_token_expires_at' => $refresh_token_expires_at->format('Y-m-d H:i:s')
-            ]);
-        } else {
-            $query = 'UPDATE ' . $this->prefix . 'access_token_partner_organization 
-            SET access_token = :access_token, 
-                refresh_token = :refresh_token, 
-                access_token_expires_at = :access_token_expires_at, 
-                organization_slug = :organization_slug,
-                refresh_token_expires_at = :refresh_token_expires_at
-            WHERE organization_slug = :organization_slug';
-
-            $stmt = $this->db->prepare($query);
-
-            $stmt->execute([
-                ':access_token' => $access_token,
-                ':refresh_token' => $refresh_token,
-                ':organization_slug' => $organization_slug,
-                ':access_token_expires_at' => $access_token_expires_at->format('Y-m-d H:i:s'),
-                ':refresh_token_expires_at' => $refresh_token_expires_at->format('Y-m-d H:i:s')
-            ]);
-        }
-    }
-
-
-    function insertAuthorizationCodeDB($id, $codeVerifier, $redirect_uri, $organizationSlug)
-    {
-        $query = 'INSERT INTO ' . $this->prefix . 'authorization_code (id, code_verifier, redirect_uri, organization_slug)
-            VALUES (:id, :code_verifier, :redirect_uri, :organization_slug)';
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([
-            ':id' => $id,
-            ':code_verifier' => $codeVerifier,
-            ':redirect_uri' => $redirect_uri,
-            ':organization_slug' => $organizationSlug
-        ]);
-    }
-
-    function getAccessTokensDB($organization_slug)
-    {
-        if (is_null($organization_slug)) {
-            $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
-                    WHERE organization_slug IS NULL';
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
-        } else {
-            $query = 'SELECT * FROM ' . $this->prefix . 'access_token_partner_organization 
-                    WHERE organization_slug = :organization_slug';
-            $stmt = $this->db->prepare($query);
-            $stmt->execute([
-                ':organization_slug' => $organization_slug
-            ]);
-        }
-
-        if ($stmt->rowCount() > 0) {
-            return $stmt->fetch();
-        }
-
-        return null;
-    }
-
-    function getAccessTokensToRefresh()
-    {
-        $stmt = $this->db->prepare('SELECT * 
-            FROM ' . $this->prefix . 'access_token_partner_organization 
-            WHERE organization_slug IS NOT NULL
-            AND refresh_token_expires_at > now()
-            AND refresh_token_expires_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR);');
-        $stmt->execute();
-
-        if ($stmt->rowCount() > 0) {
-            return $stmt->fetchAll();
-        }
-
-        return null;
-    }
-
-
-    function getAuthorizationCodeByIdDB($id)
-    {
-        $query = 'SELECT * FROM ' . $this->prefix . 'authorization_code WHERE id = ?';
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
     }
 }
