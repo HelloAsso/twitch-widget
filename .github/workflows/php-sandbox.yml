@@ -59,18 +59,16 @@ jobs:
         envkey_WEBSITE_DOMAIN: ${{ vars.SANDBOX_WEBSITE_DOMAIN }}
         envkey_MANDRILL_API: ${{ secrets.SANDBOX_MANDRILL_API }}
         file_name: .env
-  
-    - name: SFTP Deploy
-      uses: Dylan700/sftp-upload-action@latest
-      with:
-        server: ${{ secrets.SANDBOX_SFTP_HOST }}
-        username: ${{ secrets.SANDBOX_SFTP_USER }}
-        password: ${{ secrets.SANDBOX_SFTP_PASSWORD }}
-        uploads: |
-          ./ => ./
-        ignore: |
-          .git*
-          composer.*
-          package*
-          *.MD
+
+    - name: Tar
+      run : |
+        tar czvf artifact.tar.gz migrations public src vendor .env
+
+    - name: Upload
+      run : |
+        scp artifact.tar.gz ${{ secrets.SANDBOX_SFTP_USER }}:${{ secrets.SANDBOX_SFTP_PASSWORD }}@${{ secrets.SANDBOX_SFTP_HOST }}:/home/socialgo/www
+
+    - name: Extract
+      run : |
+        ssh ${{ secrets.SANDBOX_SFTP_USER }}:${{ secrets.SANDBOX_SFTP_PASSWORD }}@${{ secrets.SANDBOX_SFTP_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz && rm artifact.tar.gz && sudo cp -r artifact/* twitch-widget-sandbox/ && sudo rm -R artifact"
           
