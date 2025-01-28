@@ -70,5 +70,5 @@ jobs:
 
     - name: Extract
       run : |
-        sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz && rm artifact.tar.gz && sudo cp -r artifact/* twitch-widget-sandbox/ && sudo rm -R artifact"
+        sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz -C /twitch-widget-sandbox && rm artifact.tar.gz"
           
