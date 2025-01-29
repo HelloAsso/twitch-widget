@@ -2,8 +2,10 @@
 
 namespace App\Controllers;
 
+use App\Models\User;
 use App\Repositories\FileManager;
 use App\Repositories\StreamRepository;
+use App\Repositories\UserRepository;
 use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -17,6 +19,7 @@ class StreamController
         private Twig $view,
         private FileManager $fileManager,
         private StreamRepository $streamRepository,
+        private UserRepository $userRepository,
         private Messages $messages,
     ) {}
 
@@ -50,8 +53,9 @@ class StreamController
 
         $guid = bin2hex(random_bytes(16));
 
-        $password = $this->streamRepository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
-        $this->messages->addMessage('password', $guid . '_' . $password);
+        $user = $this->userRepository->insertUser($ownerEmail);
+        $this->streamRepository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
+        $this->messages->addMessage('password', $guid . '_' . $user->password);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor('app_stream_index');
@@ -65,8 +69,11 @@ class StreamController
         $email = $data['email'];
         $guid = $args['id'];
 
-        $password = $this->streamRepository->updateUserPassword($email);
-        $this->messages->addMessage('password', $guid . '_' . $password);
+        $user = new User();
+        $user->email = $email;
+
+        $user = $this->userRepository->updateUserPassword($user);
+        $this->messages->addMessage('password', $guid . '_' . $user->password);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor('app_stream_index');
@@ -76,7 +83,10 @@ class StreamController
 
     public function delete(Request $request, Response $response, array $args): Response
     {
-        $this->streamRepository->deleteCharityStream($args['id']);
+        $stream = $this->streamRepository->getCharityStreamByGuidDB(hex2bin($args['id']));
+        $this->streamRepository->deleteCharityStream($stream['guid']);
+
+        $this->userRepository->deleteUser($stream['owner_email']);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor('app_stream_index');
@@ -87,7 +97,7 @@ class StreamController
     public function edit(Request $request, Response $response, array $args): Response
     {
         if (isset($_SESSION['user'])) {
-            $charityStreams = $this->streamRepository->getCharityStreamByEmail($_SESSION['user']['email']);
+            $charityStreams = $this->streamRepository->getCharityStreamByEmail($_SESSION['user']->email);
             $guidBinary = $charityStreams[0]['guid'];
             $guidHex = bin2hex($charityStreams[0]['guid']);
         } else {
@@ -125,7 +135,7 @@ class StreamController
     public function editPost(Request $request, Response $response, array $args): Response
     {
         if (isset($_SESSION['user'])) {
-            $charityStreams = $this->streamRepository->getCharityStreamByEmail($_SESSION['user']['email']);
+            $charityStreams = $this->streamRepository->getCharityStreamByEmail($_SESSION['user']->email);
             $guidBinary = $charityStreams[0]['guid'];
             $guidHex = bin2hex($charityStreams[0]['guid']);
         } else {
