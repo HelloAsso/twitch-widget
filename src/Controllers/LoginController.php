@@ -6,10 +6,12 @@ use App\Models\AccessToken;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\StreamRepository;
+use App\Repositories\UserRepository;
 use App\Services\ApiWrapper;
 use DateTime;
 use DateInterval;
 use Exception;
+use MailchimpTransactional\ApiClient;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
@@ -24,6 +26,8 @@ class LoginController
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
         private StreamRepository $streamRepository,
+        private UserRepository $userRepository,
+        private ApiClient $mailchimp,
         private Messages $messages,
     ) {}
 
@@ -31,16 +35,16 @@ class LoginController
     {
         $data = $request->getParsedBody();
 
-        $username = $data['username'] ?? '';
+        $email = $data['email'] ?? '';
         $password = $data['password'] ?? '';
-        $user = $this->streamRepository->getUser($username);
+        $user = $this->userRepository->selectUser($email);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
-        if ($user && password_verify($password, $user['password'])) {
+        if ($user && password_verify($password, $user->password)) {
             $_SESSION['user'] = $user;
 
-            $charityStreams = $this->streamRepository->getCharityStreamByEmail($user['email']);
+            $charityStreams = $this->streamRepository->getCharityStreamByEmail($user->email);
 
             $url = $routeParser->urlFor('app_stream_edit', ["id" => bin2hex($charityStreams[0]['guid'])]);
             return $response->withHeader('Location', $url)->withStatus(302);
@@ -49,6 +53,61 @@ class LoginController
             $url = $routeParser->urlFor('app_index');
             return $response->withHeader('Location', $url)->withStatus(302);
         }
+    }
+
+    public function forgotPassword(Request $request, Response $response): Response
+    {
+        $data = $request->getParsedBody();
+
+        $email = $data['email'] ?? '';
+        $user = $this->userRepository->selectUser($email);
+
+        if ($user) {
+            $user = $this->userRepository->insertResetToken($user);
+
+            $this->mailchimp->messages->send([
+                "message" => [
+                    "from_email" => "contact@helloasso.io",
+                    "from_name" => "HelloAsso",
+                    "subject" => "mot de passe oublié",
+                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"" . $_SERVER['WEBSITE_DOMAIN'] . "/reset_password/$user->reset_token\">cette page</a><br/>Ou en suivant ce lien " . $_SERVER['WEBSITE_DOMAIN'] . "/reset_password/$user->reset_token</p>",
+                    "to" => [
+                        [
+                            "email" => $user->email
+                        ]
+                    ],
+                ]
+            ]);
+        }
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $this->messages->addMessage('mail_sent', true);
+        $url = $routeParser->urlFor('app_index');
+        return $response->withHeader('Location', $url)->withStatus(302);
+    }
+
+    public function resetPassword(Request $request, Response $response): Response
+    {
+        $data = $request->getParsedBody();
+
+        $password = $data['password'] ?? '';
+        $passwordRepeat = $data['passwordRepeat'] ?? '';
+        $token = $data['token'] ?? '';
+
+        $user = $this->userRepository->selectUserByToken($token);
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+
+        if ($user && $password && $passwordRepeat && $password == $passwordRepeat) {
+            $this->userRepository->updateUserPassword($user, $password);
+            $this->messages->addMessage('password_reset', true);
+            $url = $routeParser->urlFor('app_index');
+        } else {
+            $this->messages->addMessage('password_reset_error', true);
+            $url = $routeParser->urlFor('app_reset_password', ["token" => $token]);
+        }
+
+        return $response->withHeader('Location', $url)->withStatus(302);
     }
 
     public function logout(Request $request, Response $response): Response
@@ -140,10 +199,7 @@ class LoginController
 
             $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
 
-            $mailchimp = new \MailchimpTransactional\ApiClient();
-            $mailchimp->setApiKey($_SERVER['MANDRILL_API']);
-
-            $mailchimp->messages->send([
+            $this->mailchimp->messages->send([
                 "message" => [
                     "from_email" => "contact@helloasso.io",
                     "from_name" => "HelloAsso",
@@ -151,6 +207,7 @@ class LoginController
                     "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . $_SERVER['WEBSITE_DOMAIN'] . "</p>",
                     "to" => [
                         [
+                            //"email" => "helloasso.stream@helloasso.org"
                             "email" => "eddy@helloasso.org"
                         ]
                     ],

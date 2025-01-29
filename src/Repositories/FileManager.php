@@ -3,18 +3,12 @@
 namespace App\Repositories;
 
 use League\MimeTypeDetection\FinfoMimeTypeDetector;
+use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use MicrosoftAzure\Storage\Blob\Models\CreateBlockBlobOptions;
 
 class FileManager
 {
-    private $storage = null;
-    private $blobUrl = null;
-
-    public function __construct($storage, $blobUrl)
-    {
-        $this->storage = $storage;
-        $this->blobUrl = $blobUrl;
-    }
+    public function __construct(private BlobRestProxy $storage, private string $blobUrl) {}
 
     private function getBlobOption($file, $content)
     {

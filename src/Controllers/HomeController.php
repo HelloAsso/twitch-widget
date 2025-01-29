@@ -19,4 +19,19 @@ class HomeController
         $messages = $this->messages->getMessages();
         return $this->view->render($response, 'index.html.twig', $messages);
     }
+
+    public function forgotPassword(Request $request, Response $response): Response
+    {
+        return $this->view->render($response, 'password-forgot.html.twig');
+    }
+
+    public function resetPassword(Request $request, Response $response, $args): Response
+    {
+        $data = [
+            "token" => $args['token'],
+            "messages" => $this->messages->getMessages(),
+        ];
+
+        return $this->view->render($response, 'password-reset.html.twig', $data);
+    }
 }

@@ -2,18 +2,22 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use App\Controllers\ApiController;
 use App\Controllers\HomeController;
 use App\Controllers\LoginController;
 use App\Controllers\StreamController;
 use App\Controllers\WidgetController;
+use App\Middlewares\AuthApiMiddleware;
 use App\Middlewares\AuthMiddleware;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\FileManager;
 use App\Repositories\StreamRepository;
+use App\Repositories\UserRepository;
 use App\Services\ApiWrapper;
 use App\Twig\CustomTwigExtension;
 use DI\Container;
+use MailchimpTransactional\ApiClient;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -54,6 +58,10 @@ $container->set(StreamRepository::class, function ($c) {
     return new StreamRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
+$container->set(UserRepository::class, function ($c) {
+    return new UserRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
 $container->set(ApiWrapper::class, function ($c) {
     return new ApiWrapper(
         $c->get(AccessTokenRepository::class),
@@ -71,6 +79,12 @@ $container->set(ApiWrapper::class, function ($c) {
 $container->set(FileManager::class, function ($c) {
     $storage = BlobRestProxy::createBlobService($_SERVER['BLOB_CONNECTION_STRING']);
     return new FileManager($storage, $_SERVER['BLOB_URL']);
+});
+
+$container->set(ApiClient::class, function ($c) {
+    $mailchimp = new \MailchimpTransactional\ApiClient();
+    $mailchimp->setApiKey($_SERVER['MANDRILL_API']);
+    return $mailchimp;
 });
 
 $container->set(Twig::class, function (): Twig {
@@ -92,9 +106,13 @@ if (!session_id())
 $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
+$app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
+$app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
 
 $app->post('/login', [LoginController::class, 'login'])->setName('app_login');
 $app->get('/logout', [LoginController::class, 'logout'])->setName('app_logout');
+$app->post('/forgot_password', [LoginController::class, 'forgotPassword'])->setName('app_forgot_password_post');
+$app->post('/reset_password', [LoginController::class, 'resetPassword'])->setName('app_reset_password_post');
 $app->get('/redirect_auth_page', [LoginController::class, 'redirectAuthPage'])->setName('app_redirect_auth_page');
 $app->get('/refresh_token', [LoginController::class, 'refreshToken'])->setName('app_refresh_token');
 $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->setName('app_validate_auth_page');
@@ -105,6 +123,8 @@ $app->post('/admin/{id}/refresh', [StreamController::class, 'refreshPassword'])-
 $app->post('/admin/{id}/delete', [StreamController::class, 'delete'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/{id}/edit', [StreamController::class, 'edit'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/{id}/edit', [StreamController::class, 'editPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
+
+$app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_stream_edit_post');
 
 $app->get('/widget/{id}/fetchDonation', [WidgetController::class, 'widgetFetchDonation'])->setName('app_stream_widget_fetch_donation');
 $app->get('/widget/{id}/alert', [WidgetController::class, 'widgetAlert'])->setName('app_stream_widget_alert');

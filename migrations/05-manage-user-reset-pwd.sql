@@ -1,0 +1,1 @@
+ALTER TABLE {prefix}users ADD reset_token CHAR(60) NULL AFTER password;
