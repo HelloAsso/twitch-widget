@@ -63,7 +63,7 @@ jobs:
   
     - name: Tar
       run : |
-        tar czvf artifact.tar.gz migrations public src vendor .env
+        tar czvf artifact.tar.gz migrations public src vendor .env cron.php
 
     - name: Upload
       run : |
