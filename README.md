@@ -36,7 +36,7 @@ Any other environment-specific variables
 ### Step 3: Run SQL Migrations
 To set up your database, execute the SQL migrations provided:
 ```bash
-php migration/run.php
+php migrations/run.php
 ```
 
 ## Running the Application

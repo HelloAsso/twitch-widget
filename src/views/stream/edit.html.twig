@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="dark">
+
+	<head>
+		<meta charset="UTF-8">
+		<title>Édition</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
+		<link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/css/main.min.css">
+		<style>
+			.front {
+				clip-path: inset(0 50% 0 0 round 999px);
+				-webkit-clip-path: inset(0 50% 0 0 round 999px);
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="container">
+			<h1 class="my-4 text-center">Édition</h1>
+
+			<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
+
+			<h5>
+				Formulaire de don Helloasso
+				<a href="{{ donationUrl }}" target="_blank">{{ donationUrl }}</a>
+			</h5>
+			<hr class="my-4">
+			<h2>Widget barre de don</h2>
+			<form id="donationBarForm" method="POST">
+				<div class="mb-3">
+					<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
+					<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
+				</div>
+				<div class="mb-3">
+					<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
+					<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+				</div>
+				<div class="mb-3">
+					<label for="text_content" class="form-label">Texte</label>
+					<input type="text" class="form-control" id="text_content" name="text_content" value="{{ donationGoalWidget.text_content }}">
+				</div>
+				<div class="mb-3">
+					<label for="bar_color" class="form-label">Couleur de la barre</label>
+					<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
+				</div>
+				<div class="mb-3">
+					<label for="background_color" class="form-label">Couleur du fond</label>
+					<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
+				</div>
+				<div class="mb-3">
+					<label for="goal" class="form-label">Objectif</label>
+					<input type="number" class="form-control" id="goal" name="goal" value="{{ donationGoalWidget.goal }}">
+				</div>
+				<br/>
+				<div class="progress">
+					<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
+						<p id="back-goal-current">{{ donationGoalWidget.goal / 2 }}
+							€</p>
+						<p id="back-title">{{ donationGoalWidget.text_content }}</p>
+						<p id="back-goal-total">{{ donationGoalWidget.goal }}
+							€</p>
+					</div>
+					<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
+						<p id="front-goal-current">{{ donationGoalWidget.goal / 2 }}
+							€</p>
+						<p id="front-title">{{ donationGoalWidget.text_content }}</p>
+						<p id="front-goal-total">{{ donationGoalWidget.goal }}
+							€</p>
+					</div>
+				</div>
+				<br/>
+				<div class="align-items-center mt-3">
+					<h5>
+						URL du widget :
+						<a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
+					</h5>
+					<br/>
+					<button type="submit" class="btn btn-primary" name="save_donation_goal">💾</button>
+				</div>
+			</form>
+
+			<hr class="my-5">
+
+			<h2>Widget alerte</h2>
+			<form id="alertBoxForm" method="POST" enctype="multipart/form-data">
+				<div class="mb-3">
+					<label for="image" class="form-label">Fichier image</label>
+					{% if alertBoxWidget.image %}
+						<div class="form-text">
+							Déjà chargé:
+							<a href="{{ alertBoxWidgetPictureUrl }}" target="_blank">{{ alertBoxWidget.image }}</a>
+						</div>
+					{% endif %}
+					<input type="file" class="form-control" id="image" name="image"/>
+				</div>
+				<div class="mb-3">
+					<label for="alert_duration" class="form-label">Durée de l'alerte (secondes)</label>
+					<input type="number" class="form-control" id="alert_duration" name="alert_duration" value="{{ alertBoxWidget.alert_duration }}">
+				</div>
+				<div class="mb-3">
+					<label for="message_template" class="form-label">Template de message</label>
+					<div id="passwordHelpBlock" class="form-text">
+						C'est le message qui s'affichera lors d'un don.<br/>
+						Il existe 3 paramètres:
+						<ul>
+							<li>{pseudo} le pseudo du donateur (anonyme si non précisé)</li>
+							<li>{amount} le montant du don</li>
+							<li>{message} si le donateur a laissé un message</li>
+						</ul>
+						Vous pouvez ensuite formater le texte avec du html.
+						<br/>
+						<br/>
+					</div>
+					<textarea class="form-control" id="message_template" name="message_template">{{ alertBoxWidget.message_template }}</textarea>
+				</div>
+				<div class="mb-3">
+					<label for="sound" class="form-label">Fichier de son</label>
+					{% if alertBoxWidget.sound %}
+						<div class="form-text">
+							Déjà chargé:
+							<a href="{{ alertBoxWidgetSoundUrl }}" target="_blank">{{ alertBoxWidget.sound }}</a>
+						</div>
+					{% endif %}
+					<input type="file" class="form-control" id="sound" name="sound"/>
+				</div>
+				<div class="mb-3">
+					<label for="sound_volume" class="form-label">Volume du son (0-100)</label>
+					<input type="number" class="form-control" id="sound_volume" name="sound_volume" value="{{ alertBoxWidget.sound_volume }}">
+				</div>
+
+				<div class="align-items-center mt-3">
+					<h5>
+						URL du widget :
+						<a href="{{ widgetAlertBoxUrl }}" target="_blank">{{ widgetAlertBoxUrl }}</a>
+					</h5>
+					<br/>
+					<button type="submit" class="btn btn-primary" name="save_alert_box">💾</button>
+					<button type="button" id="previewBtn" class="btn btn-info">Prévisualiser</button>
+				</div>
+			</form>
+
+			<div class="widget-alert-box mt-3 mb-5" style="min-height: 300px; border: 1px dashed #ccc; padding: 10px"></div>
+		</div>
+
+		<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+		<script>
+			var image = '{{ alertBoxWidgetPictureUrl }}';
+var message_template = '{{ alertBoxWidget.message_template }}';
+var sound = '{{ alertBoxWidgetSoundUrl }}';
+var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
+var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
+		</script>
+
+		<script src="/js/main.min.js"></script>
+		<script src="/js/alert.min.js"></script>
+		<script src="/js/stream.min.js"></script>
+	</body>
+
+</html>
