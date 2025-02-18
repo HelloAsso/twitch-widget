@@ -51,15 +51,14 @@ jobs:
         envkey_BLOB_URL: "https://stockagehaovh.blob.core.windows.net"
         envkey_BLOB_CONNECTION_STRING: ${{ secrets.SANDBOX_BLOB_CONNECTION_STRING }}
         envkey_HA_URL: "https://www.helloasso-sandbox.com"
-        envkey_HA_IPS: ${{ vars.SANDBOX_HA_IPS }}
         envkey_HA_AUTH_URL: "https://auth.helloasso-sandbox.com"
         envkey_API_AUTH_URL: "https://api.helloasso-sandbox.com/oauth2/token"
         envkey_API_URL: "https://api.helloasso-sandbox.com/v5"
         envkey_CLIENT_ID: ${{ secrets.SANDBOX_CLIENT_ID }}
         envkey_CLIENT_SECRET: ${{ secrets.SANDBOX_CLIENT_SECRET }}
-        envkey_ENCRYPTION_KEY: ${{ secrets.SANDBOX_ENCRYPTION_KEY }}
         envkey_WEBSITE_DOMAIN: ${{ vars.SANDBOX_WEBSITE_DOMAIN }}
         envkey_MANDRILL_API: ${{ secrets.SANDBOX_MANDRILL_API }}
+        envkey_API_KEY: ${{ secrets.SANDBOX_API_KEY }}
         file_name: .env
 
     - name: Tar
@@ -73,4 +72,8 @@ jobs:
     - name: Extract
       run : |
         sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz -C twitch-widget-sandbox && rm artifact.tar.gz"
+
+    - name: Launch sql migrations
+      run : |
+        sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www/twitch-widget-sandbox && php migrations/run.php" 
           

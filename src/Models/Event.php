@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-class User
+class Event
 {
     public $id;
-    public $email;
-    public $password;
-    public $role;
-    public $reset_token;
+    public $guid;
+    public $title;
     public $creation_date;
     public $last_update;
+    public $admin;
 }

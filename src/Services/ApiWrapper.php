@@ -206,16 +206,13 @@ class ApiWrapper
         return $responseData;
     }
 
-    private function getDonationFormOrders($organizationSlug, $donationSlug, $accessToken, $continuationToken = null, $from = null)
+    private function getDonationFormOrders($organizationSlug, $donationSlug, $accessToken, $continuationToken = null)
     {
         $curl = curl_init();
 
         $url = $this->apiUrl . '/organizations/' . $organizationSlug . '/forms/donation/' . $donationSlug . '/orders?withDetails=true&sortOrder=asc';
         if ($continuationToken) {
             $url .= '&continuationToken=' . $continuationToken;
-        }
-        if ($from) {
-            $url .= '&from=' . $from;
         }
 
         curl_setopt_array($curl, array(
@@ -239,7 +236,7 @@ class ApiWrapper
         return $response_data;
     }
 
-    public function getAllOrders($organizationSlug, $formSlug, $currentAmount = 0, $continuationToken = null, $from = null)
+    public function getAllOrders($organizationSlug, $formSlug, $currentAmount = 0, $continuationToken = null)
     {
         $previousToken = '';
         $donations = [];
@@ -257,8 +254,7 @@ class ApiWrapper
                 $organizationSlug,
                 $formSlug,
                 $organizationAccessToken->access_token,
-                $continuationToken,
-                $from
+                $continuationToken
             );
 
             if (!isset($formOrdersData['data'])) {

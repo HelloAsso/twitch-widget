@@ -22,14 +22,12 @@ function processAlertQueue() {
     var container = document.querySelector('.widget-alert-box');
     container.innerHTML = '';
 
-    // Afficher l'image
     var img = document.createElement('img');
     img.src = window.image;
     img.style.maxWidth = '100%';
     img.classList.add('fade');
     container.appendChild(img);
 
-    // Afficher le message template
     let eur = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: 'EUR',
@@ -41,7 +39,6 @@ function processAlertQueue() {
     container.appendChild(messageTemplate);
     var audio = new Audio(window.sound);
 
-    // Wait to hide display between alert
     setTimeout(function () {
         img.classList.add('show');
         messageTemplate.classList.add('show');
@@ -61,41 +58,15 @@ function processAlertQueue() {
     }, window.alert_duration);
 }
 
-const options = {
-    separator: ' ',
-    separator: ' ',
-    decimal: ',',
-    suffix: ' €',
-};
-var counterback = new countUp.CountUp('back-goal-current', window.currentAmount, options);
-var counterfront = new countUp.CountUp('front-goal-current', window.currentAmount, options);
-
-function updateDonationBar() {
-    const currentAmountUnit = window.currentAmount / 100;
-    const percentage = Math.min(100, (currentAmountUnit / window.goalAmount) * 100);
-    counterback.update(currentAmountUnit);
-    counterfront.update(currentAmountUnit);
-    document.querySelector('div.front').style["-webkit-clip-path"] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
-}
-
-function fetchDonation() {
+function fetch() {
     const request = new XMLHttpRequest()
-    request.open("GET", '/widget/' + window.charityStreamId + '/fetchDonation?a=0' +
-        (window.continuationToken ? ('&continuationToken=' + window.continuationToken) : '') +
-        (window.currentAmount ? ('&currentAmount=' + window.currentAmount) : '') +
-        (window.from ? ('&from=' + window.from) : ''), true)
+    request.open("GET", '/widget-stream-alert/' + window.charityStreamId + '/fetch', true)
     request.onload = () => {
         if (request.status === 200) {
             const json = JSON.parse(request.response);
-            window.currentAmount = json.amount;
-            window.continuationToken = json.continuationToken;
-
-            if (document.querySelector('.progress'))
-                updateDonationBar();
-            if (document.querySelector('.widget-alert-box') && json.donations && json.donations.length > 0)
-                json.donations.forEach(donation => {
-                    displayAlertBox(donation.pseudo, donation.message, donation.amount);
-                });
+            json.donations.forEach(donation => {
+                displayAlertBox(donation.pseudo, donation.message, donation.amount);
+            });
         }
         else {
             console.error('Erreur lors de la récupération des données de donation:', request.response);

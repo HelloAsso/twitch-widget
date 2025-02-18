@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="dark">
+
+	<head>
+		<meta charset="UTF-8">
+		<title>Administration générale</title>
+		<link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+	</head>
+
+	<body>
+		<div class="modal fade" id="createEventModal" tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Créer un nouveau Charity Event</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form action="/admin/event" method="POST">
+							<div class="mb-3">
+								<label for="owner_email" class="form-label">Email</label>
+								<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+							</div>
+							<button type="submit" class="btn btn-success" name="create_charity_event">Créer</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="modal fade" id="createStreamModal" tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Créer un nouveau Charity Stream</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form action="/admin/stream" method="POST">
+							{% if events %}
+								<div class="mb-3">
+									<label for="parent_event" class="form-label">Évènement parent</label>
+									<select class="form-control" id="parent_event" name="parent_event">
+										<option></option>
+										{% for event in events %}
+											<option value="{{ event.id }}">{{ event.title }}</option>
+										{% endfor %}
+									</select>
+								</div>
+								<div class="mb-3 form-check form-switch">
+									<input class="form-check-input" type="checkbox" role="switch" id="parent_style" name="parent_style">
+									<label for="parent_style" class="form-check-label">Appliquer le même style ?</label>
+								</div>
+							{% endif %}
+							<div class="mb-3">
+								<label for="owner_email" class="form-label">Email</label>
+								<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="organization_id" class="form-label">Slug association</label>
+								<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="form_slug" class="form-label">Slug formulaire</label>
+								<input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+							</div>
+							<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="container">
+			<h1 class="my-4 text-center">Administration générale</h1>
+
+			<div class="row my-4">
+				<div class="col-10">
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+						Ajouter un évènement 👐
+					</button>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+						Ajouter un stream 🎮
+					</button>
+				</div>
+				<div class="col-2 text-end">
+					<a href="/logout" class="btn btn-secondary mb-4">
+						<i data-feather="log-in"></i>
+						<span>Déconnexion</span>
+					</a>
+				</div>
+			</div>
+
+			<h3>Liste des Charity Events</h3>
+			<table class="table table-bordered table-striped">
+				<thead class="thead-dark">
+					<tr>
+						<th>Id</th>
+						<th>Guid</th>
+						<th>Titre</th>
+						<th>Admin</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for event in events %}
+						<tr>
+							<td>{{ event.id | e }}</td>
+							<td>{{ event.guid | e }}</td>
+							<td>{{ event.title | e }}</td>
+							<td>{{ event.admin | e }}</td>
+							<td class="d-flex justify-content-evenly">
+								<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<form action="/admin/event/{{ event.guid }}/delete" method="POST">
+									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+								</form>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+
+			<h3>Liste des Charity Streams</h3>
+			<table class="table table-bordered table-striped">
+				<thead class="thead-dark">
+					<tr>
+						<th>ID</th>
+						<th>GUID</th>
+						<th>Titre</th>
+						<th>Admin</th>
+						<th>Slug formuaire</th>
+						<th>Slug association</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for stream in streams %}
+						<tr>
+							<td>{{ stream.id | e }}</td>
+							<td>{{ stream.guid | e }}</td>
+							<td>{{ stream.title | e }}</td>
+							<td>{{ stream.admin | e }}</td>
+							<td>{{ stream.form_slug | e }}</td>
+							<td>{{ stream.organization_slug | e }}</td>
+							<td class="d-flex justify-content-evenly">
+								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
+								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+								</form>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</body>
+
+	{% if messages['error'] %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Erreur</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					{{ messages['error'][0] }}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if messages['success'] %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Ok</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					{{ messages['success'][0] }}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+const tooltipList = [... tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
+
+const toastLiveExample = document.getElementById('liveToast')
+if (toastLiveExample) {
+const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample)
+toastBootstrap.show()
+}
+
+function confirmDelete(event) {
+if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
+event.preventDefault();
+}
+}
+	</script>
+</html>

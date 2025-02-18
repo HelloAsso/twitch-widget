@@ -1,96 +1,119 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-bs-theme="dark">
 
-<head>
-    <meta charset="UTF-8">
-    <title>Administration des Charity Streams</title>
-    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
-</head>
+	<head>
+		<meta charset="UTF-8">
+		<title>Administration des Charity Streams</title>
+		<link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+	</head>
 
-<body class="bg-light">
-    <div class="container">
-        <h1 class="my-4 text-center">Administration des Charity Streams</h1>
-        <div class="my-4 p-4 bg-white rounded shadow-sm">
-            <h3>Créer un nouveau Charity Stream</h3>
-            <form action="/admin/new" method="POST">
-                <div class="mb-3">
-                    <label for="owner_email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="organization_id" class="form-label">Slug association</label>
-                    <input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="form_slug" class="form-label">Slug formulaire</label>
-                    <input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="title" class="form-label">Titre</label>
-                    <input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
-                </div>
-                <button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
-            </form>
-        </div>
+	<body>
+		<div class="modal fade" id="createStreamModal" tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Créer un nouveau Charity Stream</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form action="/admin/stream" method="POST">
+							{% if events %}
+								<div class="mb-3">
+									<label for="parent_event" class="form-label">Évènement parent</label>
+									<select class="form-control" id="parent_event" name="parent_event">
+										<option></option>
+										{% for event in events %}
+											<option value="{{ event.id }}">{{ event.title }}</option>
+										{% endfor %}
+									</select>
+								</div>
+							{% endif %}
+							<div class="mb-3">
+								<label for="owner_email" class="form-label">Email</label>
+								<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="organization_id" class="form-label">Slug association</label>
+								<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="form_slug" class="form-label">Slug formulaire</label>
+								<input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
+							</div>
+							<div class="mb-3">
+								<label for="title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+							</div>
+							<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="container">
+			<h1 class="my-4 text-center">Administration des Charity Streams</h1>
 
-        <table class="table table-bordered table-striped">
-            <thead class="thead-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>GUID</th>
-                    <th>Email</th>
-                    <th>Mot de passe<br/><i>(apparait uniquement lors de la création ou de la regénération, notez-le bien)</i></th>
-                    <th>Titre</th>
-                    <th>Slug formuaire</th>
-                    <th>Slug association</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stream in streams %}
-                    <tr>
-                        <td>{{ stream['id'] | e }}</td>
-                        <td>{{ bin2hex(stream['guid']) | e }}</td>
-                        <td>{{ stream['owner_email'] | e }}</td>
-                        {% if passwordGuid == bin2hex(stream['guid']) %}
-                            <td>{{ password }}</td>
-                        {% else %}
-                            <td>
-                                <form action="/admin/{{ bin2hex(stream['guid']) }}/refresh" method="POST">
-                                    <input type="hidden" name="email" value="{{ stream['owner_email'] }}"/>
-                                    <button type="submit" class="btn btn-warning" name="refresh_password">Regénérer</button>
-                                </form>
-                            </td>
-                        {% endif %}
-                        <td>{{ stream['title'] | e }}</td>
-                        <td>{{ stream['form_slug'] | e }}</td>
-                        <td>{{ stream['organization_slug'] | e }}</td>
-                        <td>
-                            <a href="/admin/{{ bin2hex(stream['guid']) }}/edit"
-                                class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-                            <a href="/redirect_auth_page?organizationSlug={{ stream['organization_slug'] }}"
-                                class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-                            <form action="/admin/{{ bin2hex(stream['guid']) }}/delete" method="POST">
-                                <button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+			<div class="row my-4">
+				<div class="col-10">
+					{% if events %}
+						<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+							Ajouter un stream 🎮
+						</button>
+					{% endif %}
+				</div>
+				<div class="col-2 text-end">
+					<a href="/logout" class="btn btn-secondary mb-4">
+						<i data-feather="log-in"></i>
+						<span>Déconnexion</span>
+					</a>
+				</div>
+			</div>
 
-    <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+			<table class="table table-bordered table-striped">
+				<thead class="thead-dark">
+					<tr>
+						<th>Id</th>
+						<th>Guid</th>
+						<th>Titre</th>
+						<th>Admin</th>
+						<th>Slug formuaire</th>
+						<th>Slug association</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for stream in streams %}
+						<tr>
+							<td>{{ stream.id | e }}</td>
+							<td>{{ stream.guid | e }}</td>
+							<td>{{ stream.title | e }}</td>
+							<td>{{ stream.admin | e }}</td>
+							<td>{{ stream.form_slug | e }}</td>
+							<td>{{ stream.organization_slug | e }}</td>
+							<td class="d-flex justify-content-evenly">
+								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
+								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+								</form>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
 
-        function confirmDelete(event) {
-            if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
-                event.preventDefault();
-            }
-        }
-    </script>
-</body>
+		<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+		<script>
+			const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+const tooltipList = [... tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
+function confirmDelete(event) {
+if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
+event.preventDefault();
+}
+}
+		</script>
+	</body>
 
 </html>
