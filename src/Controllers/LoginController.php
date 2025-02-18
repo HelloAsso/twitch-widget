@@ -34,25 +34,20 @@ class LoginController
     public function login(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
-
         $email = $data['email'] ?? '';
         $password = $data['password'] ?? '';
-        $user = $this->userRepository->selectUser($email);
+        $user = $this->userRepository->select($email);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         if ($user && password_verify($password, $user->password)) {
             $_SESSION['user'] = $user;
-
-            $charityStreams = $this->streamRepository->getCharityStreamByEmail($user->email);
-
-            $url = $routeParser->urlFor('app_stream_edit', ["id" => bin2hex($charityStreams[0]['guid'])]);
-            return $response->withHeader('Location', $url)->withStatus(302);
+            $url = $routeParser->urlFor('app_admin_index');
         } else {
             $this->messages->addMessage('login_failed', true);
             $url = $routeParser->urlFor('app_index');
-            return $response->withHeader('Location', $url)->withStatus(302);
         }
+        return $response->withHeader('Location', $url)->withStatus(302);
     }
 
     public function forgotPassword(Request $request, Response $response): Response
@@ -60,17 +55,20 @@ class LoginController
         $data = $request->getParsedBody();
 
         $email = $data['email'] ?? '';
-        $user = $this->userRepository->selectUser($email);
+        $user = $this->userRepository->select($email);
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         if ($user) {
             $user = $this->userRepository->insertResetToken($user);
+            $url = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
             $this->mailchimp->messages->send([
                 "message" => [
                     "from_email" => "contact@helloasso.io",
                     "from_name" => "HelloAsso",
-                    "subject" => "mot de passe oublié",
-                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"" . $_SERVER['WEBSITE_DOMAIN'] . "/reset_password/$user->reset_token\">cette page</a><br/>Ou en suivant ce lien " . $_SERVER['WEBSITE_DOMAIN'] . "/reset_password/$user->reset_token</p>",
+                    "subject" => "Mot de passe oublié",
+                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"" . $url . "\">cette page</a><br/>Ou en suivant ce lien " . $url . "</p>",
                     "to" => [
                         [
                             "email" => $user->email
@@ -80,7 +78,6 @@ class LoginController
             ]);
         }
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $this->messages->addMessage('mail_sent', true);
         $url = $routeParser->urlFor('app_index');
         return $response->withHeader('Location', $url)->withStatus(302);
@@ -94,12 +91,12 @@ class LoginController
         $passwordRepeat = $data['passwordRepeat'] ?? '';
         $token = $data['token'] ?? '';
 
-        $user = $this->userRepository->selectUserByToken($token);
+        $user = $this->userRepository->selectByToken($token);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         if ($user && $password && $passwordRepeat && $password == $passwordRepeat) {
-            $this->userRepository->updateUserPassword($user, $password);
+            $this->userRepository->updatePassword($user, $password);
             $this->messages->addMessage('password_reset', true);
             $url = $routeParser->urlFor('app_index');
         } else {

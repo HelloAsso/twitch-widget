@@ -8,6 +8,7 @@ use App\Repositories\UserRepository;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
+use Slim\Routing\RouteContext;
 use Slim\Views\Twig;
 
 class ApiController
@@ -34,15 +35,19 @@ class ApiController
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
-        $guid = bin2hex(random_bytes(16));
-
-        $this->streamRepository->createCharityStreamDB($guid, $ownerEmail, $formSlug, $organizationSlug, $title);
-        $user = $this->userRepository->insertUser($ownerEmail);
+        $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title);
+        $user = $this->userRepository->select($ownerEmail);
+        if ($user == null) {
+            $user = $this->userRepository->insert($ownerEmail);
+        }
+        $this->userRepository->insertRight($user, $stream, null);
         $this->userRepository->insertResetToken($user);
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
             "status" => "ok",
-            "reset_password_url" => $_SERVER['WEBSITE_DOMAIN'] . "/reset_password/$user->reset_token"
+            "reset_password_url" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token])
         ];
 
         $response->getBody()->write(json_encode($data));

@@ -1,44 +1,52 @@
 <!DOCTYPE html>
 <html lang="fr">
 
-<head>
-    <meta charset="UTF-8">
-    <title>Donation Goal Widget</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+	<head>
+		<meta charset="UTF-8">
+		<title>Donation Goal Widget</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/css/main.min.css">
-</head>
+		<link rel="stylesheet" href="/css/main.min.css">
+	</head>
 
-<body>
-    <div class="progress">
-      <div class="back" style="background:{{ donationGoalWidget['backgroundColor'] }};color:{{ donationGoalWidget['textColorMain'] }}">
-        <p id="back-goal-current">{{ currentAmount / 100 }} €</p>
-        <p id="back-title">{{ donationGoalWidget['textContent'] }}</p>
-        <p id="back-goal-total">{{ donationGoalWidget['goal'] }} €</p>
-      </div>
-      <div class="front" style="background:{{ donationGoalWidget['barColor'] }};color:{{ donationGoalWidget['textColorAlt'] }}">
-        <p id="front-goal-current">{{ currentAmount / 100 }} €</p>
-        <p id="front-title">{{ donationGoalWidget['textContent'] }}</p>
-        <p id="front-goal-total">{{ donationGoalWidget['goal'] }} €</p>
-      </div>
-    </div>
+	<body>
+		<div class="progress">
+			<div class="back" style="background:{{ donationGoalWidget.backgroundColor }};color:{{ donationGoalWidget.textColorMain }}">
+				<p id="back-goal-current">{{ currentAmount / 100 }}
+					€</p>
+				<p id="back-title">{{ donationGoalWidget.textContent }}</p>
+				<p id="back-goal-total">{{ donationGoalWidget.goal }}
+					€</p>
+			</div>
+			<div class="front" style="background:{{ donationGoalWidget.barColor }};color:{{ donationGoalWidget.textColorAlt }}">
+				<p id="front-goal-current">{{ currentAmount / 100 }}
+					€</p>
+				<p id="front-title">{{ donationGoalWidget.textContent }}</p>
+				<p id="front-goal-total">{{ donationGoalWidget.goal }}
+					€</p>
+			</div>
+		</div>
 
-    <script>
-        var goalAmount = {{ donationGoalWidget['goal'] ?? 0 }};
-        var charityStreamId = '{{ bin2hex(donationGoalWidget['charity_stream_guid']) }}';
-        var currentAmount = {{ currentAmount }};
-        var continuationToken = '{{ continuationToken }}';
-    </script>
+		<script>
+			var goalAmount = {{ donationGoalWidget.goal ?? 0 }};
+var charityStreamId = '{{ donationGoalWidget.charity_stream_guid }}';
+var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
+var currentAmount = {{ currentAmount }};
+		</script>
 
-    <script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
-    <script src="/js/main.min.js"></script>
+		<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
+		{% if stream %}
+			<script src="/js/stream.min.js"></script>
+		{% else %}
+			<script src="/js/event.min.js"></script>
+		{% endif %}
 
-    <script>
-        updateDonationBar();
-        setInterval(fetchDonation, 10000);
-    </script>
-</body>
+		<script>
+			updateDonationBar();
+setInterval(fetch, 10000);
+		</script>
+	</body>
 
-</html>
+</html></html></body></html>

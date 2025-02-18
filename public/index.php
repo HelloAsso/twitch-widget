@@ -5,17 +5,19 @@ require __DIR__ . '/../vendor/autoload.php';
 use App\Controllers\ApiController;
 use App\Controllers\HomeController;
 use App\Controllers\LoginController;
-use App\Controllers\StreamController;
+use App\Controllers\AdminController;
 use App\Controllers\WidgetController;
+use App\Middlewares\AuthAdminMiddleware;
 use App\Middlewares\AuthApiMiddleware;
 use App\Middlewares\AuthMiddleware;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
+use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
-use App\Twig\CustomTwigExtension;
 use DI\Container;
 use MailchimpTransactional\ApiClient;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
@@ -54,12 +56,20 @@ $container->set(AuthorizationCodeRepository::class, function ($c) {
     return new AuthorizationCodeRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
+$container->set(EventRepository::class, function ($c) {
+    return new EventRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
 $container->set(StreamRepository::class, function ($c) {
     return new StreamRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
 $container->set(UserRepository::class, function ($c) {
     return new UserRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
+$container->set(WidgetRepository::class, function ($c) {
+    return new WidgetRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
 $container->set(ApiWrapper::class, function ($c) {
@@ -76,12 +86,12 @@ $container->set(ApiWrapper::class, function ($c) {
     );
 });
 
-$container->set(FileManager::class, function ($c) {
+$container->set(FileManager::class, function () {
     $storage = BlobRestProxy::createBlobService($_SERVER['BLOB_CONNECTION_STRING']);
     return new FileManager($storage, $_SERVER['BLOB_URL']);
 });
 
-$container->set(ApiClient::class, function ($c) {
+$container->set(ApiClient::class, function () {
     $mailchimp = new \MailchimpTransactional\ApiClient();
     $mailchimp->setApiKey($_SERVER['MANDRILL_API']);
     return $mailchimp;
@@ -90,7 +100,6 @@ $container->set(ApiClient::class, function ($c) {
 $container->set(Twig::class, function (): Twig {
     $twig = Twig::create(__DIR__ . '/../src/views', ['cache' => false]);
     $twig->addExtension(new IntlExtension());
-    $twig->addExtension(new CustomTwigExtension());
     return $twig;
 });
 
@@ -110,24 +119,30 @@ $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setNam
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
 
 $app->post('/login', [LoginController::class, 'login'])->setName('app_login');
-$app->get('/logout', [LoginController::class, 'logout'])->setName('app_logout');
+$app->get('/logout', [LoginController::class, 'logout'])->add(new AuthMiddleware())->setName('app_logout');
 $app->post('/forgot_password', [LoginController::class, 'forgotPassword'])->setName('app_forgot_password_post');
 $app->post('/reset_password', [LoginController::class, 'resetPassword'])->setName('app_reset_password_post');
 $app->get('/redirect_auth_page', [LoginController::class, 'redirectAuthPage'])->setName('app_redirect_auth_page');
 $app->get('/refresh_token', [LoginController::class, 'refreshToken'])->setName('app_refresh_token');
 $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->setName('app_validate_auth_page');
 
-$app->get('/admin', [StreamController::class, 'index'])->add(new AuthMiddleware())->setName('app_stream_index');
-$app->post('/admin/new', [StreamController::class, 'new'])->add(new AuthMiddleware())->setName('app_stream_new');
-$app->post('/admin/{id}/refresh', [StreamController::class, 'refreshPassword'])->add(new AuthMiddleware())->setName('app_stream_refresh');
-$app->post('/admin/{id}/delete', [StreamController::class, 'delete'])->add(new AuthMiddleware())->setName('app_stream_delete');
-$app->get('/admin/{id}/edit', [StreamController::class, 'edit'])->add(new AuthMiddleware())->setName('app_stream_edit');
-$app->post('/admin/{id}/edit', [StreamController::class, 'editPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
+$app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
+$app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthAdminMiddleware())->setName('app_event_new');
+$app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthAdminMiddleware())->setName('app_event_delete');
+$app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthAdminMiddleware())->setName('app_event_edit');
+$app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthAdminMiddleware())->setName('app_event_edit_post');
+$app->post('/admin/stream', [AdminController::class, 'newStream'])->add(new AuthMiddleware())->setName('app_stream_new');
+$app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
+$app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
+$app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
 
 $app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_stream_edit_post');
 
-$app->get('/widget/{id}/fetchDonation', [WidgetController::class, 'widgetFetchDonation'])->setName('app_stream_widget_fetch_donation');
-$app->get('/widget/{id}/alert', [WidgetController::class, 'widgetAlert'])->setName('app_stream_widget_alert');
-$app->get('/widget/{id}/donation', [WidgetController::class, 'widgetDonation'])->setName('app_stream_widget_donation');
+$app->get('/widget-stream-alert/{id}', [WidgetController::class, 'widgetAlert'])->setName('app_stream_widget_alert');
+$app->get('/widget-stream-alert/{id}/fetch', [WidgetController::class, 'widgetAlertFetch'])->setName('app_stream_widget_alert_fetch');
+$app->get('/widget-stream-donation/{id}', [WidgetController::class, 'widgetDonation'])->setName('app_stream_widget_donation');
+$app->get('/widget-stream-donation/{id}/fetch', [WidgetController::class, 'widgetDonationFetch'])->setName('app_stream_widget_donation_fetch');
+$app->get('/widget-event/{id}', [WidgetController::class, 'widgetEventDonation'])->setName('app_event_widget_donation');
+$app->get('/widget-event/{id}/fetch', [WidgetController::class, 'widgetEventDonationFetch'])->setName('app_event_widget_donation_fetch');
 
 $app->run();

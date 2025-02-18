@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Models\Event;
+use App\Models\Stream;
 use App\Models\User;
 use PDO;
 
@@ -12,7 +14,7 @@ class UserRepository
         private string $prefix
     ) {}
 
-    function insertUser($email): User
+    function insert($email): User
     {
         $password = bin2hex(random_bytes(15));
 
@@ -27,14 +29,28 @@ class UserRepository
         $user = new User();
         $user->id = $this->pdo->lastInsertId();
         $user->email = $email;
-        $user->password = $password;
 
         return $user;
     }
 
-    function selectUser($email): ?User
+    function insertRight(User $user, ?Stream $stream, ?Event $event)
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM ' . $this->prefix . 'users WHERE email = ?');
+        $query = 'INSERT INTO ' . $this->prefix . 'user_right (id_user, id_charity_event, id_charity_stream) 
+                VALUES (:id_user, :id_charity_event, :id_charity_stream)';
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute([
+            ':id_user' => $user->id,
+            ':id_charity_event' => $event ? $event->id : null,
+            ':id_charity_stream' => $stream ? $stream->id : null
+        ]);
+    }
+
+    function select($email): ?User
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT *
+            FROM ' . $this->prefix . 'users
+            WHERE email = ?');
         $stmt->execute([$email]);
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
@@ -43,7 +59,7 @@ class UserRepository
         return $user ?: null;
     }
 
-    function selectUserByToken($token): ?User
+    function selectByToken($token): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM ' . $this->prefix . 'users WHERE reset_token = ?');
         $stmt->execute([$token]);
@@ -72,7 +88,7 @@ class UserRepository
         return $user;
     }
 
-    function updateUserPassword(User $user, $password = null): User
+    function updatePassword(User $user, $password = null): User
     {
         if (!$password)
             $password = bin2hex(random_bytes(15));
@@ -87,12 +103,10 @@ class UserRepository
             ':password' => password_hash($password, PASSWORD_DEFAULT)
         ]);
 
-        $user->password = $password;
-
         return $user;
     }
 
-    function deleteUser($email)
+    function delete($email)
     {
         $query = 'DELETE FROM ' . $this->prefix . 'users
                 WHERE email = ?';
