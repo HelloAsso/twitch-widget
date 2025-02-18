@@ -75,4 +75,4 @@ jobs:
 
     - name: Launch sql migrations
       run : |
-        sshpass -p ${{ secrets.PROD_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd /home/socialgo/www/twitch-widget-sandbox && php migrations/run.php"     
+        sshpass -p ${{ secrets.PROD_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd /home/socialgo/www/twitch-widget && php migrations/run.php"     
