@@ -10,7 +10,6 @@ use DateInterval;
 use DateTime;
 use Exception;
 use GuzzleHttp\Client;
-use Psr\Log\LoggerInterface;
 
 use function OAuth\PKCE\generatePair;
 
@@ -21,7 +20,6 @@ class ApiWrapper
     public function __construct(
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
-        private LoggerInterface $logger,
         private string $haAuthUrl,
         private string $apiUrl,
         private string $apiAuthUrl,

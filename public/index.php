@@ -76,7 +76,6 @@ $container->set(ApiWrapper::class, function ($c) {
     return new ApiWrapper(
         $c->get(AccessTokenRepository::class),
         $c->get(AuthorizationCodeRepository::class),
-        $c->get(Logger::class),
         $_SERVER['HA_AUTH_URL'],
         $_SERVER['API_URL'],
         $_SERVER['API_AUTH_URL'],
@@ -112,7 +111,7 @@ $app = AppFactory::createFromContainer($container);
 if (!session_id())
     @session_start();
 
-$errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
+$errorMiddleware = $app->addErrorMiddleware(false, false, false, $container->get(Logger::class));
 
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
@@ -123,7 +122,6 @@ $app->get('/logout', [LoginController::class, 'logout'])->add(new AuthMiddleware
 $app->post('/forgot_password', [LoginController::class, 'forgotPassword'])->setName('app_forgot_password_post');
 $app->post('/reset_password', [LoginController::class, 'resetPassword'])->setName('app_reset_password_post');
 $app->get('/redirect_auth_page', [LoginController::class, 'redirectAuthPage'])->setName('app_redirect_auth_page');
-$app->get('/refresh_token', [LoginController::class, 'refreshToken'])->setName('app_refresh_token');
 $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->setName('app_validate_auth_page');
 
 $app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
