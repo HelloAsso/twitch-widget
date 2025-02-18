@@ -150,20 +150,6 @@ class LoginController
         return $response;
     }
 
-    public function refreshToken(Request $request, Response $response): Response
-    {
-        $tokens = $this->accessTokenRepository->getAccessTokensToRefresh();
-
-        $response->getBody()->write(count($tokens) . " tokens to refresh<br/>");
-
-        foreach ($tokens as $token) {
-            $this->apiWrapper->getAccessTokensAndRefreshIfNecessary($token->organization_slug);
-            $response->getBody()->write("Token for " . $token->organization_slug . " refreshed<br/>");
-        }
-
-        return $response;
-    }
-
     public function validateAuthPage(Request $request, Response $response): Response
     {
         $error = $request->getQueryParams()['error'] ?? null;
