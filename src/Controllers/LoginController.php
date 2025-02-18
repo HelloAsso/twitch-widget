@@ -204,8 +204,7 @@ class LoginController
                     "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . $_SERVER['WEBSITE_DOMAIN'] . "</p>",
                     "to" => [
                         [
-                            //"email" => "helloasso.stream@helloasso.org"
-                            "email" => "eddy@helloasso.org"
+                            "email" => "helloasso.stream@helloasso.org"
                         ]
                     ],
                 ]
