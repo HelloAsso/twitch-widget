@@ -33,7 +33,7 @@
 			var goalAmount = {{ donationGoalWidget.goal ?? 0 }};
 var charityStreamId = '{{ donationGoalWidget.charity_stream_guid }}';
 var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
-var currentAmount = {{ currentAmount }};
+var currentAmount = {{ currentAmount ?? 0 }};
 		</script>
 
 		<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
