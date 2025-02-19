@@ -127,8 +127,8 @@ $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->
 $app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
 $app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthAdminMiddleware())->setName('app_event_new');
 $app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthAdminMiddleware())->setName('app_event_delete');
-$app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthAdminMiddleware())->setName('app_event_edit');
-$app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthAdminMiddleware())->setName('app_event_edit_post');
+$app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');
+$app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthMiddleware())->setName('app_event_edit_post');
 $app->post('/admin/stream', [AdminController::class, 'newStream'])->add(new AuthMiddleware())->setName('app_stream_new');
 $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');

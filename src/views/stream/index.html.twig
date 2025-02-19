@@ -94,9 +94,6 @@
 								<td>{{ event.admin | e }}</td>
 								<td class="d-flex justify-content-evenly">
 									<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-									<form action="/admin/event/{{ event.guid }}/delete" method="POST">
-										<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-									</form>
 								</td>
 							</tr>
 						{% endfor %}
@@ -104,6 +101,7 @@
 				</table>
 			{% endif %}
 
+			<h3>Liste des Charity Streams</h3>
 			<table class="table table-bordered table-striped">
 				<thead class="thead-dark">
 					<tr>
@@ -128,9 +126,11 @@
 							<td class="d-flex justify-content-evenly">
 								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
 								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
-									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-								</form>
+								{% if events %}
+									<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+										<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+									</form>
+								{% endif %}
 							</td>
 						</tr>
 					{% endfor %}
