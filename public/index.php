@@ -111,7 +111,7 @@ $app = AppFactory::createFromContainer($container);
 if (!session_id())
     @session_start();
 
-$errorMiddleware = $app->addErrorMiddleware(false, false, false, $container->get(Logger::class));
+$errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));
 
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
