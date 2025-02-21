@@ -38,8 +38,7 @@ class AccessTokenRepository
     {
         $stmt = $this->pdo->prepare('SELECT * 
             FROM ' . $this->prefix . 'access_token_partner_organization 
-            WHERE organization_slug IS NOT NULL
-            AND refresh_token_expires_at > now()
+            WHERE refresh_token_expires_at > now()
             AND refresh_token_expires_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR);');
         $stmt->execute();
 
