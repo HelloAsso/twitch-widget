@@ -78,7 +78,7 @@ class WidgetController
             );
 
             $streamCache['amount'] = $result['amount'];
-            $streamCache['continuation_token'] = $result['continuationToken'];
+            $streamCache['continuation_token'] = $result['continuation_token'];
 
             $totalAmount += $result['amount'];
         }
@@ -145,7 +145,7 @@ class WidgetController
                 );
 
                 $streamCache['amount'] = $result['amount'];
-                $streamCache['continuation_token'] = $result['continuationToken'];
+                $streamCache['continuation_token'] = $result['continuation_token'];
 
                 $totalAmount += $result['amount'];
             }
@@ -196,12 +196,12 @@ class WidgetController
             $charityStream->organization_slug,
             $charityStream->form_slug,
             0,
-            $cacheData->continuation_token,
+            $cacheData["continuation_token"],
         );
 
-        if ($cacheData->continuation_token != $result['continuationToken']) {
+        if ($cacheData["continuation_token"] != $result['continuation_token']) {
             $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                "continuation_token" => $result['continuationToken']
+                "continuation_token" => $result['continuation_token']
             ]);
         }
 
@@ -235,12 +235,12 @@ class WidgetController
                 $charityStream->organization_slug,
                 $charityStream->form_slug,
                 0,
-                $cacheData->continuation_token
+                $cacheData['continuation_token']
             );
 
-            if ($cacheData->continuation_token != $result['continuationToken']) {
+            if ($cacheData['continuation_token'] != $result['continuation_token']) {
                 $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                    "continuation_token" => $result['continuationToken']
+                    "continuation_token" => $result['continuation_token']
                 ]);
             }
 
@@ -280,14 +280,14 @@ class WidgetController
         $result = $this->apiWrapper->getAllOrders(
             $charityStream->organization_slug,
             $charityStream->form_slug,
-            $cacheData->amount,
-            $cacheData->continuation_token,
+            $cacheData['amount'],
+            $cacheData['continuation_token'],
         );
 
-        if ($cacheData->continuation_token != $result['continuationToken']) {
+        if ($cacheData['continuation_token'] != $result['continuation_token']) {
             $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                 "amount" => $result['amount'],
-                "continuation_token" => $result['continuationToken']
+                "continuation_token" => $result['continuation_token']
             ]);
         }
 
@@ -320,14 +320,14 @@ class WidgetController
             $result = $this->apiWrapper->getAllOrders(
                 $charityStream->organization_slug,
                 $charityStream->form_slug,
-                $cacheData->amount,
-                $cacheData->continuation_token
+                $cacheData['amount'],
+                $cacheData['continuation_token']
             );
 
-            if ($cacheData->continuation_token != $result['continuationToken']) {
+            if ($cacheData['continuation_token'] != $result['continuation_token']) {
                 $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                     "amount" => $result['amount'],
-                    "continuation_token" => $result['continuationToken']
+                    "continuation_token" => $result['continuation_token']
                 ]);
             }
 

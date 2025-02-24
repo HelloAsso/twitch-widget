@@ -150,13 +150,13 @@
 
 		<script>
 			var image = '{{ alertBoxWidgetPictureUrl }}';
-var message_template = '{{ alertBoxWidget.message_template }}';
+var message_template = '{{ alertBoxWidget.message_template | raw }}';
 var sound = '{{ alertBoxWidgetSoundUrl }}';
 var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
 var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
 		</script>
 
-		<script src="/js/main.min.js"></script>
+		<script src="/js/admin.min.js"></script>
 		<script src="/js/alert.min.js"></script>
 		<script src="/js/stream.min.js"></script>
 	</body>

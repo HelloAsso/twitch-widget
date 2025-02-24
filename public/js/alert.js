@@ -22,11 +22,23 @@ function processAlertQueue() {
     var container = document.querySelector('.widget-alert-box');
     container.innerHTML = '';
 
-    var img = document.createElement('img');
-    img.src = window.image;
-    img.style.maxWidth = '100%';
-    img.classList.add('fade');
-    container.appendChild(img);
+    let mediaElement;
+    if (window.image.endsWith('.mp4')) {
+        mediaElement = document.createElement('video');
+        mediaElement.src = window.image;
+        mediaElement.autoplay = true;
+        mediaElement.loop = true;
+        mediaElement.muted = false;
+        mediaElement.style.maxWidth = '100%';
+        mediaElement.classList.add('fade');
+    } else {
+        mediaElement = document.createElement('img');
+        mediaElement.src = window.image;
+        mediaElement.style.maxWidth = '100%';
+        mediaElement.classList.add('fade');
+    }
+
+    container.appendChild(mediaElement);
 
     let eur = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -40,7 +52,7 @@ function processAlertQueue() {
     var audio = new Audio(window.sound);
 
     setTimeout(function () {
-        img.classList.add('show');
+        mediaElement.classList.add('show');
         messageTemplate.classList.add('show');
 
         audio.volume = window.sound_volume;
@@ -48,7 +60,7 @@ function processAlertQueue() {
     }, 100)
 
     setTimeout(function () {
-        img.classList.remove('show');
+        mediaElement.classList.remove('show');
         messageTemplate.classList.remove('show');
         audio.pause();
         audio.currentTime = 0;

@@ -296,7 +296,7 @@ class ApiWrapper
         return [
             'amount' => $currentAmount,
             'donations' => $donations,
-            'continuationToken' => $continuationToken
+            'continuation_token' => $continuationToken
         ];
     }
 }
