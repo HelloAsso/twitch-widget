@@ -13,17 +13,17 @@
 
 	<body>
 		<div class="progress">
-			<div class="back" style="background:{{ donationGoalWidget.backgroundColor }};color:{{ donationGoalWidget.textColorMain }}">
+			<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
 				<p id="back-goal-current">{{ currentAmount / 100 }}
 					€</p>
-				<p id="back-title">{{ donationGoalWidget.textContent }}</p>
+				<p id="back-title">{{ donationGoalWidget.text_content }}</p>
 				<p id="back-goal-total">{{ donationGoalWidget.goal }}
 					€</p>
 			</div>
-			<div class="front" style="background:{{ donationGoalWidget.barColor }};color:{{ donationGoalWidget.textColorAlt }}">
+			<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
 				<p id="front-goal-current">{{ currentAmount / 100 }}
 					€</p>
-				<p id="front-title">{{ donationGoalWidget.textContent }}</p>
+				<p id="front-title">{{ donationGoalWidget.text_content }}</p>
 				<p id="front-goal-total">{{ donationGoalWidget.goal }}
 					€</p>
 			</div>
