@@ -179,6 +179,8 @@ class LoginController
 
         if ($existingOrganizationToken == null) {                    
 
+            $this->accessTokenRepository->insert($token);
+            
             $this->mailchimp->messages->send([
                 "message" => [
                     "from_email" => "contact@helloasso.io",
