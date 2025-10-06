@@ -168,7 +168,7 @@ class LoginController
         $codeVerifier = $authorizationCodeData->code_verifier;
 
         $tokenDataGrantAuthorization = $this->apiWrapper->exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier);
-        $existingOrganizationToken = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary($tokenDataGrantAuthorization['organization_slug']);
+        $existingOrganizationToken = $this->accessTokenRepository->selectBySlug($tokenDataGrantAuthorization['organization_slug']);
 
         $token = new AccessToken();
         $token->access_token = $tokenDataGrantAuthorization['access_token'];
@@ -177,10 +177,7 @@ class LoginController
         $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
         $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
 
-        if ($existingOrganizationToken == null) {
-            $this->accessTokenRepository->insert($token);
-
-            $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
+        if ($existingOrganizationToken == null) {                    
 
             $this->mailchimp->messages->send([
                 "message" => [
@@ -195,9 +192,12 @@ class LoginController
                     ],
                 ]
             ]);
-        } else {
-            $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' été déjà lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
+        } else 
+        {
+            $this->accessTokenRepository->update($token);        
         }
+
+        $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
 
         return $response;
     }
