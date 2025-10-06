@@ -118,7 +118,7 @@ class ApiWrapper
                 return null;
             }
         } else {
-            if (new DateTime($tokenData->access_token_expires_at) < new DateTime()) {
+            if ($tokenData->access_token_expires_at < new DateTime()) {
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
                 return $tokenData;
             }
