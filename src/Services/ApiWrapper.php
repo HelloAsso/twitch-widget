@@ -127,13 +127,20 @@ class ApiWrapper
 
 
 
-        // TODO Add enforce datetime comparison format
- 
 
-            if ($tokenData->access_token_expires_at < new DateTime()) {
+            $expiry = new DateTime($tokenData->access_token_expires_at);
+            $now = new DateTime();
+ 
+            if ($expiry < $now) {
                 // log the error
+                $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
+                $this->apiLogger->info('Access token expiry time: ' . $expiry->format('Y-m-d H:i:s'));
                 $this->apiLogger->error('Access token expired for organization_slug: ' . $organization_slug);
+
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
+
+                // log token data    
+                $this->apiLogger->info('Token data after refresh: ' . json_encode($tokenData));         
 
                 return $tokenData;
             }
