@@ -1,21 +1,21 @@
-if (typeof countUp !== 'undefined' && countUp) {
+
+import { CountUp } from 'countup.js';
+import updateDonationBar from './utilities.js';
+let counterback;
+let counterfront;
+if (typeof CountUp !== 'undefined' && CountUp) {
     const options = {
         separator: ' ',
         separator: ' ',
         decimal: ',',
         suffix: ' €',
     };
-    var counterback = new countUp.CountUp('back-goal-current', window.currentAmount, options);
-    var counterfront = new countUp.CountUp('front-goal-current', window.currentAmount, options);
+    counterback = new CountUp('back-goal-current', window.currentAmount, options);
+    counterfront = new CountUp('front-goal-current', window.currentAmount, options);
 }
+updateDonationBar(counterback, counterfront);
+setInterval(fetch, 10000);
 
-function updateDonationBar() {
-    const currentAmountUnit = window.currentAmount / 100;
-    const percentage = Math.min(100, (currentAmountUnit / window.goalAmount) * 100);
-    counterback.update(currentAmountUnit);
-    counterfront.update(currentAmountUnit);
-    document.querySelector('div.front').style["-webkit-clip-path"] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
-}
 
 function fetch() {
     const request = new XMLHttpRequest()
@@ -24,7 +24,7 @@ function fetch() {
         if (request.status === 200) {
             const json = JSON.parse(request.response);
             window.currentAmount = json.amount;
-            updateDonationBar();
+            updateDonationBar(counterback, counterfront);
         }
         else {
             console.error('Erreur lors de la récupération des données de donation:', request.response);
@@ -32,4 +32,7 @@ function fetch() {
     }
 
     request.send()
+}
+export {
+    fetch
 }

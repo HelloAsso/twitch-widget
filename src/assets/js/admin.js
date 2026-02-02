@@ -1,4 +1,8 @@
+
+import { displayAlertBox } from './alert.js';
+updateDonationGoalPreview();
 function updateDonationGoalPreview() {
+    console.log('updateDonationGoalPreview called');
     var back = document.querySelector('.back');
     var front = document.querySelector('.front');
     var backTitle = document.getElementById('back-title');

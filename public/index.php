@@ -110,6 +110,33 @@ $container->set(ApiClient::class, function () {
 $container->set(Twig::class, function (): Twig {
     $twig = Twig::create(__DIR__ . '/../src/views', ['cache' => false]);
     $twig->addExtension(new IntlExtension());
+    // Charge manifest
+    $manifestPath = __DIR__ . '/dist/js/.vite/manifest.json';
+    if (file_exists($manifestPath)) {
+    $manifest = json_decode(file_get_contents($manifestPath), true);
+
+    // Pour l'entrée "app"
+    $appEntry = 'src/assets/js/app.js';
+
+    $appCss = $manifest[$appEntry]['css'][0] ?? null;
+    $appJs  = $manifest[$appEntry]['file'] ?? null;
+    $twig->getEnvironment()->addGlobal('appCss', $appCss);
+    $twig->getEnvironment()->addGlobal('appJs', $appJs);
+
+    // Tu peux passer TOUS les scripts dispos comme globals aussi, si besoin :
+    $entries = [];
+    foreach ($manifest as $entry) {
+        if (!empty($entry['isEntry']) && !empty($entry['file'])) {
+            $entries[$entry['name']] = [
+                'js'  => $entry['file'],
+                'css' => $entry['css'][0] ?? null,
+            ];
+        }
+    }
+    $twig->getEnvironment()->addGlobal('viteEntries', $entries);
+
+    }
+
     return $twig;
 });
 

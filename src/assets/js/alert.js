@@ -1,6 +1,6 @@
 var alertQueue = [];
 var isAlertActive = false;
-
+setInterval(fetch, 10000);
 function displayAlertBox(pseudo, message, amount) {
     message = message.substring(0, 255);
     alertQueue.push({ pseudo, message, amount });
@@ -86,4 +86,7 @@ function fetch() {
     }
 
     request.send()
+}
+export {
+    displayAlertBox
 }

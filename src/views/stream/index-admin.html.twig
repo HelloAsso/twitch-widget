@@ -187,17 +187,8 @@
 	{% endif %}
 {% endblock %}
 {% block scripts %}
-	<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
-		const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-		const tooltipList = [... tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 
-
-		const toastLiveExample = document.getElementById('liveToast')
-		if (toastLiveExample) {
-		const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample)
-		toastBootstrap.show()
-		}
 
 		function confirmDelete(event) {
 			if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {

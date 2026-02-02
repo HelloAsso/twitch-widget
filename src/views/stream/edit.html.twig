@@ -133,7 +133,13 @@
 		</div>
 {% endblock %}
 {% block scripts %}
-		<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	{% if viteEntries.admin.js %}
+	<script type="module" src="/dist/js/{{ viteEntries.admin.js }}"></script>
+	{% endif %}
+	
+	{# {% if viteEntries.stream.js %}
+	<script type="module" src="/dist/js/{{ viteEntries.stream.js }}"></script>
+	{% endif %} #}
 
 		<script>
 			var image = '{{ alertBoxWidgetPictureUrl }}';
@@ -143,8 +149,5 @@
 			var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
 		</script>
 
-		<script src="/js/admin.min.js"></script>
-		<script src="/js/alert.min.js"></script>
-		<script src="/js/stream.min.js"></script>
 
 {% endblock %}

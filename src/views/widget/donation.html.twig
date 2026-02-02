@@ -30,15 +30,17 @@
 		var currentAmount = {{ currentAmount ?? 0 }};
 	</script>
 
-	<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
 	{% if stream %}
-		<script src="/js/stream.min.js"></script>
+		{% if viteEntries.stream.js %}
+		<script type="module" src="/dist/js/{{ viteEntries.stream.js }}"></script>
+		{% endif %}
 	{% else %}
-		<script src="/js/event.min.js"></script>
+	{% if viteEntries.event.js %}
+		<script type="module" src="/dist/js/{{ viteEntries.event.js }}"></script>
+		{% endif %}
 	{% endif %}
 
-	<script>
-		updateDonationBar();
-		setInterval(fetch, 10000);
-	</script>
+
+	
+	
 {% endblock %}

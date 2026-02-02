@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import fs from 'fs';
+import { resolve } from 'path'
 
 const inputFiles = {};
 
@@ -14,15 +15,30 @@ fs.readdirSync('./src/assets/js/').forEach(file => {
 
 export default defineConfig({
     build: {
-        outDir: "./public/dist/js/",
+        outDir: resolve(__dirname, "public/dist/js/"),
         emptyOutDir: true,
+        manifest: true, // <= ajoute ceci
+
         rollupOptions: {
             input: inputFiles,
             output: {
                 entryFileNames: "[name].min.js",
                 chunkFileNames: "[name].[hash].min.js"
+
             }
         }
+    },
+    css: {
+        preprocessorOptions: {
+            scss: {
+                silenceDeprecations: [
+                    'import',
+                    'mixed-decls',
+                    'color-functions',
+                    'global-builtin',
+                ],
+            },
+        },
     },
     publicDir: false
 });

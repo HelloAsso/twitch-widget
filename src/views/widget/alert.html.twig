@@ -17,15 +17,16 @@
 			var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
 			var charityStreamId = '{{ alertBoxWidget.charity_stream_guid }}';
 		</script>
+	{% if viteEntries.alert.js %}
+		<script type="module" src="/dist/js/{{ viteEntries.alert.js }}"></script>
+	{% endif %}
+		{# <script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
+		<script src="/js/alert.min.js"></script> #}
 
-		<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
-		<script src="/js/alert.min.js"></script>
-
-		<script>
-			// test purpose
+		{# <script> #}
  {# displayAlertBox('test', 'super !', 1000); #}
 
-		setInterval(fetch, 10000);
-		</script>
+		{# setInterval(fetch, 10000); #}
+		{# </script> #}
 
 {% endblock %}

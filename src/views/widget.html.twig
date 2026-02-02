@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Titre par défaut{% endblock %}</title>
-<link rel="stylesheet" href="/css/main.min.css">
+   {% if appCss %}
+    <link rel="stylesheet" href="/dist/js/{{ appCss }}">
+    {% endif %}
+    {% if appJs %}
+    <script type="module" src="/dist/js/{{ appJs }}"></script>
+    {% endif %}
+
 
  {% block styles %}{% endblock %}
 </head>
