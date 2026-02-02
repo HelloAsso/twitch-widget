@@ -5,6 +5,11 @@
     "moment": "^2.30.1"
   },
   "scripts": {
-    "postinstall": "rm -rf public/node_modules && mv node_modules public/node_modules"
+    "postinstall": "rm -rf public/node_modules && mv node_modules public/node_modules",
+      "dev": "vite",
+      "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
   }
 }

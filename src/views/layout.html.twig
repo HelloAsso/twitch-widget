@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr"  data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Titre par défaut{% endblock %}</title>
+  <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+  		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/main.min.css">
+
+ {% block styles %}{% endblock %}
+</head>
+<body>
+	<style>
+	.front {
+		clip-path: inset(0 50% 0 0 round 999px);
+		-webkit-clip-path: inset(0 50% 0 0 round 999px);
+	}
+	</style>
+  {% block content %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>
