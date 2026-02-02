@@ -37,12 +37,17 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
 $container = new Container();
-
+$container->set('logger.api', function () {
+    $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
+    $logger = new Logger('api'); // le nom est ici !
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level));
+    return $logger;
+});
 $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $logger = new Logger('app');
     $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level)); 
+    // $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level)); 
     return $logger;
 });
 

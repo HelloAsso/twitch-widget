@@ -10,14 +10,17 @@ use DateInterval;
 use DateTime;
 use Exception;
 use GuzzleHttp\Client;
+use Monolog\Logger;
 
 use function OAuth\PKCE\generatePair;
 
 class ApiWrapper
 {
     private $client;
+    private Logger $apiLogger;
 
     public function __construct(
+
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
         private string $haAuthUrl,
@@ -27,7 +30,9 @@ class ApiWrapper
         private string $clientSecret,
         private string $webSiteDomain
     ) {
+        global $container;
         $this->client = new Client();
+        $this->apiLogger = $container->get('logger.api'); 
     }
 
     private function generateGlobalAccessToken(): AccessToken
@@ -119,9 +124,15 @@ class ApiWrapper
                 return null;
             }
         } else {
-// TODO Add enforce datetime comparison format
+
+
+
+        // TODO Add enforce datetime comparison format
+ 
 
             if ($tokenData->access_token_expires_at < new DateTime()) {
+                // log the error
+                $this->apiLogger->error('Access token expired for organization_slug: ' . $organization_slug);
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
 
                 return $tokenData;
