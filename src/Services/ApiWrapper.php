@@ -69,7 +69,8 @@ class ApiWrapper
     }
 
     private function refreshToken($refreshToken, $organization_slug): ?AccessToken
-    {
+    {            
+
         $response = $this->client->request('POST', $this->apiAuthUrl, [
             'form_params' => [
                 'grant_type' => 'refresh_token',
@@ -80,7 +81,6 @@ class ApiWrapper
                 'accept' => 'application/json',
             ],
         ]);
-
         $responseData = json_decode($response->getBody(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -113,15 +113,24 @@ class ApiWrapper
         if ($tokenData == null) {
             if ($organization_slug == null) {
                 $tokenData = $this->generateGlobalAccessToken();
+
                 return $tokenData;
             } else {
                 return null;
             }
         } else {
+// TODO Add enforce datetime comparison format
+            var_dump($tokenData->access_token_expires_at  );
+            var_dump( new DateTime()  );
+            
+            die();
+
             if ($tokenData->access_token_expires_at < new DateTime()) {
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
+
                 return $tokenData;
             }
+
             return $tokenData;
         }
     }
@@ -150,7 +159,6 @@ class ApiWrapper
             'code_challenge_method' => 'S256',
             'state' => $uniqueUUID
         ]);
-
         return $authorizationUrl;
     }
 

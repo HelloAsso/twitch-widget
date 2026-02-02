@@ -53,7 +53,7 @@ php migrations/run.php
 ```
 
 ## Running the Application
-Once you have configured your environment, start your PHP server to run the application:
+Once you have configured your environment, start your PHP server from public folder to run the application:
 
 ```bash
 php -S localhost:8000

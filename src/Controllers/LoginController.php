@@ -140,12 +140,15 @@ class LoginController
             try {
                 $this->apiWrapper->getAccessTokensAndRefreshIfNecessary($organizationSlug);
                 $response->getBody()->write('Nous possédons déjà un token pour le compte ' . $organizationSlug . ' et nous l\'avons rafraichi, vous pouvez fermer cette page.');
-            } catch (Exception $e) {
-                return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
-            }
-        } else {
-            return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
-        }
+                
+                } catch (Exception $e) {
+                    // TODO => Afficher too many request
+                    // var_dump($e);die();
+                    return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
+                    }
+                    } else {
+                        return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
+                        }
 
         return $response;
     }
