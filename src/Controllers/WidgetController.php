@@ -305,7 +305,6 @@ class WidgetController
     public function widgetDonationFetch(Request $request, Response $response, array $args): Response
     {
         $charityStreamId = $args['id'] ?? '';
-        var_dump( $charityStreamId );die();
         if (!$charityStreamId) {
             $response->getBody()->write(json_encode(['error' => 'Charity Stream ID manquant ou incorrect.']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);

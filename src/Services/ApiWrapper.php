@@ -120,10 +120,6 @@ class ApiWrapper
             }
         } else {
 // TODO Add enforce datetime comparison format
-            var_dump($tokenData->access_token_expires_at  );
-            var_dump( new DateTime()  );
-            
-            die();
 
             if ($tokenData->access_token_expires_at < new DateTime()) {
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
