@@ -134,20 +134,16 @@
 {% endblock %}
 {% block scripts %}
 	{% if viteEntries.admin.js %}
-	<script type="module" src="/dist/js/{{ viteEntries.admin.js }}"></script>
+	<script type="module" src="/dist/{{ viteEntries.admin.js }}"></script>
 	{% endif %}
 	
-	{# {% if viteEntries.stream.js %}
-	<script type="module" src="/dist/js/{{ viteEntries.stream.js }}"></script>
-	{% endif %} #}
-
-		<script>
-			var image = '{{ alertBoxWidgetPictureUrl }}';
-			var message_template = '{{ alertBoxWidget.message_template | raw }}';
-			var sound = '{{ alertBoxWidgetSoundUrl }}';
-			var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
-			var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
-		</script>
+	<script>
+		var image = '{{ alertBoxWidgetPictureUrl }}';
+		var message_template = '{{ alertBoxWidget.message_template | raw }}';
+		var sound = '{{ alertBoxWidgetSoundUrl }}';
+		var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
+		var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
+	</script>
 
 
 {% endblock %}

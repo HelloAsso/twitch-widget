@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="fr"  >
-<head>
-  <meta charset="UTF-8">
-  <title>{% block title %}Titre par défaut{% endblock %}</title>
-   {% if appCss %}
-    <link rel="stylesheet" href="/dist/js/{{ appCss }}">
-    {% endif %}
-    {% if appJs %}
-    <script type="module" src="/dist/js/{{ appJs }}"></script>
-    {% endif %}
-
-
- {% block styles %}{% endblock %}
-</head>
-<body>
-
-  {% block content %}{% endblock %}
-  {% block scripts %}{% endblock %}
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Titre par défaut{% endblock %}</title>
+    {% if appCss %}
+      <link rel="stylesheet" href="/dist/{{ appCss }}">
+      {% endif %}
+      {% if appJs %}
+      <script type="module" src="/dist/{{ appJs }}"></script>
+      {% endif %}
+    {% block scripts %}{% endblock %}
+    {% block styles %}{% endblock %}
+  </head>
+  <body>
+    {% block content %}{% endblock %}
+  </body>
 </html>

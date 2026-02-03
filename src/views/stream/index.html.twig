@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<html lang="fr" data-bs-theme="dark">
 
-	<head>
-		<meta charset="UTF-8">
-		<title>Administration des Charity Streams</title>
-		<link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
-	</head>
+	{% block title %}Administration des Charity Streams {% endblock %}
 
-	<body>
-	
+{% extends "layout.html.twig" %}
+{% block content %}
+
 		<div class="modal fade" id="createStreamModal" tabindex="-1">
 			<div class="modal-dialog">
 				<div class="modal-content">
@@ -139,16 +134,4 @@
 			</table>
 		</div>
 
-		<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-		<script>
-			{# const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-const tooltipList = [... tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
-
-function confirmDelete(event) {
-if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
-event.preventDefault();
-}
-} #}
-		</script>
-	</body>
-</html></body></html>
+{% endblock %}

@@ -4,18 +4,18 @@ import { resolve } from 'path'
 
 const inputFiles = {};
 
-// Dynamically create entry points for each .js in src/assets/js/
-fs.readdirSync('./src/assets/js/').forEach(file => {
+// Dynamically create entry points for each .js in src/Assets/js/
+fs.readdirSync('./src/Assets/js/').forEach(file => {
     if (file.endsWith('.js')) {
-        // Clé sans extension : admin => ./src/assets/js/admin.js
+        // Clé sans extension : admin => ./src/Assets/js/admin.js
         const name = file.replace(/\.js$/, '');
-        inputFiles[name] = `./src/assets/js/${file}`;
+        inputFiles[name] = `./src/Assets/js/${file}`;
     }
 });
 
 export default defineConfig({
     build: {
-        outDir: resolve(__dirname, "public/dist/js/"),
+        outDir: resolve(__dirname, "public/dist/"),
         emptyOutDir: true,
         manifest: true, // <= ajoute ceci
 
@@ -40,5 +40,7 @@ export default defineConfig({
             },
         },
     },
-    publicDir: false
+    publicDir: false,
+
+
 });

@@ -1,8 +1,5 @@
-// import 'bootstrap/dist/css/bootstrap.min.css';
-// (optionnel) Import JS bootstrap si nécessaire :
 import '../scss/styles.scss';
 import * as bootstrap from 'bootstrap'
-
 
 
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');

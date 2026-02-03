@@ -1,6 +1,10 @@
 var alertQueue = [];
 var isAlertActive = false;
-setInterval(fetch, 10000);
+var isFetching = false;
+
+fetchAlerts();
+setInterval(fetchAlerts, 10000);
+
 function displayAlertBox(pseudo, message, amount) {
     message = message.substring(0, 255);
     alertQueue.push({ pseudo, message, amount });
@@ -70,23 +74,38 @@ function processAlertQueue() {
     }, window.alert_duration);
 }
 
-function fetch() {
-    const request = new XMLHttpRequest()
-    request.open("GET", '/widget-stream-alert/' + window.charityStreamId + '/fetch', true)
-    request.onload = () => {
-        if (request.status === 200) {
-            const json = JSON.parse(request.response);
+async function fetchAlerts() {
+    if (!window.charityStreamId) {
+        return;
+    }
+
+    // Éviter les appels concurrents
+    if (isFetching) {
+        console.warn('Un appel est déjà en cours, ignoré');
+        return;
+    }
+
+    isFetching = true;
+
+    try {
+        const response = await fetch(`/widget-stream-alert/${window.charityStreamId}/fetch`);
+
+        if (response.ok) {
+            const json = await response.json();
             json.donations.forEach(donation => {
                 displayAlertBox(donation.pseudo, donation.message, donation.amount);
             });
+        } else {
+            console.error('Erreur lors de la récupération des données de donation:', response.status);
         }
-        else {
-            console.error('Erreur lors de la récupération des données de donation:', request.response);
-        }
+    } catch (error) {
+        console.error('Erreur réseau lors de la récupération des données:', error);
+    } finally {
+        isFetching = false; // Réinitialiser le flag
     }
+}
 
-    request.send()
-}
 export {
-    displayAlertBox
-}
+    displayAlertBox,
+    fetchAlerts as fetch
+};

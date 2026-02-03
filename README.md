@@ -52,6 +52,12 @@ To set up your database, execute the SQL migrations provided:
 php migrations/run.php
 ```
 
+### Step 5: Build dependancies if needed
+require node >22.12
+```bash
+npm run build
+```
+
 ## Running the Application
 Once you have configured your environment, start your PHP server from public folder to run the application:
 
@@ -78,7 +84,7 @@ Also update WEBSITE_DOMAIN from you env file
 
 ### Framework & Technologies
 - **Backend:** PHP 8.3 with Slim Framework 4
-- **Frontend:** Bootstrap 5.3, CountUp.js, Moment.js
+- **Frontend:** Bootstrap 5.3, CountUp.js, Moment.js, Vite.js
 - **Database:** MySQL
 - **Template Engine:** Twig
 - **Dependency Injection:** PHP-DI
@@ -90,18 +96,19 @@ Also update WEBSITE_DOMAIN from you env file
 ```
 twitch-widget/
 ├── public/                 # Web root directory
-│   ├── css/               # Compiled CSS files
-│   ├── js/                # Compiled JavaScript files
+│   ├── dist/               # Compiled CSS and Javascript files
 │   └── index.php          # Application entry point
 ├── src/                   # Application source code
-│   ├── Controllers/       # Request handlers
+│   ├── Assets/            # Assets folders (scss + js)
+│   ├── Controllers/      # Request handlers
 │   ├── Models/           # Data models
 │   ├── Repositories/     # Data access layer
 │   ├── Services/         # Business logic services
 │   ├── Middlewares/      # Request/response middleware
 │   └── views/            # Twig templates
 ├── migrations/           # Database migration files
-└── vendor/              # Composer dependencies
+└── vendor/               # Composer dependencies
+└── node_modules/         # NPM dependencies
 ```
 
 ### Key Components
@@ -160,12 +167,13 @@ Database schema is managed through SQL migration files in the `migrations/` dire
 - `07-improve-user-rights.sql`: User permissions
 
 ### Frontend Assets
-JavaScript and CSS files are organized in `public/js/` and `public/css/`:
+JavaScript and CSS files are organized in `src/Assets/js/` and `src/Assets/css/`:
 - **admin.js:** Admin panel functionality
+- **app.js:** App module loader
 - **alert.js:** Alert widget logic
 - **event.js:** Event widget logic
 - **stream.js:** Stream management
-- **main.css:** Global styles
+- **main.scss:** Global styles
 
 ### Environment Configuration
 Key environment variables include:

@@ -1,8 +1,6 @@
 
 
 {% block title %}Donation Goal Widget{% endblock %}
-
-
 {% extends "widget.html.twig" %}
 {% block content %}
 	<div class="progress">
@@ -29,18 +27,13 @@
 		var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
 		var currentAmount = {{ currentAmount ?? 0 }};
 	</script>
-
 	{% if stream %}
 		{% if viteEntries.stream.js %}
-		<script type="module" src="/dist/js/{{ viteEntries.stream.js }}"></script>
+		<script type="module" src="/dist/{{ viteEntries.stream.js }}"></script>
 		{% endif %}
 	{% else %}
 	{% if viteEntries.event.js %}
-		<script type="module" src="/dist/js/{{ viteEntries.event.js }}"></script>
+		<script type="module" src="/dist/{{ viteEntries.event.js }}"></script>
 		{% endif %}
 	{% endif %}
-
-
-	
-	
 {% endblock %}

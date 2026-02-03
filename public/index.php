@@ -3,8 +3,6 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 
-
-
 use App\Controllers\ApiController;
 use App\Controllers\HomeController;
 use App\Controllers\LoginController;
@@ -111,12 +109,12 @@ $container->set(Twig::class, function (): Twig {
     $twig = Twig::create(__DIR__ . '/../src/views', ['cache' => false]);
     $twig->addExtension(new IntlExtension());
     // Charge manifest
-    $manifestPath = __DIR__ . '/dist/js/.vite/manifest.json';
+    $manifestPath = __DIR__ . '/dist/.vite/manifest.json';
     if (file_exists($manifestPath)) {
     $manifest = json_decode(file_get_contents($manifestPath), true);
 
     // Pour l'entrée "app"
-    $appEntry = 'src/assets/js/app.js';
+    $appEntry = 'src/Assets/js/app.js';
 
     $appCss = $manifest[$appEntry]['css'][0] ?? null;
     $appJs  = $manifest[$appEntry]['file'] ?? null;
