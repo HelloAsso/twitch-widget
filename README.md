@@ -29,6 +29,8 @@ composer install
 ```
 
 Install frontend dependencies using npm:
+require node >22.12
+
 ```bash
 npm install
 ```
@@ -53,7 +55,6 @@ php migrations/run.php
 ```
 
 ### Step 5: Build dependancies if needed
-require node >22.12
 ```bash
 npm run build
 ```
