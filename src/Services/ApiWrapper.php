@@ -85,87 +85,103 @@ class ApiWrapper
         return $obj;
     }
 
-    private function refreshToken($refreshToken, $organization_slug): ?AccessToken
-    {            
-        try {
-            $response = $this->client->request('POST', $this->apiAuthUrl, [
-                'form_params' => [
-                    'grant_type' => 'refresh_token',
-                    'refresh_token' => $refreshToken,
-                ],
-                'headers' => [
-                    'content-type' => 'application/x-www-form-urlencoded',
-                    'accept' => 'application/json',
-                ],
-            ]);
-        } catch (RequestException $e) {
-            $this->apiLogger->error('Erreur lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
-            if ($e->hasResponse()) {
-                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
-            }
-            throw new Exception("Erreur lors du rafraîchissement du token : " . $e->getMessage(), 0, $e);
-        } catch (GuzzleException $e) {
-            $this->apiLogger->error('Erreur Guzzle lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
-            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
-        }
-
-        $responseData = json_decode($response->getBody(), true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
-        }
-
-        if (!isset($responseData['access_token']) || !isset($responseData['refresh_token'])) {
-            throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
-        }
-
-        $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
-        $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
-
-        $obj = new AccessToken();
-        $obj->access_token = $responseData['access_token'];
-        $obj->refresh_token = $responseData['refresh_token'];
-        $obj->organization_slug = $organization_slug;
-        $obj->access_token_expires_at = $accessTokenExpiresAt;
-        $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
-
-        return $this->accessTokenRepository->update(
-            $obj
-        );
-    }
-
-    public function getAccessTokensAndRefreshIfNecessary($organization_slug): ?AccessToken
-    {
-        $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
-
-        if ($tokenData == null) {
-            if ($organization_slug == null) {
-                $tokenData = $this->generateGlobalAccessToken();
-                return $tokenData;
-            } else {
+private function refreshToken($refreshToken, $organization_slug): ?AccessToken
+{            
+    try {
+        $response = $this->client->request('POST', $this->apiAuthUrl, [
+            'form_params' => [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+            ],
+            'headers' => [
+                'content-type' => 'application/x-www-form-urlencoded',
+                'accept' => 'application/json',
+            ],
+        ]);
+    } catch (RequestException $e) {
+        $this->apiLogger->error('Erreur lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
+        if ($e->hasResponse()) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            $this->apiLogger->error('Response status: ' . $statusCode);
+            $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            
+            // Si le refresh token est invalide (404, 400, 401), on retourne null
+            // pour forcer une nouvelle authentification
+            if (in_array($statusCode, [400, 401, 404])) {
+                $this->apiLogger->warning('Refresh token invalide ou expiré pour ' . $organization_slug . '. Nouvelle authentification nécessaire.');
+                
+                // Suppression du token invalide de la base de données
+                $this->accessTokenRepository->deleteBySlug($organization_slug);
+                
                 return null;
             }
+        }
+        throw new Exception("Erreur lors du rafraîchissement du token : " . $e->getMessage(), 0, $e);
+    } catch (GuzzleException $e) {
+        $this->apiLogger->error('Erreur Guzzle lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
+        throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+    }
+
+    $responseData = json_decode($response->getBody(), true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
+    }
+
+    if (!isset($responseData['access_token']) || !isset($responseData['refresh_token'])) {
+        throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
+    }
+
+    $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
+    $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
+
+    $obj = new AccessToken();
+    $obj->access_token = $responseData['access_token'];
+    $obj->refresh_token = $responseData['refresh_token'];
+    $obj->organization_slug = $organization_slug;
+    $obj->access_token_expires_at = $accessTokenExpiresAt;
+    $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
+
+    return $this->accessTokenRepository->update($obj);
+}
+
+
+public function getAccessTokensAndRefreshIfNecessary($organization_slug): ?AccessToken
+{
+    $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
+
+    if ($tokenData == null) {
+        if ($organization_slug == null) {
+            $tokenData = $this->generateGlobalAccessToken();
+            return $tokenData;
         } else {
-
-            $expiry = new DateTime($tokenData->access_token_expires_at);
-            $now = new DateTime();
+            return null;
+        }
+    } else {
+        $expiry = new DateTime($tokenData->access_token_expires_at);
+        $now = new DateTime();
  
-            if ($expiry < $now) {
+        if ($expiry < $now) {
+            $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
+            $this->apiLogger->info('Access token expiry time: ' . $expiry->format('Y-m-d H:i:s'));
+            $this->apiLogger->warning('Access token expired for organization_slug: ' . $organization_slug);
 
-                $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
-                $this->apiLogger->info('Access token expiry time: ' . $expiry->format('Y-m-d H:i:s'));
-                $this->apiLogger->error('Access token expired for organization_slug: ' . $organization_slug);
+            $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
 
-                $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
-
-                $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
-
-                return $tokenData;
+            if ($tokenData === null) {
+                // Le refresh token a échoué, on retourne null pour forcer une nouvelle authentification
+                $this->apiLogger->warning('Refresh token failed. Returning null to trigger re-authentication.');
+                return null;
             }
+
+            $this->apiLogger->info('Token data after refresh: ' . json_encode($tokenData));         
 
             return $tokenData;
         }
+
+        return $tokenData;
     }
+}
 
     public function generateAuthorizationUrl($organizationSlug)
     {

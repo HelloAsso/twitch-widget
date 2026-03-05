@@ -17,6 +17,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
 use Slim\Routing\RouteContext;
 use Slim\Views\Twig;
+use Monolog\Logger;
 
 class LoginController
 {
@@ -29,6 +30,7 @@ class LoginController
         private UserRepository $userRepository,
         private ApiClient $mailchimp,
         private Messages $messages,
+        private Logger $logger
     ) {}
 
     public function login(Request $request, Response $response): Response
@@ -117,16 +119,51 @@ class LoginController
         return $response->withHeader('Location', $url)->withStatus(302);
     }
 
-    private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
-    {
-        $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
+private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
+{
+    $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
+    
+    // Si le token global est null ou expiré, on tente de le régénérer
+    if ($globalTokens === null) {
+        $this->logger->warning('Global access token is null or expired. Attempting to generate new one.');
+        
+        try {
+            // Tenter de générer un nouveau token global
+            $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
+            
+            if ($globalTokens === null) {
+                $this->logger->error('Failed to generate global access token.');
+                throw new Exception('Impossible de générer un token d\'accès global.');
+            }
+        } catch (Exception $e) {
+            $this->logger->error('Error generating global token: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    // Configuration du domaine client avec le token global
+    try {
         $this->apiWrapper->setClientDomain($globalTokens->access_token);
-
-        $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
-
-        return $response->withHeader('Location', $authorizationUrl)->withStatus(302);
+    } catch (Exception $e) {
+        $this->logger->error('Error setting client domain: ' . $e->getMessage());
+        // On continue même si setClientDomain échoue, car ce n'est pas bloquant pour l'authentification
+    }
+    
+    // Vérifier si l'organisation a déjà un token valide
+    if ($organizationSlug !== null) {
+        $orgTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary($organizationSlug);
+        
+        // Si le token de l'organisation est null, on force une nouvelle authentification OAuth
+        if ($orgTokens === null) {
+            $this->logger->info('Organization token expired or invalid for: ' . $organizationSlug . '. Generating new authorization URL.');
+        }
     }
 
+    // Génération de l'URL d'autorisation (nouvelle authentification OAuth)
+    $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
+
+    return $response->withHeader('Location', $authorizationUrl)->withStatus(302);
+}
     public function redirectAuthPage(Request $request, Response $response): Response
     {
         $organizationSlug = $request->getQueryParams()['organizationSlug'];
