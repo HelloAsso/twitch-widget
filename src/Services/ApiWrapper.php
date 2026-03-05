@@ -19,7 +19,6 @@ use function OAuth\PKCE\generatePair;
 class ApiWrapper
 {
     private $client;
-    private Logger $apiLogger;
 
     public function __construct(
 
@@ -30,11 +29,11 @@ class ApiWrapper
         private string $apiAuthUrl,
         private string $clientId,
         private string $clientSecret,
-        private string $webSiteDomain
+        private string $webSiteDomain,
+        private Logger $apiLogger
+
     ) {
-        global $container;
         $this->client = new Client();
-        $this->apiLogger = $container->get('logger.api'); 
     }
 
     private function generateGlobalAccessToken(): AccessToken
@@ -159,7 +158,7 @@ class ApiWrapper
 
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
 
-                $this->apiLogger->info('Token data after refresh: ' . json_encode($tokenData));         
+                $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
 
                 return $tokenData;
             }

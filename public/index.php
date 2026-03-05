@@ -90,7 +90,8 @@ $container->set(ApiWrapper::class, function ($c) {
         $_SERVER['API_AUTH_URL'],
         $_SERVER['CLIENT_ID'],
         $_SERVER['CLIENT_SECRET'],
-        $_SERVER['WEBSITE_DOMAIN']
+        $_SERVER['WEBSITE_DOMAIN'],
+        $c->get('logger.api')
     );
 });
 
