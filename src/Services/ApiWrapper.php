@@ -10,6 +10,8 @@ use DateInterval;
 use DateTime;
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
 use Monolog\Logger;
 
 use function OAuth\PKCE\generatePair;
@@ -37,17 +39,28 @@ class ApiWrapper
 
     private function generateGlobalAccessToken(): AccessToken
     {
-        $response = $this->client->request('POST', $this->apiAuthUrl, [
-            'form_params' => [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret
-            ],
-            'headers' => [
-                'content-type' => 'application/x-www-form-urlencoded',
-                'accept' => 'application/json',
-            ],
-        ]);
+        try {
+            $response = $this->client->request('POST', $this->apiAuthUrl, [
+                'form_params' => [
+                    'grant_type' => 'client_credentials',
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->clientSecret
+                ],
+                'headers' => [
+                    'content-type' => 'application/x-www-form-urlencoded',
+                    'accept' => 'application/json',
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors de la génération du token global: ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors de la requête d'authentification : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors de la génération du token global: ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
 
         $responseData = json_decode($response->getBody(), true);
 
@@ -75,17 +88,28 @@ class ApiWrapper
 
     private function refreshToken($refreshToken, $organization_slug): ?AccessToken
     {            
+        try {
+            $response = $this->client->request('POST', $this->apiAuthUrl, [
+                'form_params' => [
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $refreshToken,
+                ],
+                'headers' => [
+                    'content-type' => 'application/x-www-form-urlencoded',
+                    'accept' => 'application/json',
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors du rafraîchissement du token : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors du refresh token pour ' . $organization_slug . ': ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
 
-        $response = $this->client->request('POST', $this->apiAuthUrl, [
-            'form_params' => [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $refreshToken,
-            ],
-            'headers' => [
-                'content-type' => 'application/x-www-form-urlencoded',
-                'accept' => 'application/json',
-            ],
-        ]);
         $responseData = json_decode($response->getBody(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -173,34 +197,56 @@ class ApiWrapper
 
     public function setClientDomain($accessToken)
     {
-        $this->client->request('PUT', "$this->apiUrl/partners/me/api-clients", [
-            'body' => json_encode([
-                "Domain" => $this->webSiteDomain
-            ]),
-            'headers' => [
-                'content-type' => 'application/*+json',
-                'accept' => 'application/json',
-                'Authorization' => "Bearer $accessToken",
-            ],
-        ]);
+        try {
+            $this->client->request('PUT', "$this->apiUrl/partners/me/api-clients", [
+                'body' => json_encode([
+                    "Domain" => $this->webSiteDomain
+                ]),
+                'headers' => [
+                    'content-type' => 'application/*+json',
+                    'accept' => 'application/json',
+                    'Authorization' => "Bearer $accessToken",
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors de la configuration du domaine client: ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors de la configuration du domaine : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors de la configuration du domaine client: ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
     }
 
     public function exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier)
     {
-        $response = $this->client->request('POST', $this->apiAuthUrl, [
-            'form_params' => [
-                'grant_type' => 'authorization_code',
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret,
-                'code' => $code,
-                'redirect_uri' => $redirect_uri,
-                'code_verifier' => $codeVerifier
-            ],
-            'headers' => [
-                'content-type' => 'application/x-www-form-urlencoded',
-                'accept' => 'application/json',
-            ],
-        ]);
+        try {
+            $response = $this->client->request('POST', $this->apiAuthUrl, [
+                'form_params' => [
+                    'grant_type' => 'authorization_code',
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->clientSecret,
+                    'code' => $code,
+                    'redirect_uri' => $redirect_uri,
+                    'code_verifier' => $codeVerifier
+                ],
+                'headers' => [
+                    'content-type' => 'application/x-www-form-urlencoded',
+                    'accept' => 'application/json',
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors de l\'échange du code d\'autorisation: ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors de l'échange du code d'autorisation : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors de l\'échange du code d\'autorisation: ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
 
         $responseData = json_decode($response->getBody(), true);
 
