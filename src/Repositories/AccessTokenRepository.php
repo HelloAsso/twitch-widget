@@ -33,22 +33,7 @@ class AccessTokenRepository
 
         return $token ?: null;
     }
-public function deleteBySlug($organization_slug): void
-{
-    if (is_null($organization_slug)) {
-        $query = "DELETE FROM `{$this->prefix}access_token_partner_organization`
-                WHERE organization_slug IS NULL";
-        $stmt = $this->pdo->prepare($query);
-        $stmt->execute();
-    } else {
-        $query = "DELETE FROM `{$this->prefix}access_token_partner_organization`
-                WHERE organization_slug = :organization_slug";
-        $stmt = $this->pdo->prepare($query);
-        $stmt->execute([
-            ':organization_slug' => $organization_slug
-        ]);
-    }
-}
+
     function getAccessTokensToRefresh(): array
     {
         $stmt = $this->pdo->prepare('SELECT * 
