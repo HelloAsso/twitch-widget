@@ -148,10 +148,14 @@ class ApiWrapper
                 return null;
             }
         } else {
-
+            // Vérifier si les tokens sont vides
+            if (empty($tokenData->access_token) || empty($tokenData->refresh_token)) {
+                $this->apiLogger->error('Access token or refresh token is empty for organization_slug: ' . $organization_slug);
+                throw new Exception('Invalid token data: access_token or refresh_token is empty');
+            }
             $expiry = new DateTime($tokenData->access_token_expires_at);
             $now = new DateTime();
- 
+
             if ($expiry < $now) {
 
                 $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
