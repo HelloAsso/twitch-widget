@@ -1,52 +1,39 @@
-<!DOCTYPE html>
-<html lang="fr">
 
-	<head>
-		<meta charset="UTF-8">
-		<title>Donation Goal Widget</title>
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 
-		<link rel="stylesheet" href="/css/main.min.css">
-	</head>
-
-	<body>
-		<div class="progress">
-			<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
-				<p id="back-goal-current">{{ currentAmount / 100 }}
-					€</p>
-				<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-				<p id="back-goal-total">{{ donationGoalWidget.goal }}
-					€</p>
-			</div>
-			<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
-				<p id="front-goal-current">{{ currentAmount / 100 }}
-					€</p>
-				<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-				<p id="front-goal-total">{{ donationGoalWidget.goal }}
-					€</p>
-			</div>
+{% block title %}Donation Goal Widget{% endblock %}
+{% extends "widget.html.twig" %}
+{% block content %}
+	<div class="progress">
+		<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
+			<p id="back-goal-current">{{ currentAmount / 100 }}
+				€</p>
+			<p id="back-title">{{ donationGoalWidget.text_content }}</p>
+			<p id="back-goal-total">{{ donationGoalWidget.goal }}
+				€</p>
 		</div>
-
-		<script>
-			var goalAmount = {{ donationGoalWidget.goal ?? 0 }};
-var charityStreamId = '{{ donationGoalWidget.charity_stream_guid }}';
-var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
-var currentAmount = {{ currentAmount ?? 0 }};
-		</script>
-
-		<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
-		{% if stream %}
-			<script src="/js/stream.min.js"></script>
-		{% else %}
-			<script src="/js/event.min.js"></script>
+		<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
+			<p id="front-goal-current">{{ currentAmount / 100 }}
+				€</p>
+			<p id="front-title">{{ donationGoalWidget.text_content }}</p>
+			<p id="front-goal-total">{{ donationGoalWidget.goal }}
+				€</p>
+		</div>
+	</div>
+{% endblock %}
+{% block scripts %}
+	<script>
+		var goalAmount = {{ donationGoalWidget.goal ?? 0 }};
+		var charityStreamId = '{{ donationGoalWidget.charity_stream_guid }}';
+		var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
+		var currentAmount = {{ currentAmount ?? 0 }};
+	</script>
+	{% if stream %}
+		{% if viteEntries.stream.js %}
+		<script type="module" src="/dist/{{ viteEntries.stream.js }}"></script>
 		{% endif %}
-
-		<script>
-			updateDonationBar();
-setInterval(fetch, 10000);
-		</script>
-	</body>
-
-</html></html></body></html>
+	{% else %}
+	{% if viteEntries.event.js %}
+		<script type="module" src="/dist/{{ viteEntries.event.js }}"></script>
+		{% endif %}
+	{% endif %}
+{% endblock %}

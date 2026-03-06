@@ -87,7 +87,6 @@ class AdminController
     public function editEvent(Request $request, Response $response, array $args): Response
     {
         $event = $this->eventRepository->selectByUserAndGuid($_SESSION['user'], $args['id']);
-
         $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $event->guid);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 

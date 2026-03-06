@@ -17,6 +17,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
 use Slim\Routing\RouteContext;
 use Slim\Views\Twig;
+use Monolog\Logger;
 
 class LoginController
 {
@@ -29,6 +30,7 @@ class LoginController
         private UserRepository $userRepository,
         private ApiClient $mailchimp,
         private Messages $messages,
+        private Logger $logger
     ) {}
 
     public function login(Request $request, Response $response): Response
@@ -120,13 +122,39 @@ class LoginController
     private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
     {
         $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
-        $this->apiWrapper->setClientDomain($globalTokens->access_token);
+        
+        // Si le token global est null ou expiré, on tente de le régénérer
+        if ($globalTokens === null) {
+            $this->logger->warning('Global access token is null or expired. Attempting to generate new one.');
+            
+            try {
+                // Tenter de générer un nouveau token global
+                $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
+                
+                if ($globalTokens === null) {
+                    $this->logger->error('Failed to generate global access token.');
+                    throw new Exception('Impossible de générer un token d\'accès global.');
+                }
+            } catch (Exception $e) {
+                $this->logger->error('Error generating global token: ' . $e->getMessage());
+                throw $e;
+            }
+        }
+        
+        // Configuration du domaine client avec le token global
+        try {
+            $this->apiWrapper->setClientDomain($globalTokens->access_token);
+        } catch (Exception $e) {
+            $this->logger->error('Error setting client domain: ' . $e->getMessage());
+        }
+        
 
+        // Génération de l'URL d'autorisation (nouvelle authentification OAuth)
         $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
 
         return $response->withHeader('Location', $authorizationUrl)->withStatus(302);
     }
-
+    
     public function redirectAuthPage(Request $request, Response $response): Response
     {
         $organizationSlug = $request->getQueryParams()['organizationSlug'];
@@ -140,10 +168,13 @@ class LoginController
             try {
                 $this->apiWrapper->getAccessTokensAndRefreshIfNecessary($organizationSlug);
                 $response->getBody()->write('Nous possédons déjà un token pour le compte ' . $organizationSlug . ' et nous l\'avons rafraichi, vous pouvez fermer cette page.');
-            } catch (Exception $e) {
-                return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
-            }
-        } else {
+                
+                } catch (Exception $e) {
+         
+                    return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
+                }
+        }
+        else {
             return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
         }
 
@@ -194,8 +225,7 @@ class LoginController
                     ],
                 ]
             ]);
-        } else 
-        {
+        } else {
             $this->accessTokenRepository->update($token);        
         }
 

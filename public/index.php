@@ -2,6 +2,7 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+
 use App\Controllers\ApiController;
 use App\Controllers\HomeController;
 use App\Controllers\LoginController;
@@ -23,6 +24,8 @@ use MailchimpTransactional\ApiClient;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Monolog\Handler\RotatingFileHandler;
+
 use Slim\Factory\AppFactory;
 use Slim\Flash\Messages;
 use Slim\Views\Twig;
@@ -32,11 +35,17 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
 $container = new Container();
-
+$container->set('logger.api', function () {
+    $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
+    $logger = new Logger('api'); // le nom est ici !
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level));
+    return $logger;
+});
 $container->set(Logger::class, function () {
+    $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $logger = new Logger('app');
-    $streamHandler = new StreamHandler(__DIR__ . '/../log.txt', $_SERVER['LOGLEVEL']);
-    $logger->pushHandler($streamHandler);
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
+    // $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level)); 
     return $logger;
 });
 
@@ -81,7 +90,8 @@ $container->set(ApiWrapper::class, function ($c) {
         $_SERVER['API_AUTH_URL'],
         $_SERVER['CLIENT_ID'],
         $_SERVER['CLIENT_SECRET'],
-        $_SERVER['WEBSITE_DOMAIN']
+        $_SERVER['WEBSITE_DOMAIN'],
+        $c->get('logger.api')
     );
 });
 
@@ -99,6 +109,33 @@ $container->set(ApiClient::class, function () {
 $container->set(Twig::class, function (): Twig {
     $twig = Twig::create(__DIR__ . '/../src/views', ['cache' => false]);
     $twig->addExtension(new IntlExtension());
+    // Charge manifest
+    $manifestPath = __DIR__ . '/dist/.vite/manifest.json';
+    if (file_exists($manifestPath)) {
+    $manifest = json_decode(file_get_contents($manifestPath), true);
+
+    // Pour l'entrée "app"
+    $appEntry = 'src/Assets/js/app.js';
+
+    $appCss = $manifest[$appEntry]['css'][0] ?? null;
+    $appJs  = $manifest[$appEntry]['file'] ?? null;
+    $twig->getEnvironment()->addGlobal('appCss', $appCss);
+    $twig->getEnvironment()->addGlobal('appJs', $appJs);
+
+    // Tu peux passer TOUS les scripts dispos comme globals aussi, si besoin :
+    $entries = [];
+    foreach ($manifest as $entry) {
+        if (!empty($entry['isEntry']) && !empty($entry['file'])) {
+            $entries[$entry['name']] = [
+                'js'  => $entry['file'],
+                'css' => $entry['css'][0] ?? null,
+            ];
+        }
+    }
+    $twig->getEnvironment()->addGlobal('viteEntries', $entries);
+
+    }
+
     return $twig;
 });
 
@@ -111,12 +148,15 @@ $app = AppFactory::createFromContainer($container);
 if (!session_id())
     @session_start();
 
-if ($_SERVER['LOGLEVEL'] == "DEBUG") {
+if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
+    // Active Whoops uniquement en dev
+$whoops = new \Whoops\Run;
+$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+$whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 } else {
     $errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));
 }
-
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');

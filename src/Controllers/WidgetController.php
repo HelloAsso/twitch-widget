@@ -173,14 +173,15 @@ class WidgetController
         $charityStreamId = $args['id'] ?? '';
         if (!$charityStreamId) {
             throw new Exception("Charity Stream ID manquant ou incorrect.");
-        }
-
-        $alertBoxWidget = $this->widgetRepository->selectAlertWidgetByGuid($charityStreamId);
+            }
+            
+            $alertBoxWidget = $this->widgetRepository->selectAlertWidgetByGuid($charityStreamId);
         if (!$alertBoxWidget) {
             throw new Exception("Aucun widget trouvé pour le Charity Stream ID fourni.");
         }
 
         $charityStream = $this->streamRepository->selectByGuid($charityStreamId);
+
         if (!$charityStream) {
             throw new Exception("Charity Stream non trouvé.");
         }
@@ -267,9 +268,10 @@ class WidgetController
         $charityStream = $this->streamRepository->selectByGuid($streamGuid);
         if (!$charityStream) {
             throw new Exception("Charity Stream non trouvé.");
-        }
+        }       
 
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream);
+    // log cache data for debug
         if (!$cacheData) {
             $cacheData = [
                 'amount' => 0,

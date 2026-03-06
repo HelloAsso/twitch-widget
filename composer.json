@@ -7,14 +7,15 @@
         "league/mime-type-detection": "^1.16",
         "mailchimp/transactional": "^1.0",
         "microsoft/azure-storage-blob": "^1.5",
-        "monolog/monolog": "^3.8",
+        "monolog/monolog": "^3.10",
         "php-di/php-di": "^7.0",
         "slim/slim": "^4.14",
         "slim/psr7": "^1.7",
         "slim/twig-view": "^3.4",
         "twig/intl-extra": "^3.18",
         "vlucas/phpdotenv": "^5.6",
-        "slim/flash": "^0.4.0"
+        "slim/flash": "^0.4.0",
+        "filp/whoops": "^2.18"
     },
     "autoload": {
         "psr-4": {

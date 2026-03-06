@@ -1,35 +1,32 @@
-<!DOCTYPE html>
-<html lang="fr">
 
-	<head>
-		<meta charset="UTF-8">
-		<title>Alert Box Widget</title>
-		<link rel="stylesheet" href="/css/main.min.css">
-	</head>
+	{% block title %}Alert Box Widget{% endblock %}
 
-	<body>
+
+	{% extends "widget.html.twig" %}
+	{% block content %}
 		<div class='widget-alert-box'></div>
-
-		<script src="/node_modules/moment/min/moment.min.js"></script>
+	{% endblock %}
+	{% block scripts %}
+		{# <script src="/node_modules/moment/min/moment.min.js"></script> #}
 
 		<script>
 			var image = '{{ alertBoxWidgetPictureUrl }}';
-var message_template = '{{ alertBoxWidget.message_template | raw }}';
-var sound = '{{ alertBoxWidgetSoundUrl }}';
-var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
-var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
-var charityStreamId = '{{ alertBoxWidget.charity_stream_guid }}';
+			var message_template = '{{ alertBoxWidget.message_template | raw }}';
+			var sound = '{{ alertBoxWidgetSoundUrl }}';
+			var sound_volume = {{ alertBoxWidget.sound_volume / 100 }};
+			var alert_duration = {{ alertBoxWidget.alert_duration * 1000 }};
+			var charityStreamId = '{{ alertBoxWidget.charity_stream_guid }}';
 		</script>
+	{% if viteEntries.alert.js %}
+		<script type="module" src="/dist/{{ viteEntries.alert.js }}"></script>
+	{% endif %}
+		{# <script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
+		<script src="/js/alert.min.js"></script> #}
 
-		<script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
-		<script src="/js/alert.min.js"></script>
+		{# <script> #}
+ {# displayAlertBox('test', 'super !', 1000); #}
 
-		<script>
-			// test purpose
-// displayAlertBox('test', 'super !', 1000);
+		{# setInterval(fetch, 10000); #}
+		{# </script> #}
 
-setInterval(fetch, 10000);
-		</script>
-	</body>
-
-</html>
+{% endblock %}

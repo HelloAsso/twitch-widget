@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="fr" data-bs-theme="dark">
 
-	<head>
-		<meta charset="UTF-8">
-		<title>Administration générale</title>
-		<link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
-	</head>
+{% block title %}Administration générale{% endblock %}
 
-	<body>
+{% extends "layout.html.twig" %}
+{% block content %}
+
 		<div class="modal fade" id="createEventModal" tabindex="-1">
 			<div class="modal-dialog">
 				<div class="modal-content">
@@ -161,7 +157,6 @@
 				</tbody>
 			</table>
 		</div>
-	</body>
 
 	{% if messages['error'] %}
 		<div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -190,23 +185,15 @@
 			</div>
 		</div>
 	{% endif %}
-
-	<script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+{% block scripts %}
 	<script>
-		const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-const tooltipList = [... tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 
 
-const toastLiveExample = document.getElementById('liveToast')
-if (toastLiveExample) {
-const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample)
-toastBootstrap.show()
-}
-
-function confirmDelete(event) {
-if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
-event.preventDefault();
-}
-}
+		function confirmDelete(event) {
+			if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
+			event.preventDefault();
+			}
+		}
 	</script>
-</html>
+{% endblock %}
