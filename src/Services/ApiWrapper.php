@@ -135,8 +135,14 @@ class ApiWrapper
             $obj
         );
     }
-
-    public function getAccessTokensAndRefreshIfNecessary($organization_slug): ?AccessToken
+    /**
+     *  Récupère les tokens d'accès pour une organisation donnée et les rafraîchit si nécessaire.
+     *
+     * @param [type] $organization_slug
+     * @param boolean $verify_timestamp
+     * @return AccessToken|null
+     */
+    public function getAccessTokensAndRefreshIfNecessary($organization_slug,$verify_timestamp=false): ?AccessToken
     {
         $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
 
@@ -153,14 +159,25 @@ class ApiWrapper
                 $this->apiLogger->error('Access token or refresh token is empty for organization_slug: ' . $organization_slug);
                 throw new Exception('Invalid token data: access_token or refresh_token is empty');
             }
-            $expiry = new DateTime($tokenData->access_token_expires_at);
-            $now = new DateTime();
+            if($verify_timestamp){
+            
+                $expiry = new DateTime($tokenData->access_token_expires_at);
+                $now = new DateTime();
 
-            if ($expiry < $now) {
+                if ($expiry < $now) {
 
-                $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
-                $this->apiLogger->info('Access token expiry time: ' . $expiry->format('Y-m-d H:i:s'));
-                $this->apiLogger->error('Access token expired for organization_slug: ' . $organization_slug);
+                    $this->apiLogger->info('Current time: ' . $now->format('Y-m-d H:i:s'));
+                    $this->apiLogger->info('Access token expiry time: ' . $expiry->format('Y-m-d H:i:s'));
+                    $this->apiLogger->error('Access token expired for organization_slug: ' . $organization_slug);
+
+                    $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
+
+                    $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
+
+                    return $tokenData;
+                }
+            }
+            else{
 
                 $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
 
@@ -307,7 +324,7 @@ class ApiWrapper
         $previousToken = '';
         $donations = [];
 
-        $organizationAccessToken = $this->getAccessTokensAndRefreshIfNecessary($organizationSlug);
+        $organizationAccessToken = $this->getAccessTokensAndRefreshIfNecessary($organizationSlug,true);
 
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
             http_response_code(401);
