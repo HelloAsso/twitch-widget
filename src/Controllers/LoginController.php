@@ -122,7 +122,6 @@ class LoginController
     private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
     {
         $globalTokens = $this->apiWrapper->getAccessTokensAndRefreshIfNecessary(null);
-        
         // Si le token global est null ou expiré, on tente de le régénérer
         if ($globalTokens === null) {
             $this->logger->warning('Global access token is null or expired. Attempting to generate new one.');
