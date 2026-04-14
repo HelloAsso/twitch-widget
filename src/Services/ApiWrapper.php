@@ -84,9 +84,16 @@ class ApiWrapper
         $obj->refresh_token = $responseData['refresh_token'];
         $obj->access_token_expires_at = $accessTokenExpiresAt;
         $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
-
-        $obj = $this->accessTokenRepository->insert($obj);
-        $this->apiLogger->info('New global access token generated successfully. it will expires at '.$obj->refresh_token_expires_at->format('Y-m-d H:i:s'));
+       
+        $current_access_token = $this->accessTokenRepository->selectBySlug(null);
+        if($current_access_token) {
+                $obj->id = $current_access_token->id;
+                $obj = $this->accessTokenRepository->update($obj);
+                $this->apiLogger->info('Global access token refreshed successfully. it will expires at '.$obj->refresh_token_expires_at->format('Y-m-d H:i:s'));
+        } else {
+            $obj = $this->accessTokenRepository->insert($obj);
+            $this->apiLogger->info('New global access token generated successfully. it will expires at '.$obj->refresh_token_expires_at->format('Y-m-d H:i:s'));
+        }
 
         return $obj;
     }
