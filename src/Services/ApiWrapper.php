@@ -13,7 +13,6 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Monolog\Logger;
-use App\Controllers\LoginController;
 
 use function OAuth\PKCE\generatePair;
 
@@ -36,6 +35,8 @@ class ApiWrapper
     ) {
         $this->client = new Client();
     }
+   
+
     /**
      * Génère un token d'accès global en utilisant le flux client_credentials, et le stocke en base de données.
      *
@@ -86,6 +87,7 @@ class ApiWrapper
         $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
        
         $current_access_token = $this->accessTokenRepository->selectBySlug(null);
+
         if($current_access_token) {
                 $obj->id = $current_access_token->id;
                 $obj = $this->accessTokenRepository->update($obj);

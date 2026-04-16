@@ -82,7 +82,7 @@ $container->set(WidgetRepository::class, function ($c) {
 });
 
 $container->set(ApiWrapper::class, function ($c) {
-    return new ApiWrapper(
+    $apiWrapper = new ApiWrapper(
         $c->get(AccessTokenRepository::class),
         $c->get(AuthorizationCodeRepository::class),
         $_SERVER['HA_AUTH_URL'],
@@ -93,6 +93,15 @@ $container->set(ApiWrapper::class, function ($c) {
         $_SERVER['WEBSITE_DOMAIN'],
         $c->get('logger.api')
     );
+
+    // Init une seule fois au moment où le container construit le service
+    $globalTokens = $apiWrapper->getGlobalAccessToken(null);
+    if ($globalTokens === null) {
+        throw new Exception('Impossible de générer un token d\'accès global.');
+    }
+    $apiWrapper->setClientDomain($globalTokens->access_token);
+
+    return $apiWrapper;
 });
 
 $container->set(FileManager::class, function () {
@@ -144,15 +153,16 @@ $container->set(Messages::class, function () {
 });
 
 $app = AppFactory::createFromContainer($container);
+$app->addRoutingMiddleware();
 
 if (!session_id())
     @session_start();
 
 if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     // Active Whoops uniquement en dev
-$whoops = new \Whoops\Run;
-$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
-$whoops->register();
+    $whoops = new \Whoops\Run;
+    $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+    $whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 } else {
     $errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));

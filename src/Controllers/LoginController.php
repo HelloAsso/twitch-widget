@@ -21,6 +21,7 @@ use Monolog\Logger;
 
 class LoginController
 {
+
     public function __construct(
         private Twig $view,
         private ApiWrapper $apiWrapper,
@@ -31,8 +32,12 @@ class LoginController
         private ApiClient $mailchimp,
         private Messages $messages,
         private Logger $logger
-    ) {}
+    ) {
+       
+    }
     
+    
+
     /**
      * Valide la page de connexion après soumission du formulaire. Si les identifiants sont corrects, stocke l'utilisateur en session et redirige vers la page d'administration. Sinon, affiche un message d'erreur et redirige vers la page d'accueil.
      *
@@ -146,8 +151,10 @@ class LoginController
         return $response->withHeader('Location', $url)->withStatus(302);
     }
 
+  
+
     /**
-     * Redirige vers l'URL d'autorisation pour l'organisation donnée. Si le token global est expiré ou null, tente de le régénérer avant de rediriger.
+     * Redirige vers l'URL d'autorisation pour l'organisation donnée.
      *
      * @param Response $response
      * @param [type] $organizationSlug
@@ -155,33 +162,7 @@ class LoginController
      */
     private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
     {
-        $globalTokens = $this->apiWrapper->getGlobalAccessToken(null);
-        // Si le token global est null ou expiré, on tente de le régénérer
-        if ($globalTokens === null) {
-            $this->logger->warning('Global access token is null or expired. Attempting to generate new one.');
-            
-            try {
-                // Tenter de générer un nouveau token global
-                $globalTokens = $this->apiWrapper->getGlobalAccessToken(null);
-                
-                if ($globalTokens === null) {
-                    $this->logger->error('Failed to generate global access token.');
-                    throw new Exception('Impossible de générer un token d\'accès global.');
-                }
-            } catch (Exception $e) {
-                $this->logger->error('Error generating global token: ' . $e->getMessage());
-                throw $e;
-            }
-        }
-        
-        // Configuration du domaine client avec le token global
-        try {
-            $this->apiWrapper->setClientDomain($globalTokens->access_token);
-        } catch (Exception $e) {
-            $this->logger->error('Error setting client domain: ' . $e->getMessage());
-        }
-        
-
+     
         // Génération de l'URL d'autorisation (nouvelle authentification OAuth)
         $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
 
