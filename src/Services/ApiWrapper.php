@@ -107,7 +107,7 @@ class ApiWrapper
      * @param [type] $organization_slug
      * @return AccessToken|null
      */
-    private function refreshToken($refreshToken, $organization_slug): ?AccessToken
+    public function refreshToken($refreshToken, $organization_slug): ?AccessToken
     {            
         try {
             $response = $this->client->request('POST', $this->apiAuthUrl, [
@@ -190,6 +190,12 @@ class ApiWrapper
     public function getOrganizationAccessToken($organization_slug): ?AccessToken
     {   
         $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
+        if ( $tokenData == null) {
+            
+            $this->apiLogger->warning('Access token for organization_slug: ' . $organization_slug . ' is invalid. Attempting to refresh token.');
+            $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
+            $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
+        }
         $expiration_date = $tokenData->refresh_token_expires_at ?? false;
         if (empty($tokenData->access_token) || empty($tokenData->refresh_token)) {
             $this->apiLogger->error('Access token or refresh token is empty for organization_slug: ' . $organization_slug);
@@ -201,15 +207,7 @@ class ApiWrapper
             throw new Exception('Invalid token data: refresh_token is expired');
 
         }
-        if ( $tokenData == null) {
-            
-            $this->apiLogger->warning('Access token for organization_slug: ' . $organization_slug . ' is invalid. Attempting to refresh token.');
-            $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
-
-            $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
-
-
-        }
+     
         return $tokenData;
   
     }
@@ -344,7 +342,6 @@ class ApiWrapper
             !isset($responseData['expires_in']) ||
             !isset($responseData['organization_slug'])
         ) {
-            print_r($responseData);
             throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
         }
 
@@ -412,7 +409,6 @@ class ApiWrapper
             echo('<a target="_blank" href="/redirect_auth_page?organizationSlug=' . $organizationSlug . '">Se reconnecter</a>');    
             exit;           
         }
-        $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
 
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
             http_response_code(401);

@@ -286,7 +286,7 @@ class WidgetController
             $cacheData['continuation_token'],
         );
 
-        if ($cacheData['continuation_token'] != $result['continuation_token']) {
+        if ($cacheData['continuation_token'] != $result['continuation_token'] || $cacheData['amount'] != $result['amount']) {
             $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                 "amount" => $result['amount'],
                 "continuation_token" => $result['continuation_token']
