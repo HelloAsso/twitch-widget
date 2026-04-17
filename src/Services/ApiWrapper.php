@@ -167,7 +167,7 @@ class ApiWrapper
     {
         $tokenData = $this->accessTokenRepository->selectBySlug(null);
         
-        $expiration_date = $tokenData->refresh_token_expires_at ?? false;
+        $expiration_date = $tokenData->access_token_expires_at ?? false;
         // si null ou expiré, on génère un nouveau token global
         $this->apiLogger->info('Check expiration for global access token');
         if ($this->isExpired($expiration_date) || $tokenData == null) {
@@ -175,7 +175,7 @@ class ApiWrapper
             $tokenData = $this->generateGlobalAccessToken();
         }
         $this->apiLogger->info('Global access token is valid. Expiry time: ' . 
-        ($tokenData->refresh_token_expires_at instanceof DateTime ? $tokenData->refresh_token_expires_at->format('Y-m-d H:i:s') : $tokenData->refresh_token_expires_at));
+        ($tokenData->access_token_expires_at instanceof DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
 
         return $tokenData;
         
