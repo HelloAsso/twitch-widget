@@ -3,3 +3,6 @@ composer.phar
 public/node_modules/
 .env*
 log.txt
+*.log
+
+node_modules/

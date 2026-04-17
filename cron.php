@@ -32,8 +32,7 @@ $apiWrapper = new ApiWrapper(
 $tokens = $accessTokenRepository->getAccessTokensToRefresh();
 
 echo count($tokens) . " tokens to refresh";
-
 foreach ($tokens as $token) {
-    $apiWrapper->getAccessTokensAndRefreshIfNecessary($token->organization_slug);
+    $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
     echo "Token for " . $token->organization_slug ?? "HelloAssoStream" . " refreshed";
 }
