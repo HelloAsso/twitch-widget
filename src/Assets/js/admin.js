@@ -1,7 +1,5 @@
-
 import { displayAlertBox } from './alert.js';
 
-updateDonationGoalPreview();
 function updateDonationGoalPreview() {
     var back = document.querySelector('.back');
     var front = document.querySelector('.front');
@@ -17,20 +15,21 @@ function updateDonationGoalPreview() {
 
     backTitle.textContent = document.getElementById('text_content').value;
     frontTitle.textContent = document.getElementById('text_content').value;
-    goal.textContent = document.getElementById('goal').value;
 
-    var currentDonation = goal.value / 2;
+    var goalValue = parseFloat(goal.value) || 0;
+    var currentDonation = goalValue / 2;
 
-    document.getElementById('back-goal-total').textContent = goal.value + ' €';
-    document.getElementById('front-goal-total').textContent = goal.value + ' €';
+    document.getElementById('back-goal-total').textContent = goalValue + ' €';
+    document.getElementById('front-goal-total').textContent = goalValue + ' €';
     document.getElementById('back-goal-current').textContent = currentDonation + ' €';
     document.getElementById('front-goal-current').textContent = currentDonation + ' €';
 
-    front.style.width = (currentDonation / goal * 100) + '%';
+    front.style.width = goalValue > 0 ? (currentDonation / goalValue * 100) + '%' : '0%';
 }
 
 var donationBarForm = document.getElementById('donationBarForm');
 if (donationBarForm) {
+    updateDonationGoalPreview();
     document.getElementById('text_color_main').addEventListener('input', updateDonationGoalPreview);
     document.getElementById('text_color_alt').addEventListener('input', updateDonationGoalPreview);
     document.getElementById('text_content').addEventListener('input', updateDonationGoalPreview);

@@ -55,6 +55,7 @@ class LoginController
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         if ($user && password_verify($password, $user->password)) {
+            session_regenerate_id(true);
             $_SESSION['user'] = $user;
             $url = $routeParser->urlFor('app_admin_index');
         } else {
