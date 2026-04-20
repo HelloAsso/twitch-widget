@@ -16,7 +16,7 @@ class UserRepository
     ) {}
 
     public function insert(string $email): User
-    {<
+    {
         $password = bin2hex(random_bytes(15));
 
         $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'users (email, password) VALUES (:email, :password)');
