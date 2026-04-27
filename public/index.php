@@ -95,11 +95,11 @@ $container->set(ApiWrapper::class, function ($c) {
     );
 
     // Init une seule fois au moment où le container construit le service
-    $globalTokens = $apiWrapper->getGlobalAccessToken(null);
-    if ($globalTokens === null) {
+    $globalToken = $apiWrapper->getGlobalAccessToken();
+    if ($globalToken === null) {
         throw new Exception('Impossible de générer un token d\'accès global.');
     }
-    $apiWrapper->setClientDomain($globalTokens->access_token);
+    $apiWrapper->setClientDomain($globalToken->access_token);
 
     return $apiWrapper;
 });
