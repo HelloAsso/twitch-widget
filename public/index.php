@@ -145,6 +145,8 @@ $container->set(Twig::class, function (): Twig {
 
     }
 
+    $twig->getEnvironment()->addGlobal('appVersion', $_SERVER['APP_VERSION'] ?? null);
+
     return $twig;
 });
 
