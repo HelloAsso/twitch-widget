@@ -207,6 +207,7 @@ class ApiWrapper
         if ($this->isExpired($expiration_refresh_date)) {
             $this->apiLogger->error('Refresh token is expired for organization_slug: ' . $organization_slug);
             throw new Exception('Invalid token data: refresh_token is expired');
+        }
 
         if ($tokenData === null) {
             $this->apiLogger->error('Aucun token trouvé pour organization_slug: ' . $organization_slug);
