@@ -45,7 +45,6 @@ $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $logger = new Logger('app');
     $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
-    // $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level)); 
     return $logger;
 });
 
@@ -133,9 +132,10 @@ $container->set(Twig::class, function (): Twig {
 
     // Tu peux passer TOUS les scripts dispos comme globals aussi, si besoin :
     $entries = [];
-    foreach ($manifest as $entry) {
+    foreach ($manifest as $entryPath => $entry) {
         if (!empty($entry['isEntry']) && !empty($entry['file'])) {
-            $entries[$entry['name']] = [
+            $name = basename($entryPath, '.js');
+            $entries[$name] = [
                 'js'  => $entry['file'],
                 'css' => $entry['css'][0] ?? null,
             ];
@@ -188,7 +188,7 @@ $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream']
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
 
-$app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_stream_edit_post');
+$app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_api_stream_new');
 
 $app->get('/widget-stream-alert/{id}', [WidgetController::class, 'widgetAlert'])->setName('app_stream_widget_alert');
 $app->get('/widget-stream-alert/{id}/fetch', [WidgetController::class, 'widgetAlertFetch'])->setName('app_stream_widget_alert_fetch');

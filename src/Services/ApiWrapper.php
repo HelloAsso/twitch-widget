@@ -103,9 +103,9 @@ class ApiWrapper
     /**
      * Rafraîchit un token d'accès pour une organisation donnée en utilisant le refresh token, et met à jour la base de données.
      *
-     * @param [type] $refreshToken
-     * @param [type] $organization_slug
-     * @return AccessToken|null
+     * @param string $refreshToken
+     * @param string $organization_slug
+     * @return AccessToken
      */
     public function refreshToken($refreshToken, $organization_slug): ?AccessToken
     {            
@@ -188,8 +188,8 @@ class ApiWrapper
      * @param string $organization_slug
      * @return AccessToken|null
      */
-    public function getOrganizationAccessToken($organization_slug): ?AccessToken
-    {   
+    public function getOrganizationAccessToken(string $organization_slug): AccessToken
+    {
         $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
 
         $expiration_refresh_date = $tokenData->refresh_token_expires_at ?? false;
@@ -208,10 +208,12 @@ class ApiWrapper
             $this->apiLogger->error('Refresh token is expired for organization_slug: ' . $organization_slug);
             throw new Exception('Invalid token data: refresh_token is expired');
 
+        if ($tokenData === null) {
+            $this->apiLogger->error('Aucun token trouvé pour organization_slug: ' . $organization_slug);
+            throw new Exception('Aucun token trouvé pour l\'organisation: ' . $organization_slug);
         }
      
         return $tokenData;
-  
     }
 
     /**
@@ -400,13 +402,10 @@ class ApiWrapper
      * @param [type] $continuationToken
      * @return array
      */
-    public function getAllOrders($organizationSlug, $formSlug, $currentAmount = 0, $continuationToken = null)
+    public function getAllOrders(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null): array
     {
         $previousToken = '';
         $donations = [];
-        try {
-            $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
-        } catch (Exception $e) {
 
             http_response_code(401);
             echo('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.');
