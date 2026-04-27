@@ -196,13 +196,24 @@ class ApiWrapper
             $tokenData = $this->refreshToken($tokenData->refresh_token, $organization_slug);
             $this->apiLogger->info('Token data refreshed for organization_slug: ' . $organization_slug);         
         }
-        $expiration_date = $tokenData->refresh_token_expires_at ?? false;
+        // declare expiration variables 
+        $expiration_refresh_date = $tokenData->refresh_token_expires_at ?? false;
+        $expiration_access_date = $tokenData->access_token_expires_at ?? false;
+
+
+        if ($this->isExpired($expiration_access_date)) {
+            $this->apiLogger->warning('Access token for organization_slug: ' . $organization_slug . ' is expired. Attempting to refresh token.');
+            $tokenData =  $this->refreshToken( $tokenData->refresh_token, $organization_slug);
+            $this->apiLogger->info('Access token refreshed for organization_slug: ' . $organization_slug . '. New expiry time: ' . 
+              ($tokenData->access_token_expires_at instanceof DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
+
+        }
         if (empty($tokenData->access_token) || empty($tokenData->refresh_token)) {
             $this->apiLogger->error('Access token or refresh token is empty for organization_slug: ' . $organization_slug);
             throw new Exception('Invalid token data: access_token or refresh_token is empty');
         }
         $this->apiLogger->info('Check expiration for access token of organization_slug: ' . $organization_slug);
-        if ($this->isExpired($expiration_date)) {
+        if ($this->isExpired($expiration_refresh_date)) {
             $this->apiLogger->error('Refresh token is expired for organization_slug: ' . $organization_slug);
             throw new Exception('Invalid token data: refresh_token is expired');
 
@@ -365,6 +376,7 @@ class ApiWrapper
         if ($continuationToken) {
             $url .= '&continuationToken=' . $continuationToken;
         }
+        //TODO => ici on regarde toujours l'acces token, quid du refresh/continuation?
 
         curl_setopt_array($curl, array(
             CURLOPT_URL => $url,
@@ -384,6 +396,7 @@ class ApiWrapper
         curl_close($curl);
 
         $response_data = json_decode($response, true);
+      
         return $response_data;
     }
     
@@ -415,7 +428,6 @@ class ApiWrapper
             echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);
             exit;
         }
-
         do {
             $formOrdersData = $this->getDonationFormOrders(
                 $organizationSlug,

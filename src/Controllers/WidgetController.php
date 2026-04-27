@@ -272,6 +272,7 @@ class WidgetController
 
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream);
     // log cache data for debug
+
         if (!$cacheData) {
             $cacheData = [
                 'amount' => 0,
