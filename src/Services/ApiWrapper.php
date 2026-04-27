@@ -408,10 +408,13 @@ class ApiWrapper
         $previousToken = '';
         $donations = [];
 
+        try {
+            $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
+        } catch (Exception $e) {
             http_response_code(401);
             echo('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.');
-            echo('<a target="_blank" href="/redirect_auth_page?organizationSlug=' . $organizationSlug . '">Se reconnecter</a>');    
-            exit;           
+            echo('<a target="_blank" href="/redirect_auth_page?organizationSlug=' . $organizationSlug . '">Se reconnecter</a>');
+            exit;
         }
 
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
