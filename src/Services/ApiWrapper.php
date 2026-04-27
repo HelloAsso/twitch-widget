@@ -107,8 +107,8 @@ class ApiWrapper
      * @param string $organization_slug
      * @return AccessToken
      */
-    public function refreshToken(string $refreshToken, string $organization_slug): AccessToken
-    {
+    public function refreshToken($refreshToken, $organization_slug): ?AccessToken
+    {            
         try {
             $response = $this->client->request('POST', $this->apiAuthUrl, [
                 'form_params' => [
@@ -167,15 +167,16 @@ class ApiWrapper
     {
         $tokenData = $this->accessTokenRepository->selectBySlug(null);
         
-        $expiration_date = $tokenData->refresh_token_expires_at ?? false;
+        $expiration_access_date = $tokenData->access_token_expires_at ?? false;
+
         // si null ou expiré, on génère un nouveau token global
         $this->apiLogger->info('Check expiration for global access token');
-        if ($this->isExpired($expiration_date) || $tokenData == null) {
+        if ($this->isExpired($expiration_access_date) || $tokenData == null) {
             $this->apiLogger->debug('Global access token is invalid. Attempting to generate new one.');
             $tokenData = $this->generateGlobalAccessToken();
         }
         $this->apiLogger->info('Global access token is valid. Expiry time: ' . 
-        ($tokenData->refresh_token_expires_at instanceof DateTime ? $tokenData->refresh_token_expires_at->format('Y-m-d H:i:s') : $tokenData->refresh_token_expires_at));
+        ($tokenData->access_token_expires_at instanceof DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
 
         return $tokenData;
         
@@ -191,23 +192,27 @@ class ApiWrapper
     {
         $tokenData = $this->accessTokenRepository->selectBySlug($organization_slug);
 
+        $expiration_refresh_date = $tokenData->refresh_token_expires_at ?? false;
+        $expiration_access_date = $tokenData->access_token_expires_at ?? false;
+
+        if ($this->isExpired($expiration_access_date)) {
+            $this->apiLogger->debug('Access token for organization_slug: ' . $organization_slug . ' is expired. Attempting to refresh token.');
+            $tokenData =  $this->refreshToken( $tokenData->refresh_token, $organization_slug);
+            $this->apiLogger->info('Access token refreshed for organization_slug: ' . $organization_slug . '. New expiry time: ' . 
+              ($tokenData->access_token_expires_at instanceof DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
+
+        }
+     
+        $this->apiLogger->info('Check expiration for access token of organization_slug: ' . $organization_slug);
+        if ($this->isExpired($expiration_refresh_date)) {
+            $this->apiLogger->error('Refresh token is expired for organization_slug: ' . $organization_slug);
+            throw new Exception('Invalid token data: refresh_token is expired');
+
         if ($tokenData === null) {
             $this->apiLogger->error('Aucun token trouvé pour organization_slug: ' . $organization_slug);
             throw new Exception('Aucun token trouvé pour l\'organisation: ' . $organization_slug);
         }
-
-        if (empty($tokenData->access_token) || empty($tokenData->refresh_token)) {
-            $this->apiLogger->error('Token invalide (vide) pour organization_slug: ' . $organization_slug);
-            throw new Exception('Données de token invalides : access_token ou refresh_token vide');
-        }
-
-        $this->apiLogger->info('Vérification expiration pour organization_slug: ' . $organization_slug);
-
-        if ($this->isExpired($tokenData->refresh_token_expires_at)) {
-            $this->apiLogger->error('Refresh token expiré pour organization_slug: ' . $organization_slug);
-            throw new Exception('Le refresh token est expiré pour l\'organisation: ' . $organization_slug);
-        }
-
+     
         return $tokenData;
     }
 
@@ -364,6 +369,7 @@ class ApiWrapper
         if ($continuationToken) {
             $url .= '&continuationToken=' . $continuationToken;
         }
+        //TODO => ici on regarde toujours l'acces token, quid du refresh/continuation?
 
         curl_setopt_array($curl, array(
             CURLOPT_URL => $url,
@@ -383,6 +389,7 @@ class ApiWrapper
         curl_close($curl);
 
         $response_data = json_decode($response, true);
+      
         return $response_data;
     }
     
@@ -400,8 +407,17 @@ class ApiWrapper
         $previousToken = '';
         $donations = [];
 
-        $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
+            http_response_code(401);
+            echo('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.');
+            echo('<a target="_blank" href="/redirect_auth_page?organizationSlug=' . $organizationSlug . '">Se reconnecter</a>');    
+            exit;           
+        }
 
+        if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);
+            exit;
+        }
         do {
             $formOrdersData = $this->getDonationFormOrders(
                 $organizationSlug,
