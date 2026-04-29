@@ -2,7 +2,7 @@ name: Build & deploy sandbox
 
 on:
   push:
-    branches: [ "develop", "feature/refactor" ]
+    branches: [ "develop" ]
 
 permissions:
   contents: read
