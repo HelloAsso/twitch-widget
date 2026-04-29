@@ -59,6 +59,7 @@ jobs:
         envkey_WEBSITE_DOMAIN: ${{ vars.PROD_WEBSITE_DOMAIN }}
         envkey_MANDRILL_API: ${{ secrets.PROD_MANDRILL_API }}
         envkey_API_KEY: ${{ secrets.PROD_API_KEY }}
+        envkey_APP_VERSION: ${{ github.sha }}
         file_name: .env
   
     - name: Tar

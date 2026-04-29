@@ -15,7 +15,9 @@ if (typeof CountUp !== 'undefined' && CountUp) {
     counterfront = new CountUp('front-goal-current', window.currentAmount, options);
 }
 
-updateDonationBar(counterback, counterfront);
+if (counterback && counterfront) {
+    updateDonationBar(counterback, counterfront);
+}
 
 fetchDonationData();
 setInterval(fetchDonationData, 10000);

@@ -49,7 +49,11 @@ function processAlertQueue() {
         currency: 'EUR',
     });
     var messageTemplate = document.createElement('p');
-    messageTemplate.innerHTML = window.message_template.replace("{pseudo}", pseudo).replace("{message}", message).replace("{amount}", eur.format(amount / 100));
+    const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    messageTemplate.innerHTML = window.message_template
+        .replace("{pseudo}", escapeHtml(pseudo))
+        .replace("{message}", escapeHtml(message))
+        .replace("{amount}", eur.format(amount / 100));
     messageTemplate.style.marginTop = '10px';
     messageTemplate.classList.add('fade');
     container.appendChild(messageTemplate);

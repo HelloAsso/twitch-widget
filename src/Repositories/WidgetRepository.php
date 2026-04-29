@@ -14,7 +14,7 @@ class WidgetRepository
         private string $prefix
     ) {}
 
-    function selectDonationWidgetByGuid($streamGuid, $eventGuid): WidgetDonation
+    public function selectDonationWidgetByGuid(?string $streamGuid, ?string $eventGuid): ?WidgetDonation
     {
         $stmt = $this->pdo->prepare('
             SELECT * 
@@ -24,10 +24,10 @@ class WidgetRepository
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, WidgetDonation::class);
         $stmt->execute([$streamGuid, $eventGuid]);
-        return $stmt->fetch();
+        return $stmt->fetch() ?: null;
     }
 
-    function selectAlertWidgetByGuid($guid): WidgetAlert
+    public function selectAlertWidgetByGuid(string $guid): ?WidgetAlert
     {
         $stmt = $this->pdo->prepare('
             SELECT * 
@@ -36,10 +36,10 @@ class WidgetRepository
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, WidgetAlert::class);
         $stmt->execute([$guid]);
-        return $stmt->fetch();
+        return $stmt->fetch() ?: null;
     }
 
-    function updateDonationWidget($streamGuid, $eventGuid, $data)
+    public function updateDonationWidget(?string $streamGuid, ?string $eventGuid, array $data): void
     {
         $stmt = $this->pdo->prepare('
             UPDATE ' . $this->prefix . 'widget_donation_goal_bar
@@ -59,7 +59,7 @@ class WidgetRepository
         ]);
     }
 
-    function updateAlertWidget($guid, $postData, $image = null, $sound = null)
+    public function updateAlertWidget(string $guid, array $postData, ?string $image = null, ?string $sound = null): void
     {
         $this->pdo->beginTransaction();
 
@@ -107,7 +107,7 @@ class WidgetRepository
         }
     }
 
-    function selectAlertWidgetCacheData($stream)
+    public function selectAlertWidgetCacheData($stream): ?array
     {
         $stmt = $this->pdo->prepare('
             SELECT cache_data
@@ -124,7 +124,7 @@ class WidgetRepository
         return null;
     }
 
-    function updateAlertWidgetCacheData($streamGuid, $data)
+    public function updateAlertWidgetCacheData(string $streamGuid, array $data): void
     {
         $stmt = $this->pdo->prepare('
         UPDATE ' . $this->prefix . 'widget_alert_box
@@ -137,7 +137,7 @@ class WidgetRepository
         ]);
     }
 
-    function selectStreamDonationWidgetCacheData($stream)
+    public function selectStreamDonationWidgetCacheData($stream): ?array
     {
         $stmt = $this->pdo->prepare('
             SELECT cache_data
@@ -154,7 +154,7 @@ class WidgetRepository
         return null;
     }
 
-    function updateStreamDonationWidgetCacheData($streamGuid, $data)
+    public function updateStreamDonationWidgetCacheData(string $streamGuid, array $data): void
     {
         $stmt = $this->pdo->prepare('
         UPDATE ' . $this->prefix . 'widget_donation_goal_bar
@@ -167,7 +167,7 @@ class WidgetRepository
         ]);
     }
 
-    function selectEventDonationWidgetCacheData($event)
+    public function selectEventDonationWidgetCacheData($event): ?array
     {
         $stmt = $this->pdo->prepare('
             SELECT cache_data
@@ -184,7 +184,7 @@ class WidgetRepository
         return null;
     }
 
-    function updateEventDonationWidgetCacheData($eventGuid, $data)
+    public function updateEventDonationWidgetCacheData(string $eventGuid, array $data): void
     {
         $stmt = $this->pdo->prepare('
         UPDATE ' . $this->prefix . 'widget_donation_goal_bar

@@ -12,7 +12,7 @@ class AuthMiddleware
     public function __invoke(Request $request, Handler $handler): Response
     {
         if (isset($_SESSION['user'])) {
-            return $handler->handle($request);
+            return $handler->handle($request->withAttribute('user', $_SESSION['user']));
         }
 
         $response = new SlimResponse();

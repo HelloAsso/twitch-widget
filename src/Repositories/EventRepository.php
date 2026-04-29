@@ -27,7 +27,7 @@ class EventRepository
         return $stmt->fetchAll();
     }
 
-    function selectListByUser(User $user): array
+    public function selectListByUser(User $user): array
     {
         $stmt = $this->pdo->prepare('
             SELECT c.* 
@@ -40,7 +40,7 @@ class EventRepository
         return $stmt->fetchAll();
     }
 
-    function selectByUserAndId(User $user, $id): ?Event
+    public function selectByUserAndId(User $user, int $id): ?Event
     {
         if ($user->role == "ADMIN") {
             $stmt = $this->pdo->prepare('
@@ -66,7 +66,7 @@ class EventRepository
         return $event ?: null;
     }
 
-    function selectByUserAndGuid(User $user, $guid): ?Event
+    public function selectByUserAndGuid(User $user, string $guid): ?Event
     {
         if ($user->role == "ADMIN") {
             $stmt = $this->pdo->prepare('
@@ -92,7 +92,7 @@ class EventRepository
         return $event ?: null;
     }
 
-    function selectByGuid($guid): ?Event
+    public function selectByGuid(string $guid): ?Event
     {
         $stmt = $this->pdo->prepare('
             SELECT * 
@@ -105,39 +105,27 @@ class EventRepository
         return $event ?: null;
     }
 
-    public function insert($title): Event
+    public function insert(string $title): Event
     {
         $this->pdo->beginTransaction();
 
         try {
             $guid = bin2hex(random_bytes(16));
 
-            $query = 'INSERT INTO ' . $this->prefix . 'charity_event (guid, title) 
-        VALUES (:guid, :title)';
-            $stmt = $this->pdo->prepare($query);
-            $stmt->execute([
-                ':guid' => $guid,
-                ':title' => $title
-            ]);
-
+            $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'charity_event (guid, title) VALUES (:guid, :title)');
+            $stmt->execute([':guid' => $guid, ':title' => $title]);
             $id = $this->pdo->lastInsertId();
 
-            $query = 'INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_event_guid)
-                VALUES (:guid)';
-            $stmt = $this->pdo->prepare($query);
-            $stmt->execute([
-                ':guid' => $guid
-            ]);
+            $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_event_guid) VALUES (:guid)');
+            $stmt->execute([':guid' => $guid]);
 
             $this->pdo->commit();
 
-            $stream = new Event();
-            $stream->id = $id;
-            $stream->guid = $guid;
-            $stream->title = $title;
-            return $stream;
-
-            $this->pdo->commit();
+            $event = new Event();
+            $event->id = $id;
+            $event->guid = $guid;
+            $event->title = $title;
+            return $event;
         } catch (Exception $e) {
             $this->pdo->rollBack();
             throw $e;

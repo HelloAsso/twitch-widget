@@ -11,7 +11,7 @@ class AuthApiMiddleware
 {
     public function __invoke(Request $request, Handler $handler): Response
     {
-        $providedKey = $request->getHeaderLine('X_API_KEY');
+        $providedKey = $request->getHeaderLine('X-API-KEY');
 
         if (!empty($providedKey) && $providedKey === $_SERVER['API_KEY']) {
             return $handler->handle($request);
