@@ -23,5 +23,8 @@
     }
     </style>
     {% block content %}{% endblock %}
+    <footer class="text-center py-3 mt-auto" style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">
+      Fait par HelloAsso{% if appVersion %} &mdash; <span title="{{ appVersion }}">{{ appVersion|slice(0, 7) }}</span>{% endif %}
+    </footer>
   </body>
 </html>

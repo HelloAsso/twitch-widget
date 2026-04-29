@@ -55,11 +55,12 @@ class WidgetController
             $streamCache = null;
 
             foreach ($cacheData['streams'] as &$cachedStream) {
-                if ($cachedStream['id'] === $stream->id) {
+                if ($cachedStream !== null && $cachedStream['id'] === $stream->id) {
                     $streamCache = &$cachedStream;
                     break;
                 }
             }
+            unset($cachedStream);
 
             if (!$streamCache) {
                 $streamCache = [
@@ -81,6 +82,7 @@ class WidgetController
             $streamCache['continuation_token'] = $result['continuation_token'];
 
             $totalAmount += $result['amount'];
+            unset($streamCache);
         }
 
         if ($cacheData['amount'] !== $totalAmount) {
@@ -113,6 +115,9 @@ class WidgetController
         }
 
         $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event);
+        if (!$cacheData) {
+            $cacheData = ['amount' => 0, 'streams' => []];
+        }
 
         try {
             $streams = $this->streamRepository->selectListByEvent($event);
@@ -122,11 +127,12 @@ class WidgetController
                 $streamCache = null;
 
                 foreach ($cacheData['streams'] as &$cachedStream) {
-                    if ($cachedStream['id'] === $stream->id) {
+                    if ($cachedStream !== null && $cachedStream['id'] === $stream->id) {
                         $streamCache = &$cachedStream;
                         break;
                     }
                 }
+                unset($cachedStream);
 
                 if (!$streamCache) {
                     $streamCache = [
@@ -148,6 +154,7 @@ class WidgetController
                 $streamCache['continuation_token'] = $result['continuation_token'];
 
                 $totalAmount += $result['amount'];
+                unset($streamCache);
             }
 
             if ($cacheData['amount'] !== $totalAmount) {
@@ -230,6 +237,9 @@ class WidgetController
         }
 
         $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream);
+        if (!$cacheData) {
+            $cacheData = ['continuation_token' => ''];
+        }
 
         try {
             $result = $this->apiWrapper->getAllOrders(
@@ -271,12 +281,8 @@ class WidgetController
         }       
 
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream);
-    // log cache data for debug
         if (!$cacheData) {
-            $cacheData = [
-                'amount' => 0,
-                'continuation_token' => "",
-            ];
+            $cacheData = ['amount' => 0, 'continuation_token' => ''];
         }
 
         $result = $this->apiWrapper->getAllOrders(
@@ -286,7 +292,7 @@ class WidgetController
             $cacheData['continuation_token'],
         );
 
-        if ($cacheData['continuation_token'] != $result['continuation_token']) {
+        if ($cacheData['continuation_token'] != $result['continuation_token'] || $cacheData['amount'] != $result['amount']) {
             $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                 "amount" => $result['amount'],
                 "continuation_token" => $result['continuation_token']
@@ -317,6 +323,9 @@ class WidgetController
         }
 
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream);
+        if (!$cacheData) {
+            $cacheData = ['amount' => 0, 'continuation_token' => ''];
+        }
 
         try {
             $result = $this->apiWrapper->getAllOrders(
@@ -326,7 +335,8 @@ class WidgetController
                 $cacheData['continuation_token']
             );
 
-            if ($cacheData['continuation_token'] != $result['continuation_token']) {
+            if ($cacheData['continuation_token'] != $result['continuation_token']
+                || $cacheData['amount'] != $result['amount']) {
                 $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                     "amount" => $result['amount'],
                     "continuation_token" => $result['continuation_token']

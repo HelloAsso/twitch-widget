@@ -3,6 +3,8 @@
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Services\ApiWrapper;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -15,6 +17,9 @@ $pdo = new PDO($dsn, $_SERVER['DBUSER'], $_SERVER['DBPASSWORD'], [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
+$logger = new Logger('cron');
+$logger->pushHandler(new StreamHandler(__DIR__ . '/logs/cron.log', Logger::DEBUG));
+
 $accessTokenRepository = new AccessTokenRepository($pdo, $_SERVER['DBPREFIX']);
 $authorizationCodeRepository = new AuthorizationCodeRepository($pdo, $_SERVER['DBPREFIX']);
 
@@ -26,14 +31,19 @@ $apiWrapper = new ApiWrapper(
     $_SERVER['API_AUTH_URL'],
     $_SERVER['CLIENT_ID'],
     $_SERVER['CLIENT_SECRET'],
-    $_SERVER['WEBSITE_DOMAIN']
+    $_SERVER['WEBSITE_DOMAIN'],
+    $logger
 );
 
 $tokens = $accessTokenRepository->getAccessTokensToRefresh();
 
-echo count($tokens) . " tokens to refresh";
-
+echo count($tokens) . " token(s) à rafraîchir\n";
 foreach ($tokens as $token) {
-    $apiWrapper->getAccessTokensAndRefreshIfNecessary($token->organization_slug);
-    echo "Token for " . $token->organization_slug ?? "HelloAssoStream" . " refreshed";
+    try {
+        $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
+        echo "Token rafraîchi pour " . ($token->organization_slug ?? 'global') . "\n";
+    } catch (Exception $e) {
+        echo "Erreur pour " . ($token->organization_slug ?? 'global') . " : " . $e->getMessage() . "\n";
+        $logger->error('Erreur refresh token pour ' . $token->organization_slug, ['exception' => $e]);
+    }
 }

@@ -5,15 +5,16 @@ namespace App\Repositories;
 use League\MimeTypeDetection\FinfoMimeTypeDetector;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use MicrosoftAzure\Storage\Blob\Models\CreateBlockBlobOptions;
+use Psr\Http\Message\UploadedFileInterface;
 
 class FileManager
 {
     public function __construct(private BlobRestProxy $storage, private string $blobUrl) {}
 
-    private function getBlobOption($file, $content)
+    private function getBlobOption(string $fileName, $content): CreateBlockBlobOptions
     {
         $detector = new FinfoMimeTypeDetector();
-        $mimeType = $detector->detectMimeType($file, $content);
+        $mimeType = $detector->detectMimeType($fileName, $content);
 
         $options = new CreateBlockBlobOptions();
         $options->setContentType($mimeType);
@@ -21,82 +22,75 @@ class FileManager
         return $options;
     }
 
-    private function checkSize($formdata, $size)
+    private function checkSize(UploadedFileInterface $file, int $maxMb): void
     {
-        if ($formdata['size'] <= 0 || $formdata['size'] > $size * 1024 * 1024)
-            throw new \InvalidArgumentException("Ce fichier est trop volumineux, taille maximum " . $size . "M");
+        $size = $file->getSize();
+        if ($size <= 0 || $size > $maxMb * 1024 * 1024) {
+            throw new \InvalidArgumentException("Ce fichier est trop volumineux, taille maximum {$maxMb}M");
+        }
     }
 
-    private function checkType($formdata, $ext, $mimes)
+    private function checkType(UploadedFileInterface $file, array $ext, array $mimes): void
     {
+        $filename = $file->getClientFilename() ?? '';
+        $tmpPath = $file->getStream()->getMetadata('uri');
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($formdata['tmp_name']);
+        $mimeType = $finfo->file($tmpPath);
+
         if (
-            !in_array(strtolower(pathinfo($formdata["name"], PATHINFO_EXTENSION)), $ext) ||
+            !in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), $ext) ||
             !in_array($mimeType, $mimes)
-        )
+        ) {
             throw new \InvalidArgumentException("Ce fichier n'est pas au bon format");
+        }
     }
 
-    private function isPicture($formdata)
+    private function isPicture(UploadedFileInterface $file): void
     {
-        $ext = ["gif", "heic", "heif", "jpg", "jpeg", "png", "webp", "mp4"];
-        $mimes = [
-            "image/gif",
-            "image/heic",
-            "image/heif",
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "video/mp4"
-        ];
-        $this->checkType($formdata, $ext, $mimes);
+        $this->checkType($file, ["gif", "heic", "heif", "jpg", "jpeg", "png", "webp", "mp4"], [
+            "image/gif", "image/heic", "image/heif", "image/jpeg",
+            "image/png", "image/webp", "video/mp4",
+        ]);
     }
 
-    private function isSound($formdata)
+    private function isSound(UploadedFileInterface $file): void
     {
-        $ext = ["mp3", "aac", "ogg", "wav", "midi"];
-        $mimes = [
-            "audio/mpeg",
-            "audio/aac",
-            "audio/ogg",
-            "audio/wav",
-            "audio/x-wav",
-            "audio/x-midi",
-        ];
-        $this->checkType($formdata, $ext, $mimes);
+        $this->checkType($file, ["mp3", "aac", "ogg", "wav", "midi"], [
+            "audio/mpeg", "audio/aac", "audio/ogg",
+            "audio/wav", "audio/x-wav", "audio/x-midi",
+        ]);
     }
 
-    public function uploadPicture($formdata)
+    public function uploadPicture(UploadedFileInterface $file): string
     {
-        $this->checkSize($formdata, 7);
-        $this->isPicture($formdata);
+        $this->checkSize($file, 7);
+        $this->isPicture($file);
 
-        $fileName = uniqid() . '.' . pathinfo($formdata["name"], PATHINFO_EXTENSION);
-        $content = fopen($formdata["tmp_name"], "r");
+        $fileName = uniqid() . '.' . pathinfo($file->getClientFilename() ?? 'file', PATHINFO_EXTENSION);
+        $content = $file->getStream()->detach();
         $this->storage->createBlockBlob("images", "charity_stream/$fileName", $content, $this->getBlobOption($fileName, $content));
 
         return $fileName;
     }
 
-    public function getPictureUrl($fileName)
+    public function getPictureUrl(string $fileName): string
     {
         return $this->blobUrl . '/images/charity_stream/' . $fileName;
     }
 
-    public function uploadSound($formdata)
+    public function uploadSound(UploadedFileInterface $file): string
     {
-        $this->checkSize($formdata, 7);
-        $this->isSound($formdata);
+        $this->checkSize($file, 7);
+        $this->isSound($file);
 
-        $fileName = uniqid() . '.' . pathinfo($formdata["name"], PATHINFO_EXTENSION);
-        $content = fopen($formdata["tmp_name"], "r");
+        $fileName = uniqid() . '.' . pathinfo($file->getClientFilename() ?? 'file', PATHINFO_EXTENSION);
+        $content = $file->getStream()->detach();
         $this->storage->createBlockBlob("sounds", "charity_stream/$fileName", $content, $this->getBlobOption($fileName, $content));
 
         return $fileName;
     }
 
-    public function getSoundUrl($fileName)
+    public function getSoundUrl(string $fileName): string
     {
         return $this->blobUrl . '/sounds/charity_stream/' . $fileName;
     }

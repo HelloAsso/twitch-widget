@@ -45,7 +45,6 @@ $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $logger = new Logger('app');
     $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
-    // $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level)); 
     return $logger;
 });
 
@@ -82,7 +81,7 @@ $container->set(WidgetRepository::class, function ($c) {
 });
 
 $container->set(ApiWrapper::class, function ($c) {
-    return new ApiWrapper(
+    $apiWrapper = new ApiWrapper(
         $c->get(AccessTokenRepository::class),
         $c->get(AuthorizationCodeRepository::class),
         $_SERVER['HA_AUTH_URL'],
@@ -93,6 +92,15 @@ $container->set(ApiWrapper::class, function ($c) {
         $_SERVER['WEBSITE_DOMAIN'],
         $c->get('logger.api')
     );
+
+    // Init une seule fois au moment où le container construit le service
+    $globalToken = $apiWrapper->getGlobalAccessToken();
+    if ($globalToken === null) {
+        throw new Exception('Impossible de générer un token d\'accès global.');
+    }
+    $apiWrapper->setClientDomain($globalToken->access_token);
+
+    return $apiWrapper;
 });
 
 $container->set(FileManager::class, function () {
@@ -124,9 +132,10 @@ $container->set(Twig::class, function (): Twig {
 
     // Tu peux passer TOUS les scripts dispos comme globals aussi, si besoin :
     $entries = [];
-    foreach ($manifest as $entry) {
+    foreach ($manifest as $entryPath => $entry) {
         if (!empty($entry['isEntry']) && !empty($entry['file'])) {
-            $entries[$entry['name']] = [
+            $name = basename($entryPath, '.js');
+            $entries[$name] = [
                 'js'  => $entry['file'],
                 'css' => $entry['css'][0] ?? null,
             ];
@@ -136,6 +145,8 @@ $container->set(Twig::class, function (): Twig {
 
     }
 
+    $twig->getEnvironment()->addGlobal('appVersion', $_SERVER['APP_VERSION'] ?? null);
+
     return $twig;
 });
 
@@ -144,15 +155,16 @@ $container->set(Messages::class, function () {
 });
 
 $app = AppFactory::createFromContainer($container);
+$app->addRoutingMiddleware();
 
 if (!session_id())
     @session_start();
 
 if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     // Active Whoops uniquement en dev
-$whoops = new \Whoops\Run;
-$whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
-$whoops->register();
+    $whoops = new \Whoops\Run;
+    $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+    $whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 } else {
     $errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));
@@ -178,7 +190,7 @@ $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream']
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
 
-$app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_stream_edit_post');
+$app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_api_stream_new');
 
 $app->get('/widget-stream-alert/{id}', [WidgetController::class, 'widgetAlert'])->setName('app_stream_widget_alert');
 $app->get('/widget-stream-alert/{id}/fetch', [WidgetController::class, 'widgetAlertFetch'])->setName('app_stream_widget_alert_fetch');
