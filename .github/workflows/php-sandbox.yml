@@ -2,7 +2,7 @@ name: Build & deploy sandbox
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "develop" , "log-file-per-env"]
 
 permissions:
   contents: read
@@ -60,6 +60,7 @@ jobs:
         envkey_MANDRILL_API: ${{ secrets.SANDBOX_MANDRILL_API }}
         envkey_API_KEY: ${{ secrets.SANDBOX_API_KEY }}
         envkey_APP_VERSION: ${{ github.sha }}
+        envkey_APP_ENV: ${{ github.ref_name }}
         file_name: .env
 
     - name: Tar

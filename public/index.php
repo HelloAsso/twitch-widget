@@ -37,14 +37,16 @@ $dotenv->safeLoad();
 $container = new Container();
 $container->set('logger.api', function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
-    $logger = new Logger('api'); // le nom est ici !
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level));
+    $env = $_SERVER['APP_ENV'] ?? 'production';
+    $logger = new Logger('api');
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api-' . $env . '.log', 7, $level));
     return $logger;
 });
 $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
+    $env = $_SERVER['APP_ENV'] ?? 'production';
     $logger = new Logger('app');
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app-' . $env . '.log', 7, $level));
     return $logger;
 });
 
