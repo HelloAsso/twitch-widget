@@ -319,7 +319,7 @@
 			forms.forEach(function(form) {
 				var opt = document.createElement('option');
 				opt.value = form.formSlug;
-				opt.textContent = form.title ? (form.title + ' — ' + form.formSlug) : form.formSlug;
+				opt.textContent = form.title || form.formSlug;
 				formSelect.appendChild(opt);
 			});
 

@@ -270,9 +270,9 @@
 		formSelect.innerHTML = '<option value="">Sélectionner un formulaire…</option>';
 		forms.forEach(function(form) {
 			var opt = document.createElement('option');
-			opt.value = form.formSlug;
-			opt.textContent = form.title ? (form.title + ' — ' + form.formSlug) : form.formSlug;
-			formSelect.appendChild(opt);
+				opt.value = form.formSlug;
+				opt.textContent = form.title || form.formSlug;
+				formSelect.appendChild(opt);
 		});
 
 		// Afficher l'étape 2, masquer l'étape 1
