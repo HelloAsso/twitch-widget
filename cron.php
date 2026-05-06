@@ -37,25 +37,35 @@ $apiWrapper = new ApiWrapper(
     $logger
 );
 
-$tokens = $accessTokenRepository->getAccessTokensToRefresh();
+try {
+    $tokens = $accessTokenRepository->getAccessTokensToRefresh();
 
-$logger->info('Cron démarré. IP du serveur : ' . gethostbyname(gethostname()) . '. API_AUTH_URL : ' . $_SERVER['API_AUTH_URL']);
-echo count($tokens) . " token(s) à rafraîchir\n";
-foreach ($tokens as $token) {
-    try {
-        $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
-        echo "Token rafraîchi pour " . ($token->organization_slug ?? 'global') . "\n";
-        $logger->info('Token rafraîchi avec succès pour ' . ($token->organization_slug ?? 'global'));
-    } catch (Exception $e) {
-        $isNetworkError = str_contains($e->getMessage(), 'cURL error 7') || str_contains($e->getMessage(), 'Connection refused');
-        echo "Erreur pour " . ($token->organization_slug ?? 'global') . " : " . $e->getMessage() . "\n";
-        if ($isNetworkError) {
-            $logger->critical('Impossible de joindre l\'API (' . $_SERVER['API_AUTH_URL'] . '). Vérifiez que le serveur distant est accessible depuis cette machine.', [
-                'server_ip' => gethostbyname(gethostname()),
-                'organization_slug' => $token->organization_slug,
-            ]);
-        } else {
-            $logger->error('Erreur refresh token pour ' . $token->organization_slug, ['exception' => $e]);
+    $logger->info('Cron démarré. IP du serveur : ' . gethostbyname(gethostname()) . '. API_AUTH_URL : ' . $_SERVER['API_AUTH_URL']);
+    echo count($tokens) . " token(s) à rafraîchir\n";
+    foreach ($tokens as $token) {
+        try {
+            $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
+            echo "Token rafraîchi pour " . ($token->organization_slug ?? 'global') . "\n";
+            $logger->info('Token rafraîchi avec succès pour ' . ($token->organization_slug ?? 'global'));
+        } catch (Exception $e) {
+            $isNetworkError = str_contains($e->getMessage(), 'cURL error 7') || str_contains($e->getMessage(), 'Connection refused');
+            echo "Erreur pour " . ($token->organization_slug ?? 'global') . " : " . $e->getMessage() . "\n";
+            if ($isNetworkError) {
+                $logger->critical('Impossible de joindre l\'API (' . $_SERVER['API_AUTH_URL'] . '). Vérifiez que le serveur distant est accessible depuis cette machine.', [
+                    'server_ip' => gethostbyname(gethostname()),
+                    'organization_slug' => $token->organization_slug,
+                ]);
+            } else {
+                $logger->error('Erreur refresh token pour ' . $token->organization_slug, ['exception' => $e]);
+            }
         }
     }
+} catch (Throwable $e) {
+    $logger->critical('Le cron a planté de manière inattendue.', [
+        'exception' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ]);
+    echo "Erreur critique : " . $e->getMessage() . "\n";
+    exit(1);
 }

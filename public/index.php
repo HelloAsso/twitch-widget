@@ -171,6 +171,16 @@ if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
 } else {
     $errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));
 }
+
+// Ne pas logger les erreurs 404 (bots, scanners, etc.)
+$errorMiddleware->setErrorHandler(
+    \Slim\Exception\HttpNotFoundException::class,
+    function (\Psr\Http\Message\ServerRequestInterface $request, \Throwable $exception, bool $displayErrorDetails) use ($app) {
+        $response = $app->getResponseFactory()->createResponse();
+        return $response->withStatus(404);
+    },
+    true // handleSubclasses
+);
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
