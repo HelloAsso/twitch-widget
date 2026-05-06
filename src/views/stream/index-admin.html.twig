@@ -29,47 +29,125 @@
 		</div>
 
 		<div class="modal fade" id="createStreamModal" tabindex="-1">
-			<div class="modal-dialog">
+			<div class="modal-dialog modal-lg">
 				<div class="modal-content">
 					<div class="modal-header">
 						<h5 class="modal-title">Créer un nouveau Charity Stream</h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
-						<form action="/admin/stream" method="POST">
-							{% if events %}
+
+						{{-- Toggle switch mode --}}
+						<div class="mb-4 d-flex align-items-center gap-3">
+							<span class="fw-semibold">Manuellement</span>
+							<div class="form-check form-switch mb-0">
+								<input class="form-check-input" type="checkbox" role="switch" id="streamModeSwitch" onchange="toggleStreamMode(this)">
+							</div>
+							<span class="fw-semibold">Depuis mon association</span>
+						</div>
+
+						{{-- == MODE MANUEL == --}}
+						<div id="modeManuel">
+							<form action="/admin/stream" method="POST">
+								{% if events %}
+									<div class="mb-3">
+										<label for="parent_event" class="form-label">Évènement parent</label>
+										<select class="form-control" id="parent_event" name="parent_event">
+											<option></option>
+											{% for event in events %}
+												<option value="{{ event.id }}">{{ event.title }}</option>
+											{% endfor %}
+										</select>
+									</div>
+									<div class="mb-3 form-check form-switch">
+										<input class="form-check-input" type="checkbox" role="switch" id="parent_style" name="parent_style">
+										<label for="parent_style" class="form-check-label">Appliquer le même style ?</label>
+									</div>
+								{% endif %}
 								<div class="mb-3">
-									<label for="parent_event" class="form-label">Évènement parent</label>
-									<select class="form-control" id="parent_event" name="parent_event">
-										<option></option>
-										{% for event in events %}
-											<option value="{{ event.id }}">{{ event.title }}</option>
-										{% endfor %}
-									</select>
+									<label for="owner_email" class="form-label">Email</label>
+									<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
 								</div>
-								<div class="mb-3 form-check form-switch">
-									<input class="form-check-input" type="checkbox" role="switch" id="parent_style" name="parent_style">
-									<label for="parent_style" class="form-check-label">Appliquer le même style ?</label>
+								<div class="mb-3">
+									<label for="organization_id" class="form-label">Slug association</label>
+									<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
 								</div>
-							{% endif %}
-							<div class="mb-3">
-								<label for="owner_email" class="form-label">Email</label>
-								<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+								<div class="mb-3">
+									<label for="form_slug" class="form-label">Slug formulaire</label>
+									<input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
+								</div>
+								<div class="mb-3">
+									<label for="title" class="form-label">Titre</label>
+									<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+								</div>
+								<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
+							</form>
+						</div>
+
+						{{-- == MODE DEPUIS MON ASSO == --}}
+						<div id="modeAsso" style="display:none">
+
+							{{-- Étape 1 : connexion OAuth --}}
+							<div id="stepConnect" class="text-center py-3">
+								<p class="text-muted mb-3">Connectez une association HelloAsso pour récupérer automatiquement ses formulaires de don.</p>
+								<button type="button" class="btn btn-primary btn-lg" id="connectAssoBtn" onclick="connectAsso()">
+									🔑 Connecter mon asso
+								</button>
+								<div id="connectSpinner" class="mt-3" style="display:none">
+									<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+									<span class="ms-2 text-muted">Ouverture de la mire d'autorisation...</span>
+								</div>
 							</div>
-							<div class="mb-3">
-								<label for="organization_id" class="form-label">Slug association</label>
-								<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
+
+							{{-- Étape 2 : sélection du formulaire --}}
+							<div id="stepForms" style="display:none">
+								<form action="/admin/stream" method="POST">
+
+									<div class="alert alert-success d-flex align-items-center mb-3">
+										<span>✅ Association connectée :&nbsp;<strong id="assoSlugDisplay"></strong></span>
+									</div>
+
+									{% if events %}
+										<div class="mb-3">
+											<label for="asso_parent_event" class="form-label">Évènement parent</label>
+											<select class="form-control" id="asso_parent_event" name="parent_event">
+												<option></option>
+												{% for event in events %}
+													<option value="{{ event.id }}">{{ event.title }}</option>
+												{% endfor %}
+											</select>
+										</div>
+										<div class="mb-3 form-check form-switch">
+											<input class="form-check-input" type="checkbox" role="switch" id="asso_parent_style" name="parent_style">
+											<label for="asso_parent_style" class="form-check-label">Appliquer le même style ?</label>
+										</div>
+									{% endif %}
+
+									<div class="mb-3">
+										<label for="asso_owner_email" class="form-label">Email</label>
+										<input type="email" class="form-control" id="asso_owner_email" name="owner_email" value="{{ currentUser.email }}" required>
+									</div>
+
+									<input type="hidden" id="asso_organization_slug" name="organization_slug">
+
+									<div class="mb-3">
+										<label for="asso_form_slug" class="form-label">Formulaire de don</label>
+										<select class="form-control" id="asso_form_slug" name="form_slug" required>
+											<option value="">Sélectionner un formulaire…</option>
+										</select>
+									</div>
+
+									<div class="mb-3">
+										<label for="asso_title" class="form-label">Titre du stream</label>
+										<input type="text" class="form-control" id="asso_title" name="title" required>
+									</div>
+
+									<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
+								</form>
 							</div>
-							<div class="mb-3">
-								<label for="form_slug" class="form-label">Slug formulaire</label>
-								<input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
-							</div>
-							<div class="mb-3">
-								<label for="title" class="form-label">Titre</label>
-								<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
-							</div>
-							<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
-						</form>
+
+						</div>
+
 					</div>
 				</div>
 			</div>
@@ -188,12 +266,65 @@
 {% endblock %}
 {% block scripts %}
 	<script>
-
-
 		function confirmDelete(event) {
 			if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
-			event.preventDefault();
+				event.preventDefault();
 			}
 		}
+
+		function toggleStreamMode(el) {
+			var isAsso = el.checked;
+			document.getElementById('modeManuel').style.display = isAsso ? 'none' : 'block';
+			document.getElementById('modeAsso').style.display  = isAsso ? 'block' : 'none';
+		}
+
+		function connectAsso() {
+			var btn     = document.getElementById('connectAssoBtn');
+			var spinner = document.getElementById('connectSpinner');
+			btn.disabled = true;
+			spinner.style.display = 'block';
+
+			fetch('/admin/stream/init-auth')
+				.then(function(r) {
+					if (!r.ok) throw new Error('Erreur réseau');
+					return r.json();
+				})
+				.then(function(data) {
+					var authWindow = window.open(data.url, 'ha_auth_stream', 'width=900,height=700,noopener=0');
+					if (!authWindow) {
+						alert('Veuillez autoriser les popups pour ce site afin de connecter votre association.');
+						btn.disabled = false;
+						spinner.style.display = 'none';
+					}
+				})
+				.catch(function() {
+					btn.disabled = false;
+					spinner.style.display = 'none';
+					alert('Une erreur est survenue lors de l\'initialisation de l\'autorisation.');
+				});
+		}
+
+		window.addEventListener('message', function(event) {
+			if (event.origin !== window.location.origin) return;
+			if (!event.data || event.data.type !== 'ha_stream_auth_success') return;
+
+			var organizationSlug = event.data.organizationSlug;
+			var forms = event.data.forms || [];
+
+			document.getElementById('asso_organization_slug').value = organizationSlug;
+			document.getElementById('assoSlugDisplay').textContent  = organizationSlug;
+
+			var formSelect = document.getElementById('asso_form_slug');
+			formSelect.innerHTML = '<option value="">Sélectionner un formulaire…</option>';
+			forms.forEach(function(form) {
+				var opt = document.createElement('option');
+				opt.value = form.formSlug;
+				opt.textContent = form.title ? (form.title + ' — ' + form.formSlug) : form.formSlug;
+				formSelect.appendChild(opt);
+			});
+
+			document.getElementById('stepConnect').style.display = 'none';
+			document.getElementById('stepForms').style.display   = 'block';
+		});
 	</script>
 {% endblock %}

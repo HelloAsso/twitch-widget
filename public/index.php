@@ -198,6 +198,8 @@ $app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])-
 $app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');
 $app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthMiddleware())->setName('app_event_edit_post');
 $app->post('/admin/stream', [AdminController::class, 'newStream'])->add(new AuthMiddleware())->setName('app_stream_new');
+$app->get('/admin/stream/init-auth', [AdminController::class, 'initStreamAuth'])->add(new AuthMiddleware())->setName('app_stream_init_auth');
+$app->get('/admin/stream/auth-callback', [AdminController::class, 'streamAuthCallback'])->setName('app_stream_auth_callback');
 $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
