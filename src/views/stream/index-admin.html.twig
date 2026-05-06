@@ -37,7 +37,7 @@
 					</div>
 					<div class="modal-body">
 
-						{{-- Toggle switch mode --}}
+						{# Toggle switch mode #}
 						<div class="mb-4 d-flex align-items-center gap-3">
 							<span class="fw-semibold">Manuellement</span>
 							<div class="form-check form-switch mb-0">
@@ -46,7 +46,7 @@
 							<span class="fw-semibold">Depuis mon association</span>
 						</div>
 
-						{{-- == MODE MANUEL == --}}
+						{# == MODE MANUEL == #}
 						<div id="modeManuel">
 							<form action="/admin/stream" method="POST">
 								{% if events %}
@@ -84,10 +84,10 @@
 							</form>
 						</div>
 
-						{{-- == MODE DEPUIS MON ASSO == --}}
+						{# == MODE DEPUIS MON ASSO == #}
 						<div id="modeAsso" style="display:none">
 
-							{{-- Étape 1 : connexion OAuth --}}
+							{# Étape 1 : connexion OAuth #}
 							<div id="stepConnect" class="text-center py-3">
 								<p class="text-muted mb-3">Connectez une association HelloAsso pour récupérer automatiquement ses formulaires de don.</p>
 								<button type="button" class="btn btn-primary btn-lg" id="connectAssoBtn" onclick="connectAsso()">
@@ -99,7 +99,7 @@
 								</div>
 							</div>
 
-							{{-- Étape 2 : sélection du formulaire --}}
+							{# Étape 2 : sélection du formulaire #}
 							<div id="stepForms" style="display:none">
 								<form action="/admin/stream" method="POST">
 
