@@ -319,7 +319,7 @@
 			forms.forEach(function(form) {
 				console.log('HelloAsso form object:', form);
 				var slug  = form.slug || form.formSlug || '';
-				var label = form.title || slug;
+				var label = form.privateTitle || form.title || slug;
 				var opt = document.createElement('option');
 				opt.value = slug;
 				opt.textContent = label;
