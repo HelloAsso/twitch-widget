@@ -2,7 +2,8 @@ name: Build & deploy sandbox
 
 on:
   push:
-    branches: [ "develop" , "log-file-per-env"]
+    branches: [ "develop" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
