@@ -316,11 +316,19 @@
 
 			var formSelect = document.getElementById('asso_form_slug');
 			formSelect.innerHTML = '<option value="">Sélectionner un formulaire…</option>';
+			var formsData = forms;
 			forms.forEach(function(form) {
 				var opt = document.createElement('option');
 				opt.value = form.formSlug;
 				opt.textContent = form.title || form.formSlug;
+				opt.dataset.title = form.title || '';
 				formSelect.appendChild(opt);
+			});
+
+			formSelect.addEventListener('change', function() {
+				var titleInput = document.getElementById('asso_title');
+				var selectedOpt = this.options[this.selectedIndex];
+				titleInput.value = selectedOpt && selectedOpt.dataset.title ? selectedOpt.dataset.title : '';
 			});
 
 			document.getElementById('stepConnect').style.display = 'none';
