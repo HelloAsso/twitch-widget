@@ -316,12 +316,14 @@
 
 			var formSelect = document.getElementById('asso_form_slug');
 			formSelect.innerHTML = '<option value="">Sélectionner un formulaire…</option>';
-			var formsData = forms;
 			forms.forEach(function(form) {
+				console.log('HelloAsso form object:', form);
+				var slug  = form.slug || form.formSlug || '';
+				var label = form.title || slug;
 				var opt = document.createElement('option');
-				opt.value = form.formSlug;
-				opt.textContent = form.title || form.formSlug;
-				opt.dataset.title = form.title || '';
+				opt.value = slug;
+				opt.textContent = label;
+				opt.dataset.title = label;
 				formSelect.appendChild(opt);
 			});
 
