@@ -73,8 +73,11 @@ class FileManager
         return $fileName;
     }
 
-    public function getPictureUrl(string $fileName): string
+    public function getPictureUrl(?string $fileName): ?string
     {
+        if ($fileName === null) {
+            return null;
+        }
         return $this->blobUrl . '/images/charity_stream/' . $fileName;
     }
 
@@ -90,8 +93,11 @@ class FileManager
         return $fileName;
     }
 
-    public function getSoundUrl(string $fileName): string
+    public function getSoundUrl(?string $fileName): ?string
     {
+        if ($fileName === null) {
+            return null;
+        }
         return $this->blobUrl . '/sounds/charity_stream/' . $fileName;
     }
 }

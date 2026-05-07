@@ -37,14 +37,16 @@ $dotenv->safeLoad();
 $container = new Container();
 $container->set('logger.api', function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
-    $logger = new Logger('api'); // le nom est ici !
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api.log', 7, $level));
+    $env = $_SERVER['APP_ENV'] ?? 'production';
+    $logger = new Logger('api');
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api-' . $env . '.log', 7, $level));
     return $logger;
 });
 $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
+    $env = $_SERVER['APP_ENV'] ?? 'production';
     $logger = new Logger('app');
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app.log', 7, $level)); 
+    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app-' . $env . '.log', 7, $level));
     return $logger;
 });
 
@@ -169,6 +171,16 @@ if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
 } else {
     $errorMiddleware = $app->addErrorMiddleware(false, true, true, $container->get(Logger::class));
 }
+
+// Ne pas logger les erreurs 404 (bots, scanners, etc.)
+$errorMiddleware->setErrorHandler(
+    \Slim\Exception\HttpNotFoundException::class,
+    function (\Psr\Http\Message\ServerRequestInterface $request, \Throwable $exception, bool $displayErrorDetails) use ($app) {
+        $response = $app->getResponseFactory()->createResponse();
+        return $response->withStatus(404);
+    },
+    true // handleSubclasses
+);
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
@@ -186,6 +198,8 @@ $app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])-
 $app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');
 $app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthMiddleware())->setName('app_event_edit_post');
 $app->post('/admin/stream', [AdminController::class, 'newStream'])->add(new AuthMiddleware())->setName('app_stream_new');
+$app->get('/admin/stream/init-auth', [AdminController::class, 'initStreamAuth'])->add(new AuthMiddleware())->setName('app_stream_init_auth');
+$app->get('/admin/stream/auth-callback', [AdminController::class, 'streamAuthCallback'])->setName('app_stream_auth_callback');
 $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');

@@ -238,15 +238,16 @@ class ApiWrapper
     /**
      * Génère une URL d'autorisation pour une organisation donnée.
      *
-     * @param string $organizationSlug
+     * @param string|null $organizationSlug Slug de l'orga (null si inconnu au moment de l'init, e.g. flux de création de stream)
+     * @param string|null $redirectUri URI de redirection personnalisée (utilise /validate_auth_page par défaut)
      * @return string
      */
-    public function generateAuthorizationUrl($organizationSlug)
+    public function generateAuthorizationUrl(?string $organizationSlug, ?string $redirectUri = null): string
     {
         $uniqueUUID = bin2hex(random_bytes(16));
         $pair = generatePair(128);
         $codeVerifier = $pair->getVerifier();
-        $redirectUri = "$this->webSiteDomain/validate_auth_page";
+        $redirectUri = $redirectUri ?? "$this->webSiteDomain/validate_auth_page";
 
         $authorizationCode = new AuthorizationCode();
         $authorizationCode->id = $uniqueUUID;
@@ -266,6 +267,47 @@ class ApiWrapper
             'state' => $uniqueUUID
         ]);
         return $authorizationUrl;
+    }
+
+    /**
+     * Récupère la liste des formulaires de don d'une organisation.
+     *
+     * @param string $organizationSlug
+     * @return array
+     */
+    public function getDonationForms(string $organizationSlug): array
+    {
+        $tokenData = $this->getOrganizationAccessToken($organizationSlug);
+
+        try {
+            $response = $this->client->request('GET', "{$this->apiUrl}/organizations/{$organizationSlug}/forms", [
+                'query' => [
+                    'formTypes' => 'Donation',
+                    'pageSize' => 50,
+                ],
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $tokenData->access_token,
+                    'accept' => 'application/json',
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors de la récupération des formulaires de don: ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors de la récupération des formulaires : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors de la récupération des formulaires: ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
+
+        $data = json_decode($response->getBody(), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Erreur de décodage JSON : " . json_last_error_msg());
+        }
+
+        return $data['data'] ?? [];
     }
 
     /**
