@@ -228,6 +228,16 @@ class LoginController
         $codeVerifier = $authorizationCodeData->code_verifier;
 
         $tokenDataGrantAuthorization = $this->apiWrapper->exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier);
+
+        if ($authorizationCodeData->organization_slug !== $tokenDataGrantAuthorization['organization_slug']) {
+            $this->logger->warning('Incohérence de slug lors de l\'échange du code d\'autorisation', [
+                'slug_attendu' => $authorizationCodeData->organization_slug,
+                'slug_reçu' => $tokenDataGrantAuthorization['organization_slug'],
+            ]);
+            $response->getBody()->write('Erreur : le slug de l\'association ne correspond pas à celui attendu. L\'authentification a été annulée.');
+            return $response->withStatus(400);
+        }
+
         $existingOrganizationToken = $this->accessTokenRepository->selectBySlug($tokenDataGrantAuthorization['organization_slug']);
 
         $token = new AccessToken();

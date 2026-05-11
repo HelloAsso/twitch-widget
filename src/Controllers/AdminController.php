@@ -2,11 +2,18 @@
 
 namespace App\Controllers;
 
+use App\Models\AccessToken;
+use App\Repositories\AccessTokenRepository;
+use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
+use App\Services\ApiWrapper;
+use DateInterval;
+use DateTime;
+use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
@@ -23,6 +30,9 @@ class AdminController
         private UserRepository $userRepository,
         private WidgetRepository $widgetRepository,
         private Messages $messages,
+        private ApiWrapper $apiWrapper,
+        private AccessTokenRepository $accessTokenRepository,
+        private AuthorizationCodeRepository $authorizationCodeRepository,
     ) {}
 
     public function index(Request $request, Response $response): Response
@@ -40,6 +50,7 @@ class AdminController
             "streams" => $streams,
             "events" => $events,
             "messages" => $this->messages->getMessages(),
+            "currentUser" => $user,
         ];
 
         $template = $user->role == "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
@@ -237,5 +248,140 @@ class AdminController
         $url = $routeParser->urlFor('app_stream_edit', ["id" => $guid]);
 
         return $response->withHeader('Location', $url)->withStatus(302);
+    }
+
+    /**
+     * Génère l'URL d'autorisation OAuth HelloAsso pour connecter une association dans le cadre de la création d'un stream.
+     * Retourne un JSON { "url": "..." } pour que le front puisse ouvrir la mire dans un nouvel onglet.
+     *
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function initStreamAuth(Request $request, Response $response): Response
+    {
+        $streamCallbackUrl = $_SERVER['WEBSITE_DOMAIN'] . '/admin/stream/auth-callback';
+        $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl(null, $streamCallbackUrl);
+
+        $response->getBody()->write(json_encode(['url' => $authorizationUrl]));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    /**
+     * Callback OAuth pour la connexion d'une association lors de la création d'un stream.
+     * Échange le code d'autorisation, stocke les tokens et récupère la liste des formulaires de don.
+     * Retourne une page HTML qui transmet les données à la fenêtre parente via postMessage.
+     *
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function streamAuthCallback(Request $request, Response $response): Response
+    {
+        $error = $request->getQueryParams()['error'] ?? null;
+        $errorDescription = $request->getQueryParams()['error_description'] ?? null;
+
+        if ($error) {
+            $response->getBody()->write($this->buildCallbackPage(null, [], $errorDescription));
+            return $response;
+        }
+
+        $state = $request->getQueryParams()['state'] ?? null;
+        $code = $request->getQueryParams()['code'] ?? null;
+
+        if (!$state || !$code) {
+            $response->getBody()->write($this->buildCallbackPage(null, [], 'Paramètres manquants dans la réponse.'));
+            return $response;
+        }
+
+        try {
+            $authorizationCodeData = $this->authorizationCodeRepository->selectById($state);
+            if (!$authorizationCodeData) {
+                throw new Exception("State invalide ou expiré.");
+            }
+
+            $tokenData = $this->apiWrapper->exchangeAuthorizationCode(
+                $code,
+                $authorizationCodeData->redirect_uri,
+                $authorizationCodeData->code_verifier
+            );
+
+            $organizationSlug = $tokenData['organization_slug'];
+
+            // Stocker / mettre à jour les tokens
+            $existingToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
+
+            $token = new AccessToken();
+            $token->access_token = $tokenData['access_token'];
+            $token->refresh_token = $tokenData['refresh_token'];
+            $token->organization_slug = $organizationSlug;
+            $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
+            $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
+
+            if ($existingToken === null) {
+                $this->accessTokenRepository->insert($token);
+            } else {
+                $this->accessTokenRepository->update($token);
+            }
+
+            // Récupérer les formulaires de don
+            $forms = $this->apiWrapper->getDonationForms($organizationSlug);
+        } catch (Exception $e) {
+            $response->getBody()->write($this->buildCallbackPage(null, [], $e->getMessage()));
+            return $response;
+        }
+
+        $response->getBody()->write($this->buildCallbackPage($organizationSlug, $forms));
+        return $response;
+    }
+
+    /**
+     * Construit la page HTML de callback OAuth qui communique les données à la fenêtre parente via postMessage.
+     */
+    private function buildCallbackPage(?string $organizationSlug, array $forms, ?string $error = null): string
+    {
+        $organizationSlugJson = json_encode($organizationSlug);
+        $formsJson = json_encode($forms);
+        $errorJson = json_encode($error);
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion HelloAsso</title>
+    <style>
+        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #1a1a2e; color: #eee; }
+        .card { background: #16213e; padding: 2rem; border-radius: 12px; text-align: center; max-width: 400px; }
+        .success { color: #4ade80; font-size: 2rem; }
+        .error { color: #f87171; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div id="msg"><p>Connexion en cours, veuillez patienter...</p></div>
+</div>
+<script>
+    var organizationSlug = {$organizationSlugJson};
+    var forms = {$formsJson};
+    var error = {$errorJson};
+
+    if (error) {
+        document.getElementById('msg').innerHTML = '<p class="error">❌ Erreur : ' + error + '</p><p>Vous pouvez fermer cet onglet.</p>';
+    } else if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+            type: 'ha_stream_auth_success',
+            organizationSlug: organizationSlug,
+            forms: forms
+        }, window.location.origin);
+        document.getElementById('msg').innerHTML = '<p class="success">✅</p><p>Association connectée ! Fermeture en cours...</p>';
+        setTimeout(function() { window.close(); }, 1500);
+    } else {
+        document.getElementById('msg').innerHTML = '<p class="success">✅ Association connectée !</p><p>Vous pouvez fermer cet onglet et retourner à la page d\'administration.</p>';
+    }
+</script>
+</body>
+</html>
+HTML;
     }
 }
