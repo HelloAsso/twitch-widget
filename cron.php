@@ -19,7 +19,11 @@ $pdo = new PDO($dsn, $_SERVER['DBUSER'], $_SERVER['DBPASSWORD'], [
 
 $logger = new Logger('cron');
 $env = $_SERVER['APP_ENV'] ?? 'production';
-$logFile = __DIR__ . '/logs/cron-' . $env . '.log';
+$logDir = __DIR__ . '/logs/' . $env;
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0755, true);
+}
+$logFile = $logDir . '/cron.log';
 $logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
 
 $accessTokenRepository = new AccessTokenRepository($pdo, $_SERVER['DBPREFIX']);

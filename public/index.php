@@ -38,15 +38,23 @@ $container = new Container();
 $container->set('logger.api', function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $env = $_SERVER['APP_ENV'] ?? 'production';
+    $logDir = __DIR__ . '/../logs/' . $env;
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
     $logger = new Logger('api');
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/api-' . $env . '.log', 7, $level));
+    $logger->pushHandler(new RotatingFileHandler($logDir . '/api.log', 7, $level));
     return $logger;
 });
 $container->set(Logger::class, function () {
     $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
     $env = $_SERVER['APP_ENV'] ?? 'production';
+    $logDir = __DIR__ . '/../logs/' . $env;
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
     $logger = new Logger('app');
-    $logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../logs/app-' . $env . '.log', 7, $level));
+    $logger->pushHandler(new RotatingFileHandler($logDir . '/app.log', 7, $level));
     return $logger;
 });
 
