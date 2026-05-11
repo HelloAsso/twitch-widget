@@ -81,6 +81,53 @@ ngrok http 8000
 This command will create a secure tunnel to your localhost server running on port 8000, allowing you to safely test your application's HTTPS functionality. Ensure that your application is running on port 8000 or adjust the port number in the command accordingly.
 Also update WEBSITE_DOMAIN from you env file
 
+## Tests
+
+The project includes a PHPUnit test suite covering token management, widget rendering and dashboard display. Tests are fully isolated (SQLite in-memory, mocked dependencies) and require no running database or external API.
+
+### Run the tests
+
+```bash
+./vendor/bin/phpunit --testdox
+```
+
+### Test structure
+
+```
+tests/
+├── bootstrap.php
+└── Unit/
+    ├── Services/
+    │   └── ApiWrapperTest.php          # Token generation & refresh (OAuth)
+    ├── Repositories/
+    │   └── AccessTokenRepositoryTest.php  # Token storage & retrieval (SQLite)
+    └── Controllers/
+        ├── AdminControllerTest.php     # Dashboard display (admin / user roles)
+        └── WidgetControllerTest.php    # Alert & donation widgets (render + JSON fetch)
+```
+
+### Coverage areas
+
+| Suite | Tests | What is verified |
+|---|---|---|
+| **Token generation** | 6 | Valid token returned, generation when absent, regeneration when expired, API errors |
+| **Token refresh** | 6 | Successful refresh, DB update, API errors, expired refresh token |
+| **Token storage** | 10 | Insert, update, select by slug, null slug (global token), unknown org |
+| **Dashboard** | 4 | Admin vs user template, flash messages forwarded, query isolation |
+| **Widget Alert** | 8 | 200 render, 400/404/500 errors, JSON fetch, cache update |
+| **Widget Donation** | 9 | 200 render, 400/404 errors, JSON fetch, cache update on amount change, multi-stream events |
+
+### CI integration
+
+Tests run automatically on every push via GitHub Actions, **before** deployment, on both environments:
+
+| Workflow | Branch | Trigger |
+|---|---|---|
+| `php-sandbox.yml` | `develop` | Push on develop |
+| `php-prod.yml` | `main` | Push on main |
+
+A test failure blocks the pipeline immediately — the artifact is never built or deployed.
+
 ## Architecture & Code Organization
 
 ### Framework & Technologies
