@@ -3,6 +3,7 @@ name: Build & deploy sandbox
 on:
   push:
     branches: [ "develop" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,6 +61,7 @@ jobs:
         envkey_MANDRILL_API: ${{ secrets.SANDBOX_MANDRILL_API }}
         envkey_API_KEY: ${{ secrets.SANDBOX_API_KEY }}
         envkey_APP_VERSION: ${{ github.sha }}
+        envkey_APP_ENV: ${{ github.ref_name }}
         file_name: .env
 
     - name: Tar
@@ -74,7 +76,7 @@ jobs:
       run : |
         sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www && tar xzvf artifact.tar.gz -C twitch-widget-sandbox && rm artifact.tar.gz"
 
-    - name: Launch sql migrations
-      run : |
-        sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www/twitch-widget-sandbox && php migrations/run.php" 
+#    - name: Launch sql migrations
+#      run : |
+#        sshpass -p ${{ secrets.SANDBOX_SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no ${{ secrets.SANDBOX_SSH_USER }}@${{ secrets.SANDBOX_SSH_HOST }} "cd /home/socialgo/www/twitch-widget-sandbox && php migrations/run.php"
           
