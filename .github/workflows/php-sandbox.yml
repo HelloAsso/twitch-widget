@@ -39,6 +39,9 @@ jobs:
       run: |
         npm install
 
+    - name: Run PHPUnit tests
+      run: ./vendor/bin/phpunit --testdox
+
     - name: Make envfile
       uses: SpicyPizza/create-envfile@v2.0
       with:
