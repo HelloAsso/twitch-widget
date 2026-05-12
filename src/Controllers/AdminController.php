@@ -43,6 +43,14 @@ class AdminController
             $events = $this->eventRepository->selectListByUser($user);
         }
 
+        $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
+        $invalidTokenSlugs = [];
+        foreach ($streams as $stream) {
+            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
+                $invalidTokenSlugs[] = $stream->organization_slug;
+            }
+        }
+
         $data = [
             "streams" => $streams,
             "events" => $events,
@@ -50,6 +58,7 @@ class AdminController
             "currentUser" => $user,
             "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
             "openCreateStream" => isset($request->getQueryParams()['createStream']),
+            "invalidTokenSlugs" => $invalidTokenSlugs,
         ];
 
         $template = $user->role === "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
@@ -98,10 +107,19 @@ class AdminController
         $streams = $this->streamRepository->selectListByEvent($event);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
+        $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
+        $invalidTokenSlugs = [];
+        foreach ($streams as $stream) {
+            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
+                $invalidTokenSlugs[] = $stream->organization_slug;
+            }
+        }
+
         $data = [
             "logged" => true,
             "event" => $event,
             "streams" => $streams,
+            "invalidTokenSlugs" => $invalidTokenSlugs,
             "donationGoalWidget" => $donationGoalWidget,
             "cardWidget" => $cardWidget,
             "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,

@@ -303,9 +303,14 @@
 				</thead>
 				<tbody>
 					{% for stream in streams %}
-						<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
+						<tr class="cursor-pointer{% if stream.organization_slug in invalidTokenSlugs %} table-warning{% endif %}" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
 							<td>{{ stream.id | e }}</td>
-							<td>{{ stream.title | e }}</td>
+							<td>
+								{{ stream.title | e }}
+								{% if stream.organization_slug in invalidTokenSlugs %}
+									<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — les widgets ne fonctionneront pas. Reconnectez l'association.">⚠️ Token invalide</span>
+								{% endif %}
+							</td>
 							<td>{{ stream.admin | e }}</td>
 							<td>{{ stream.form_slug | e }}</td>
 							<td>{{ stream.organization_slug | e }}</td>
