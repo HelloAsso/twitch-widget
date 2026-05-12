@@ -32,6 +32,28 @@ class AdminController
         private AuthorizationCodeRepository $authorizationCodeRepository,
     ) {}
 
+    /**
+     * Retourne les slugs d'organisation dont le token est expiré parmi les streams donnés.
+     */
+    private function getInvalidTokenSlugs(array $streams): array
+    {
+        $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
+        $invalidSlugs = [];
+        foreach ($streams as $stream) {
+            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
+                $invalidSlugs[] = $stream->organization_slug;
+            }
+        }
+        return array_unique($invalidSlugs);
+    }
+
+    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = []): Response
+    {
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $url = $routeParser->urlFor($routeName, $params);
+        return $response->withHeader('Location', $url)->withStatus(302);
+    }
+
     public function index(Request $request, Response $response): Response
     {
         $user = $request->getAttribute('user');
@@ -43,13 +65,6 @@ class AdminController
             $events = $this->eventRepository->selectListByUser($user);
         }
 
-        $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
-        $invalidTokenSlugs = [];
-        foreach ($streams as $stream) {
-            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
-                $invalidTokenSlugs[] = $stream->organization_slug;
-            }
-        }
 
         $data = [
             "streams" => $streams,
@@ -58,7 +73,7 @@ class AdminController
             "currentUser" => $user,
             "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
             "openCreateStream" => isset($request->getQueryParams()['createStream']),
-            "invalidTokenSlugs" => $invalidTokenSlugs,
+            "invalidTokenSlugs" => $this->getInvalidTokenSlugs($streams),
         ];
 
         $template = $user->role === "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
@@ -74,28 +89,23 @@ class AdminController
         $this->userRepository->insertRight($user, null, $event);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_admin_index');
-
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
     }
 
     public function deleteEvent(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_admin_index');
 
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
         if (!$event) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès cet évènement');
-            return $response->withHeader('Location', $url)->withStatus(302);
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
         }
 
         $this->eventRepository->delete($event);
         $this->messages->addMessage('success', 'Évènement supprimé');
 
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
     }
 
     public function editEvent(Request $request, Response $response, array $args): Response
@@ -107,19 +117,11 @@ class AdminController
         $streams = $this->streamRepository->selectListByEvent($event);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
-        $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
-        $invalidTokenSlugs = [];
-        foreach ($streams as $stream) {
-            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
-                $invalidTokenSlugs[] = $stream->organization_slug;
-            }
-        }
-
         $data = [
             "logged" => true,
             "event" => $event,
             "streams" => $streams,
-            "invalidTokenSlugs" => $invalidTokenSlugs,
+            "invalidTokenSlugs" => $this->getInvalidTokenSlugs($streams),
             "donationGoalWidget" => $donationGoalWidget,
             "cardWidget" => $cardWidget,
             "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
@@ -135,12 +137,22 @@ class AdminController
         $user = $request->getAttribute('user');
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
 
+        $body = $request->getParsedBody();
+
+        if (isset($body['save_event_info'])) {
+            $updateData = [];
+            if (isset($body['event_title'])) {
+                $updateData['title'] = $body['event_title'];
+            }
+            if (isset($body['event_goal'])) {
+                $updateData['goal'] = (int) $body['event_goal'];
+            }
+            $this->eventRepository->update($event, $updateData);
+        }
+
         $this->handleWidgetFormSave($request, null, $event->guid);
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_event_edit', ["id" => $event->guid]);
-
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_event_edit', ["id" => $event->guid]);
     }
 
     public function newStream(Request $request, Response $response): Response
@@ -177,28 +189,23 @@ class AdminController
         }
 
         $this->messages->addMessage('success', 'Stream ajouté');
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_admin_index');
-
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
     }
 
     public function deleteStream(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_admin_index');
 
         $stream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         if (!$stream) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
-            return $response->withHeader('Location', $url)->withStatus(302);
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
         }
 
         $this->streamRepository->delete($stream);
         $this->messages->addMessage('success', 'Stream supprimé');
 
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
     }
 
     public function editStream(Request $request, Response $response, array $args): Response
@@ -246,6 +253,17 @@ class AdminController
 
         $body = $request->getParsedBody();
 
+        if (isset($body['save_stream_info'])) {
+            $updateData = [];
+            if (isset($body['stream_title'])) {
+                $updateData['title'] = $body['stream_title'];
+            }
+            if (isset($body['stream_goal'])) {
+                $updateData['goal'] = (int) $body['stream_goal'];
+            }
+            $this->streamRepository->update($charityStream, $updateData);
+        }
+
         if (isset($body['save_alert_box'])) {
             $uploadedFiles = $request->getUploadedFiles();
             $image = isset($uploadedFiles['image']) && $uploadedFiles['image']->getSize() > 0
@@ -260,10 +278,7 @@ class AdminController
 
         $this->handleWidgetFormSave($request, $guid, null);
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_stream_edit', ["id" => $guid]);
-
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_stream_edit', ["id" => $guid]);
     }
 
     /**

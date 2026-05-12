@@ -9,16 +9,15 @@ use App\Repositories\UserRepository;
 use App\Services\ApiWrapper;
 use Exception;
 use MailchimpTransactional\ApiClient;
+use Monolog\Logger;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
 use Slim\Routing\RouteContext;
 use Slim\Views\Twig;
-use Monolog\Logger;
 
 class LoginController
 {
-
     public function __construct(
         private Twig $view,
         private ApiWrapper $apiWrapper,
@@ -28,19 +27,18 @@ class LoginController
         private UserRepository $userRepository,
         private ApiClient $mailchimp,
         private Messages $messages,
-        private Logger $logger
-    ) {
-       
+        private Logger $logger,
+    ) {}
+
+    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = []): Response
+    {
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $url = $routeParser->urlFor($routeName, $params);
+        return $response->withHeader('Location', $url)->withStatus(302);
     }
-    
-    
 
     /**
-     * Valide la page de connexion après soumission du formulaire. Si les identifiants sont corrects, stocke l'utilisateur en session et redirige vers la page d'administration. Sinon, affiche un message d'erreur et redirige vers la page d'accueil.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
+     * Valide la page de connexion après soumission du formulaire.
      */
     public function login(Request $request, Response $response): Response
     {
@@ -49,194 +47,140 @@ class LoginController
         $password = $data['password'] ?? '';
         $user = $this->userRepository->select($email);
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-
         if ($user && password_verify($password, $user->password)) {
             session_regenerate_id(true);
             $_SESSION['user'] = $user;
-            $url = $routeParser->urlFor('app_admin_index');
-        } else {
-            $this->messages->addMessage('login_failed', true);
-            $url = $routeParser->urlFor('app_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
         }
-        return $response->withHeader('Location', $url)->withStatus(302);
+
+        $this->messages->addMessage('login_failed', true);
+        return $this->redirectToRoute($request, $response, 'app_index');
     }
 
     /**
-     * Valide la page de mot de passe oublié après soumission du formulaire. Si l'email existe, génère un token de réinitialisation, l'associe à l'utilisateur et envoie un email avec le lien de réinitialisation. Affiche un message indiquant que l'email a été envoyé, même si l'email n'existe pas pour éviter les attaques de type enumeration.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
+     * Envoie un email de réinitialisation de mot de passe si l'adresse existe.
      */
     public function forgotPassword(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
-
         $email = $data['email'] ?? '';
         $user = $this->userRepository->select($email);
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-
         if ($user) {
             $user = $this->userRepository->insertResetToken($user);
-            $url = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
+            $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+            $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
             $this->mailchimp->messages->send([
                 "message" => [
                     "from_email" => "contact@helloasso.io",
                     "from_name" => "HelloAsso",
                     "subject" => "Mot de passe oublié",
-                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"" . $url . "\">cette page</a><br/>Ou en suivant ce lien " . $url . "</p>",
-                    "to" => [
-                        [
-                            "email" => $user->email
-                        ]
-                    ],
-                ]
+                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
+                    "to" => [["email" => $user->email]],
+                ],
             ]);
         }
 
         $this->messages->addMessage('mail_sent', true);
-        $url = $routeParser->urlFor('app_index');
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_index');
     }
 
     /**
-     * Valide la page de réinitialisation de mot de passe après soumission du formulaire. Si les mots de passe correspondent, met à jour le mot de passe de l'utilisateur et affiche un message de succès. Sinon, affiche un message d'erreur.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
+     * Réinitialise le mot de passe après soumission du formulaire.
      */
     public function resetPassword(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
-
         $password = $data['password'] ?? '';
         $passwordRepeat = $data['passwordRepeat'] ?? '';
         $token = $data['token'] ?? '';
 
         $user = $this->userRepository->selectByToken($token);
 
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-
-        if ($user && $password && $passwordRepeat && $password == $passwordRepeat) {
+        if ($user && $password && $passwordRepeat && $password === $passwordRepeat) {
             $this->userRepository->updatePassword($user, $password);
             $this->messages->addMessage('password_reset', true);
-            $url = $routeParser->urlFor('app_index');
-        } else {
-            $this->messages->addMessage('password_reset_error', true);
-            $url = $routeParser->urlFor('app_reset_password', ["token" => $token]);
+            return $this->redirectToRoute($request, $response, 'app_index');
         }
 
-        return $response->withHeader('Location', $url)->withStatus(302);
+        $this->messages->addMessage('password_reset_error', true);
+        return $this->redirectToRoute($request, $response, 'app_reset_password', ["token" => $token]);
     }
+
     /**
      * Détruit la session de l'utilisateur et redirige vers la page d'accueil.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
      */
     public function logout(Request $request, Response $response): Response
     {
         unset($_SESSION['user']);
-
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $url = $routeParser->urlFor('app_index');
-
-        return $response->withHeader('Location', $url)->withStatus(302);
+        return $this->redirectToRoute($request, $response, 'app_index');
     }
-
-  
 
     /**
      * Redirige vers l'URL d'autorisation pour l'organisation donnée.
-     *
-     * @param Response $response
-     * @param [type] $organizationSlug
-     * @return Response
-     */
-    private function redirectionToAuthorizationUrl(Response $response, $organizationSlug): Response
-    {
-     
-        // Génération de l'URL d'autorisation (nouvelle authentification OAuth)
-        $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
-
-        return $response->withHeader('Location', $authorizationUrl)->withStatus(302);
-    }
-    
-    /**
-     * Redirige vers l'URL d'autorisation pour l'organisation donnée. Si un token existe déjà, tente de le rafraîchir avant de rediriger.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
+     * Si un token existe déjà et est encore valide, le rafraîchit et affiche un message.
      */
     public function redirectAuthPage(Request $request, Response $response): Response
     {
-        $organizationSlug = $request->getQueryParams()['organizationSlug'];
-        if ($organizationSlug == null) {
+        $organizationSlug = $request->getQueryParams()['organizationSlug'] ?? null;
+        if (!$organizationSlug) {
             throw new Exception("Erreur : OrganizationSlug introuvable");
         }
 
-        $organizationToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
+        $existingToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
 
-        if ($organizationToken != null) {
+        if ($existingToken) {
             try {
                 $this->apiWrapper->getOrganizationAccessToken($organizationSlug);
-                $response->getBody()->write('Nous possédons déjà un token pour le compte ' . $organizationSlug . ' et nous l\'avons rafraichi, vous pouvez fermer cette page.');
-                
-                } catch (Exception $e) {
-         
-                    return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
-                }
-        }
-        else {
-            return $this->redirectionToAuthorizationUrl($response, $organizationSlug);
+                $response->getBody()->write(
+                    'Nous possédons déjà un token pour le compte ' . $organizationSlug
+                    . ' et nous l\'avons rafraichi, vous pouvez fermer cette page.'
+                );
+                return $response;
+            } catch (Exception) {
+                // Token invalide → on redirige vers la mire d'auth
+            }
         }
 
-        return $response;
+        $authorizationUrl = $this->apiWrapper->generateAuthorizationUrl($organizationSlug);
+        return $response->withHeader('Location', $authorizationUrl)->withStatus(302);
     }
 
     /**
-     * Valide la page d'autorisation après redirection depuis HelloAsso. Si une erreur est présente dans les query params, l'affiche. Sinon, échange le code d'autorisation contre un token d'accès, le stocke et affiche un message de succès.
-     *
-     * @param Request $request
-     * @param Response $response
-     * @return Response
+     * Callback OAuth : échange le code d'autorisation, stocke les tokens et notifie par email si c'est un nouveau compte.
      */
     public function validateAuthPage(Request $request, Response $response): Response
     {
-        $error = $request->getQueryParams()['error'] ?? null;
-        $errorDescription = $request->getQueryParams()['error_description'] ?? null;
+        $queryParams = $request->getQueryParams();
+        $error = $queryParams['error'] ?? null;
 
         if ($error) {
-            $response->getBody()->write($errorDescription);
+            $response->getBody()->write($queryParams['error_description'] ?? 'Erreur inconnue');
             return $response;
         }
 
-        $state = $request->getQueryParams()['state'];
-        $code = $request->getQueryParams()['code'];
+        $state = $queryParams['state'];
+        $code = $queryParams['code'];
 
         $authorizationCodeData = $this->authorizationCodeRepository->selectById($state);
-        $redirect_uri = $authorizationCodeData->redirect_uri;
-        $codeVerifier = $authorizationCodeData->code_verifier;
+        $tokenData = $this->apiWrapper->exchangeAuthorizationCode(
+            $code,
+            $authorizationCodeData->redirect_uri,
+            $authorizationCodeData->code_verifier,
+        );
 
-        $tokenDataGrantAuthorization = $this->apiWrapper->exchangeAuthorizationCode($code, $redirect_uri, $codeVerifier);
-
-        if ($authorizationCodeData->organization_slug !== $tokenDataGrantAuthorization['organization_slug']) {
+        if ($authorizationCodeData->organization_slug !== $tokenData['organization_slug']) {
             $this->logger->warning('Incohérence de slug lors de l\'échange du code d\'autorisation', [
                 'slug_attendu' => $authorizationCodeData->organization_slug,
-                'slug_reçu' => $tokenDataGrantAuthorization['organization_slug'],
+                'slug_reçu' => $tokenData['organization_slug'],
             ]);
             $response->getBody()->write('Erreur : le slug de l\'association ne correspond pas à celui attendu. L\'authentification a été annulée.');
             return $response->withStatus(400);
         }
 
-        $isNewToken = $this->accessTokenRepository->selectBySlug($tokenDataGrantAuthorization['organization_slug']) === null;
-        $this->apiWrapper->storeOrUpdateToken($tokenDataGrantAuthorization);
+        $isNewToken = $this->accessTokenRepository->selectBySlug($tokenData['organization_slug']) === null;
+        $this->apiWrapper->storeOrUpdateToken($tokenData);
 
         if ($isNewToken) {
             $this->mailchimp->messages->send([
@@ -244,18 +188,13 @@ class LoginController
                     "from_email" => "contact@helloasso.io",
                     "from_name" => "HelloAsso",
                     "subject" => "Une association vient de valider sa mire",
-                    "html" => "<p>L'association " . $tokenDataGrantAuthorization['organization_slug'] . " vient de valider sa mire d'authorisation sur l'environnement " . $_SERVER['WEBSITE_DOMAIN'] . "</p>",
-                    "to" => [
-                        [
-                            "email" => "helloasso.stream@helloasso.org"
-                        ]
-                    ],
-                ]
+                    "html" => "<p>L'association {$tokenData['organization_slug']} vient de valider sa mire d'authorisation sur l'environnement {$_SERVER['WEBSITE_DOMAIN']}</p>",
+                    "to" => [["email" => "helloasso.stream@helloasso.org"]],
+                ],
             ]);
         }
 
-        $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
-
+        $response->getBody()->write('Votre compte ' . $tokenData['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
         return $response;
     }
 }
