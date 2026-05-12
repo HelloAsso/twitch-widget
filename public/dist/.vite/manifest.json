@@ -27,6 +27,30 @@
       "assets/app-MiSapeh1.css"
     ]
   },
+  "src/Assets/js/cardEvent.js": {
+    "file": "cardEvent.min.js",
+    "name": "cardEvent",
+    "src": "src/Assets/js/cardEvent.js",
+    "isEntry": true,
+    "imports": [
+      "_countUp.min.bkv6uBOp.min.js"
+    ]
+  },
+  "src/Assets/js/cardStream.js": {
+    "file": "cardStream.min.js",
+    "name": "cardStream",
+    "src": "src/Assets/js/cardStream.js",
+    "isEntry": true,
+    "imports": [
+      "_countUp.min.bkv6uBOp.min.js"
+    ]
+  },
+  "src/Assets/js/cardUtilities.js": {
+    "file": "cardUtilities.min.js",
+    "name": "cardUtilities",
+    "src": "src/Assets/js/cardUtilities.js",
+    "isEntry": true
+  },
   "src/Assets/js/event.js": {
     "file": "event.min.js",
     "name": "event",

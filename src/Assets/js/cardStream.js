@@ -1,0 +1,86 @@
+import { CountUp } from 'countup.js';
+
+const FETCH_INTERVAL_MS = 10_000;
+const CENTS_DIVISOR = 100;
+
+const COUNTUP_OPTIONS = {
+    separator: ' ',
+    decimal: ',',
+    suffix: ' €',
+};
+
+let counterAmount = null;
+let isFetching = false;
+
+function initCounter() {
+    const initialAmount = window.currentAmount / CENTS_DIVISOR;
+    counterAmount = new CountUp('card-amount', initialAmount, COUNTUP_OPTIONS);
+
+    if (counterAmount.error) {
+        console.error('CountUp init failed:', counterAmount.error);
+        counterAmount = null;
+        return;
+    }
+
+    counterAmount.start();
+}
+
+function updateCardWidget() {
+    const currentAmountUnit = window.currentAmount / CENTS_DIVISOR;
+    const goal = window.goalAmount || 1;
+    const percentage = Math.min(100, Math.round((currentAmountUnit / goal) * 100));
+
+    const barFill = document.getElementById('card-bar-fill');
+    const percentEl = document.getElementById('card-percentage');
+    const donorsEl = document.getElementById('card-donors');
+
+    if (counterAmount) {
+        counterAmount.update(currentAmountUnit);
+    } else {
+        const amountEl = document.getElementById('card-amount');
+        if (amountEl) {
+            amountEl.textContent = currentAmountUnit.toLocaleString('fr-FR') + ' €';
+        }
+    }
+
+    if (barFill) barFill.style.width = `${percentage}%`;
+    if (percentEl) percentEl.textContent = `${percentage}%`;
+    if (donorsEl) donorsEl.textContent = window.donorCount ?? 0;
+}
+
+async function fetchDonationData() {
+    if (isFetching) {
+        return;
+    }
+
+    isFetching = true;
+
+    try {
+        const response = await fetch(`/widget-stream-card/${window.charityStreamId}/fetch`);
+
+        if (!response.ok) {
+            console.error('Failed to fetch donation data:', response.status);
+            return;
+        }
+
+        const { amount, donors } = await response.json();
+        window.currentAmount = amount;
+        window.donorCount = donors ?? window.donorCount;
+        updateCardWidget();
+    } catch (error) {
+        console.error('Network error:', error);
+    } finally {
+        isFetching = false;
+    }
+}
+
+function init() {
+    initCounter();
+    updateCardWidget();
+    fetchDonationData();
+    setInterval(fetchDonationData, FETCH_INTERVAL_MS);
+}
+
+init();
+
+export { fetchDonationData };

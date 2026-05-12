@@ -90,4 +90,20 @@ class AccessTokenRepository
 
         return $accessToken;
     }
+
+    /**
+     * Retourne la liste des organization_slug qui ont un refresh_token encore valide (non expiré).
+     * @return string[]
+     */
+    public function getValidOrganizationSlugs(): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT organization_slug
+            FROM ' . $this->prefix . 'access_token_partner_organization
+            WHERE refresh_token_expires_at > NOW()
+            AND organization_slug IS NOT NULL
+        ');
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

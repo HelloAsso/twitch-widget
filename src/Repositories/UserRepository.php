@@ -50,6 +50,11 @@ class UserRepository
         return $stmt->fetch() ?: null;
     }
 
+    public function findOrCreate(string $email): User
+    {
+        return $this->select($email) ?? $this->insert($email);
+    }
+
     /**
      * Recherche un utilisateur par son token de réinitialisation, uniquement si le token n'est pas expiré.
      */
