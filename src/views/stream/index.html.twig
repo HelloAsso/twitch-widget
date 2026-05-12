@@ -189,7 +189,7 @@
 				</thead>
 				<tbody>
 					{% for stream in streams %}
-						<tr class="cursor-pointer{% if stream.organization_slug in invalidTokenSlugs %} table-warning{% endif %}" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
+						<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
 							<td>{{ stream.id | e }}</td>
 							<td>
 								{{ stream.title | e }}
