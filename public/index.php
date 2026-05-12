@@ -220,5 +220,9 @@ $app->get('/widget-stream-donation/{id}', [WidgetController::class, 'widgetDonat
 $app->get('/widget-stream-donation/{id}/fetch', [WidgetController::class, 'widgetDonationFetch'])->setName('app_stream_widget_donation_fetch');
 $app->get('/widget-event/{id}', [WidgetController::class, 'widgetEventDonation'])->setName('app_event_widget_donation');
 $app->get('/widget-event/{id}/fetch', [WidgetController::class, 'widgetEventDonationFetch'])->setName('app_event_widget_donation_fetch');
+$app->get('/widget-stream-card/{id}', [WidgetController::class, 'widgetStreamCard'])->setName('app_stream_widget_card');
+$app->get('/widget-stream-card/{id}/fetch', [WidgetController::class, 'widgetStreamCardFetch'])->setName('app_stream_widget_card_fetch');
+$app->get('/widget-event-card/{id}', [WidgetController::class, 'widgetEventCard'])->setName('app_event_widget_card');
+$app->get('/widget-event-card/{id}/fetch', [WidgetController::class, 'widgetEventCardFetch'])->setName('app_event_widget_card_fetch');
 
 $app->run();

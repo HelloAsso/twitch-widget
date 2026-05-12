@@ -36,10 +36,7 @@ class ApiController
         }
 
         $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title);
-        $user = $this->userRepository->select($ownerEmail);
-        if ($user == null) {
-            $user = $this->userRepository->insert($ownerEmail);
-        }
+        $user = $this->userRepository->findOrCreate($ownerEmail);
         $this->userRepository->insertRight($user, $stream, null);
         $this->userRepository->insertResetToken($user);
 

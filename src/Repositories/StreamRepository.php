@@ -15,7 +15,7 @@ class StreamRepository
         private string $prefix
     ) {}
 
-    function selectList(): array
+    public function selectList(): array
     {
         $stmt = $this->pdo->query('
             SELECT c.*, u.email as admin
@@ -28,7 +28,7 @@ class StreamRepository
         return $stmt->fetchAll();
     }
 
-    function selectByGuid($guid): ?Stream
+    public function selectByGuid(string $guid): ?Stream
     {
         $stmt = $this->pdo->prepare('
             SELECT * 
@@ -40,7 +40,7 @@ class StreamRepository
         return $stmt->fetch() ?: null;
     }
 
-    function selectListByUser(User $user): array
+    public function selectListByUser(User $user): array
     {
         $stmt = $this->pdo->prepare('
             SELECT c.*, u.email as admin
@@ -62,7 +62,7 @@ class StreamRepository
         return $stmt->fetchAll();
     }
 
-    function selectListByEvent(Event $event): array
+    public function selectListByEvent(Event $event): array
     {
         $stmt = $this->pdo->prepare('
             SELECT *
@@ -74,9 +74,9 @@ class StreamRepository
         return $stmt->fetchAll();
     }
 
-    function selectByUserAndGuid(User $user, $guid): ?Stream
+    public function selectByUserAndGuid(User $user, string $guid): ?Stream
     {
-        if ($user->role == "ADMIN") {
+        if ($user->role === "ADMIN") {
             $stmt = $this->pdo->prepare('
             SELECT c.* 
             FROM ' . $this->prefix . 'charity_stream c
@@ -106,7 +106,7 @@ class StreamRepository
         return $stream ?: null;
     }
 
-    function insert($form_slug, $organization_slug, $title, $parent = null): Stream
+    public function insert(string $form_slug, string $organization_slug, string $title, ?int $parent = null): Stream
     {
         $guid = bin2hex(random_bytes(16));
 
@@ -140,6 +140,15 @@ class StreamRepository
                 ':guid' => $guid
             ]);
 
+            $query = 'INSERT INTO ' . $this->prefix . 'widget_card (charity_stream_guid, description)
+                VALUES (:guid, "")';
+            try {
+                $stmt = $this->pdo->prepare($query);
+                $stmt->execute([':guid' => $guid]);
+            } catch (Exception $e) {
+                // Table may not exist yet (migration not run) — skip silently
+            }
+
             $this->pdo->commit();
 
             $stream = new Stream();
@@ -155,7 +164,7 @@ class StreamRepository
         }
     }
 
-    public function delete($stream)
+    public function delete(Stream $stream): void
     {
         $this->pdo->beginTransaction();
 
@@ -169,6 +178,15 @@ class StreamRepository
                 WHERE charity_stream_guid = ?';
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([$stream->guid]);
+
+            $query = 'DELETE FROM ' . $this->prefix . 'widget_card
+                WHERE charity_stream_guid = ?';
+            try {
+                $stmt = $this->pdo->prepare($query);
+                $stmt->execute([$stream->guid]);
+            } catch (Exception $e) {
+                // Table may not exist yet — skip silently
+            }
 
             $query = 'DELETE FROM ' . $this->prefix . 'user_right
                 WHERE id_charity_stream = ?';

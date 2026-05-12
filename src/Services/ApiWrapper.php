@@ -342,6 +342,30 @@ class ApiWrapper
     }
 
     /**
+     * Stocke ou met à jour un AccessToken à partir des données retournées par l'échange OAuth.
+     */
+    public function storeOrUpdateToken(array $tokenData): AccessToken
+    {
+        $organizationSlug = $tokenData['organization_slug'];
+        $existingToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
+
+        $token = new AccessToken();
+        $token->access_token = $tokenData['access_token'];
+        $token->refresh_token = $tokenData['refresh_token'];
+        $token->organization_slug = $organizationSlug;
+        $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
+        $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
+
+        if ($existingToken === null) {
+            $this->accessTokenRepository->insert($token);
+        } else {
+            $this->accessTokenRepository->update($token);
+        }
+
+        return $token;
+    }
+
+    /**
      * Échange un code d'autorisation contre un token d'accès pour une organisation donnée, et stocke les tokens en base de données.
      *
      * @param [type] $code
@@ -406,34 +430,31 @@ class ApiWrapper
      */
     private function getDonationFormOrders($organizationSlug, $donationSlug, $accessToken, $continuationToken = null)
     {
-        $curl = curl_init();
-
-        $url = $this->apiUrl . '/organizations/' . $organizationSlug . '/forms/donation/' . $donationSlug . '/orders?withDetails=true&sortOrder=asc';
+        $query = ['withDetails' => 'true', 'sortOrder' => 'asc'];
         if ($continuationToken) {
-            $url .= '&continuationToken=' . $continuationToken;
+            $query['continuationToken'] = $continuationToken;
         }
-        //TODO => ici on regarde toujours l'acces token, quid du refresh/continuation?
 
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-            CURLOPT_HTTPHEADER => array(
-                'Authorization: Bearer ' . $accessToken
-            ),
-        ));
+        try {
+            $response = $this->client->request('GET', $this->apiUrl . '/organizations/' . $organizationSlug . '/forms/donation/' . $donationSlug . '/orders', [
+                'query' => $query,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'accept' => 'application/json',
+                ],
+            ]);
+        } catch (RequestException $e) {
+            $this->apiLogger->error('Erreur lors de la récupération des commandes: ' . $e->getMessage());
+            if ($e->hasResponse()) {
+                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+            }
+            throw new Exception("Erreur lors de la récupération des commandes : " . $e->getMessage(), 0, $e);
+        } catch (GuzzleException $e) {
+            $this->apiLogger->error('Erreur Guzzle lors de la récupération des commandes: ' . $e->getMessage());
+            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
+        }
 
-        $response = curl_exec($curl);
-        curl_close($curl);
-
-        $response_data = json_decode($response, true);
-      
-        return $response_data;
+        return json_decode($response->getBody(), true);
     }
     
     /**
@@ -453,16 +474,11 @@ class ApiWrapper
         try {
             $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
         } catch (Exception $e) {
-            http_response_code(401);
-            echo('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.');
-            echo('<a target="_blank" href="/redirect_auth_page?organizationSlug=' . $organizationSlug . '">Se reconnecter</a>');
-            exit;
+            throw new Exception('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.', 401, $e);
         }
 
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Jeton d\'accès API non trouvé ou expiré.']);
-            exit;
+            throw new Exception('Jeton d\'accès API non trouvé ou expiré pour l\'organisation ' . $organizationSlug . '.', 401);
         }
         do {
             $formOrdersData = $this->getDonationFormOrders(

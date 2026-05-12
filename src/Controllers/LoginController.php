@@ -2,14 +2,11 @@
 
 namespace App\Controllers;
 
-use App\Models\AccessToken;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Services\ApiWrapper;
-use DateTime;
-use DateInterval;
 use Exception;
 use MailchimpTransactional\ApiClient;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -238,19 +235,10 @@ class LoginController
             return $response->withStatus(400);
         }
 
-        $existingOrganizationToken = $this->accessTokenRepository->selectBySlug($tokenDataGrantAuthorization['organization_slug']);
+        $isNewToken = $this->accessTokenRepository->selectBySlug($tokenDataGrantAuthorization['organization_slug']) === null;
+        $this->apiWrapper->storeOrUpdateToken($tokenDataGrantAuthorization);
 
-        $token = new AccessToken();
-        $token->access_token = $tokenDataGrantAuthorization['access_token'];
-        $token->refresh_token = $tokenDataGrantAuthorization['refresh_token'];
-        $token->organization_slug = $tokenDataGrantAuthorization['organization_slug'];
-        $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
-        $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
-
-        if ($existingOrganizationToken == null) {                    
-
-            $this->accessTokenRepository->insert($token);
-            
+        if ($isNewToken) {
             $this->mailchimp->messages->send([
                 "message" => [
                     "from_email" => "contact@helloasso.io",
@@ -264,8 +252,6 @@ class LoginController
                     ],
                 ]
             ]);
-        } else {
-            $this->accessTokenRepository->update($token);        
         }
 
         $response->getBody()->write('Votre compte ' . $tokenDataGrantAuthorization['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');

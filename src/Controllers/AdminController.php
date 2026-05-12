@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Models\AccessToken;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
@@ -11,8 +10,6 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
-use DateInterval;
-use DateTime;
 use Exception;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -38,7 +35,7 @@ class AdminController
     public function index(Request $request, Response $response): Response
     {
         $user = $request->getAttribute('user');
-        if ($user->role == "ADMIN") {
+        if ($user->role === "ADMIN") {
             $streams = $this->streamRepository->selectList();
             $events = $this->eventRepository->selectList();
         } else {
@@ -53,7 +50,7 @@ class AdminController
             "currentUser" => $user,
         ];
 
-        $template = $user->role == "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
+        $template = $user->role === "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
         return $this->view->render($response, $template, $data);
     }
 
@@ -61,14 +58,8 @@ class AdminController
     {
         $data = $request->getParsedBody();
 
-        $ownerEmail = $data['owner_email'];
-        $title = $data['title'];
-
-        $user = $this->userRepository->select($ownerEmail);
-        if ($user == null) {
-            $user = $this->userRepository->insert($ownerEmail);
-        }
-        $event = $this->eventRepository->insert($title);
+        $user = $this->userRepository->findOrCreate($data['owner_email']);
+        $event = $this->eventRepository->insert($data['title']);
         $this->userRepository->insertRight($user, null, $event);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
@@ -101,13 +92,17 @@ class AdminController
         $user = $request->getAttribute('user');
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
         $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $event->guid);
+        $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $event->guid);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
             "logged" => true,
             "event" => $event,
             "donationGoalWidget" => $donationGoalWidget,
+            "cardWidget" => $cardWidget,
+            "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
             "widgetDonationGoalUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_event_widget_donation', ["id" => $event->guid]),
+            "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_event_widget_card', ["id" => $event->guid]),
         ];
 
         return $this->view->render($response, 'event/edit.html.twig', $data);
@@ -116,12 +111,9 @@ class AdminController
     public function editEventPost(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
-        $body = $request->getParsedBody();
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
 
-        if (isset($body['save_donation_goal'])) {
-            $this->widgetRepository->updateDonationWidget(null, $event->guid, $body);
-        }
+        $this->handleWidgetFormSave($request, null, $event->guid);
 
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor('app_event_edit', ["id" => $event->guid]);
@@ -136,22 +128,15 @@ class AdminController
 
         $parentEvent = $data['parent_event'] ?? null;
         $parentStyle = isset($data['parent_style']);
-        $ownerEmail = $data['owner_email'];
-        $formSlug = $data['form_slug'];
-        $organizationSlug = $data['organization_slug'];
-        $title = $data['title'];
 
-        $owner = $this->userRepository->select($ownerEmail);
-        if ($owner == null) {
-            $owner = $this->userRepository->insert($ownerEmail);
-        }
+        $owner = $this->userRepository->findOrCreate($data['owner_email']);
 
         $event = null;
         if (!empty($parentEvent)) {
             $event = $this->eventRepository->selectByUserAndId($user, $parentEvent);
         }
 
-        $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title, $event->id ?? null);
+        $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null);
         $this->userRepository->insertRight($owner, $stream, null);
 
         if ($event !== null && $parentStyle) {
@@ -202,6 +187,7 @@ class AdminController
 
         $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid($guid, null);
         $alertBoxWidget = $this->widgetRepository->selectAlertWidgetByGuid($guid);
+        $cardWidget = $this->widgetRepository->selectCardWidgetByGuid($guid, null);
 
         $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/formulaires/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
@@ -213,9 +199,12 @@ class AdminController
             "alertBoxWidget" => $alertBoxWidget,
             "alertBoxWidgetPictureUrl" => ($alertBoxWidget && $alertBoxWidget->image) ? $this->fileManager->getPictureUrl($alertBoxWidget->image) : null,
             "alertBoxWidgetSoundUrl" => ($alertBoxWidget && $alertBoxWidget->sound) ? $this->fileManager->getSoundUrl($alertBoxWidget->sound) : null,
+            "cardWidget" => $cardWidget,
+            "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
             "donationUrl" => $donationUrl,
             "widgetDonationGoalUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_donation', ["id" => $guid]),
             "widgetAlertBoxUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_alert', ["id" => $guid]),
+            "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_card', ["id" => $guid]),
         ];
 
         return $this->view->render($response, 'stream/edit.html.twig', $data);
@@ -224,13 +213,10 @@ class AdminController
     public function editStreamPost(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
-        $body = $request->getParsedBody();
         $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         $guid = $charityStream->guid;
 
-        if (isset($body['save_donation_goal'])) {
-            $this->widgetRepository->updateDonationWidget($guid, null, $body);
-        }
+        $body = $request->getParsedBody();
 
         if (isset($body['save_alert_box'])) {
             $uploadedFiles = $request->getUploadedFiles();
@@ -244,10 +230,32 @@ class AdminController
             $this->widgetRepository->updateAlertWidget($guid, $body, $image, $sound);
         }
 
+        $this->handleWidgetFormSave($request, $guid, null);
+
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor('app_stream_edit', ["id" => $guid]);
 
         return $response->withHeader('Location', $url)->withStatus(302);
+    }
+
+    /**
+     * Traite les sauvegardes communes des widgets donation goal et card widget.
+     */
+    private function handleWidgetFormSave(Request $request, ?string $streamGuid, ?string $eventGuid): void
+    {
+        $body = $request->getParsedBody();
+
+        if (isset($body['save_donation_goal'])) {
+            $this->widgetRepository->updateDonationWidget($streamGuid, $eventGuid, $body);
+        }
+
+        if (isset($body['save_card_widget'])) {
+            $uploadedFiles = $request->getUploadedFiles();
+            $image = isset($uploadedFiles['card_image']) && $uploadedFiles['card_image']->getSize() > 0
+                ? $this->fileManager->uploadPicture($uploadedFiles['card_image'])
+                : null;
+            $this->widgetRepository->updateCardWidget($streamGuid, $eventGuid, $body, $image);
+        }
     }
 
     /**
@@ -309,20 +317,7 @@ class AdminController
             $organizationSlug = $tokenData['organization_slug'];
 
             // Stocker / mettre à jour les tokens
-            $existingToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
-
-            $token = new AccessToken();
-            $token->access_token = $tokenData['access_token'];
-            $token->refresh_token = $tokenData['refresh_token'];
-            $token->organization_slug = $organizationSlug;
-            $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
-            $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
-
-            if ($existingToken === null) {
-                $this->accessTokenRepository->insert($token);
-            } else {
-                $this->accessTokenRepository->update($token);
-            }
+            $this->apiWrapper->storeOrUpdateToken($tokenData);
 
             // Récupérer les formulaires de don
             $forms = $this->apiWrapper->getDonationForms($organizationSlug);
