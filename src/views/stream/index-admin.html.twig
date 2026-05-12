@@ -1,5 +1,5 @@
 
-{% block title %}Administration générale{% endblock %}
+{% block title %}HelloAsso Widgets - Administration{% endblock %}
 
 {% extends "layout.html.twig" %}
 {% block content %}
@@ -241,7 +241,7 @@
 		</div>
 	</div>
 		<div class="container">
-			<h1 class="my-4 text-center">Administration générale</h1>
+			<h1 class="my-4 text-center">HelloAsso Widgets</h1>
 
 			<div class="row my-4">
 				<div class="col-10">
@@ -261,27 +261,27 @@
 			</div>
 
 			<h3>Liste des Charity Events</h3>
-			<table class="table table-bordered table-striped">
-				<thead class="thead-dark">
+			<table class="table table-hover align-middle">
+				<thead>
 					<tr>
 						<th>Id</th>
-						<th>Guid</th>
 						<th>Titre</th>
 						<th>Admin</th>
+						<th>Date de création</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
 				<tbody>
 					{% for event in events %}
-						<tr>
+						<tr class="cursor-pointer" onclick="window.location='/admin/event/{{ event.guid }}/edit'" title="GUID : {{ event.guid }}">
 							<td>{{ event.id | e }}</td>
-							<td>{{ event.guid | e }}</td>
 							<td>{{ event.title | e }}</td>
 							<td>{{ event.admin | e }}</td>
-							<td class="d-flex justify-content-evenly">
-								<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+							<td>{{ event.creation_date ? event.creation_date|date('d/m/Y H:i') : '—' }}</td>
+							<td class="d-flex gap-2" onclick="event.stopPropagation()">
+								<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
 								<form action="/admin/event/{{ event.guid }}/delete" method="POST">
-									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
 								</form>
 							</td>
 						</tr>
@@ -290,11 +290,10 @@
 			</table>
 
 			<h3>Liste des Charity Streams</h3>
-			<table class="table table-bordered table-striped">
-				<thead class="thead-dark">
+			<table class="table table-hover align-middle">
+				<thead>
 					<tr>
 						<th>ID</th>
-						<th>GUID</th>
 						<th>Titre</th>
 						<th>Admin</th>
 						<th>Slug formulaire</th>
@@ -304,18 +303,17 @@
 				</thead>
 				<tbody>
 					{% for stream in streams %}
-						<tr>
+						<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
 							<td>{{ stream.id | e }}</td>
-							<td>{{ stream.guid | e }}</td>
 							<td>{{ stream.title | e }}</td>
 							<td>{{ stream.admin | e }}</td>
 							<td>{{ stream.form_slug | e }}</td>
 							<td>{{ stream.organization_slug | e }}</td>
-							<td class="d-flex justify-content-evenly">
-								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
+							<td class="d-flex gap-2" onclick="event.stopPropagation()">
+								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
 								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
-									<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
 								</form>
 							</td>
 						</tr>
@@ -354,6 +352,12 @@
 {% endblock %}
 {% block styles %}
 <style>
+	/* ── Lignes de tableau cliquables ── */
+	.cursor-pointer { cursor: pointer; }
+	.table-hover tbody tr.cursor-pointer:hover {
+		background-color: rgba(var(--bs-primary-rgb), .08) !important;
+	}
+
 	/* ── Cartes de sélection de mode ── */
 	.stream-mode-card {
 		cursor: pointer;
@@ -407,6 +411,19 @@
 {% block scripts %}
 	<script>
 		document.addEventListener('DOMContentLoaded', function() {
+			/* ── Auto-ouverture de la modal de création de stream ── */
+			{% if openCreateStream %}
+			var createStreamModal = document.getElementById('createStreamModal');
+			if (createStreamModal) {
+				var modal = new bootstrap.Modal(createStreamModal);
+				modal.show();
+				{% if selectedEventId %}
+				var parentEventSelect = document.getElementById('parent_event');
+				if (parentEventSelect) parentEventSelect.value = '{{ selectedEventId }}';
+				{% endif %}
+			}
+			{% endif %}
+
 			/* ── Validation Bootstrap ── */
 			document.querySelectorAll('.needs-validation').forEach(function(form) {
 				form.addEventListener('submit', function(e) {

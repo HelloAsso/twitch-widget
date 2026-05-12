@@ -48,6 +48,8 @@ class AdminController
             "events" => $events,
             "messages" => $this->messages->getMessages(),
             "currentUser" => $user,
+            "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
+            "openCreateStream" => isset($request->getQueryParams()['createStream']),
         ];
 
         $template = $user->role === "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
@@ -93,11 +95,13 @@ class AdminController
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
         $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $event->guid);
         $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $event->guid);
+        $streams = $this->streamRepository->selectListByEvent($event);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
             "logged" => true,
             "event" => $event,
+            "streams" => $streams,
             "donationGoalWidget" => $donationGoalWidget,
             "cardWidget" => $cardWidget,
             "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
@@ -189,12 +193,18 @@ class AdminController
         $alertBoxWidget = $this->widgetRepository->selectAlertWidgetByGuid($guid);
         $cardWidget = $this->widgetRepository->selectCardWidgetByGuid($guid, null);
 
+        $parentEvent = null;
+        if ($charityStream->charity_event_id) {
+            $parentEvent = $this->eventRepository->selectByUserAndId($user, $charityStream->charity_event_id);
+        }
+
         $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/formulaires/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
             "logged" => true,
             "charityStream" => $charityStream,
+            "parentEvent" => $parentEvent,
             "donationGoalWidget" => $donationGoalWidget,
             "alertBoxWidget" => $alertBoxWidget,
             "alertBoxWidgetPictureUrl" => ($alertBoxWidget && $alertBoxWidget->image) ? $this->fileManager->getPictureUrl($alertBoxWidget->image) : null,

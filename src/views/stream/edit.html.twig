@@ -1,4 +1,4 @@
-{% block title %}Édition du stream{% endblock %}
+{% block title %}HelloAsso Widgets - Édition du stream{% endblock %}
 
 
 {% extends "layout.html.twig" %}
@@ -8,6 +8,13 @@
 			<h1 class="my-4 text-center">Édition</h1>
 
 			<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
+
+			{% if parentEvent %}
+				<div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+					<span>📅 Événement parent :</span>
+					<a href="/admin/event/{{ parentEvent.guid }}/edit" class="fw-bold text-decoration-underline">{{ parentEvent.title }}</a>
+				</div>
+			{% endif %}
 
 			<h5>
 				Formulaire de don Helloasso

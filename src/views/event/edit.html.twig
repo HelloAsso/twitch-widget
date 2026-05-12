@@ -1,10 +1,42 @@
-{% block title %}Édition de l'événement{% endblock %}
+{% block title %}HelloAsso Widgets - Édition de l'événement{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
 	<div class="container mb-5">
 		<h1 class="my-4 text-center">Édition</h1>
 
 		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
+
+		{# ── Streams liés à cet événement ────────────────────────── #}
+		<div class="card mb-4">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">🎮 Streams rattachés</h5>
+				<a href="/admin?createStream=1&eventId={{ event.id }}" class="btn btn-sm btn-success">➕ Créer un stream</a>
+			</div>
+			<div class="card-body">
+				{% if streams is not empty %}
+					<table class="table table-hover align-middle mb-0">
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>Titre</th>
+								<th>Slug formulaire</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for stream in streams %}
+								<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}" style="cursor:pointer;">
+									<td>{{ stream.id | e }}</td>
+									<td>{{ stream.title | e }}</td>
+									<td>{{ stream.form_slug | e }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% else %}
+					<p class="text-muted mb-0">Aucun stream rattaché à cet événement.</p>
+				{% endif %}
+			</div>
+		</div>
 
 		<div class="accordion mt-4" id="widgetsAccordion">
 
@@ -181,6 +213,14 @@
 
 		</div>{# /accordion #}
 	</div>
+{% endblock %}
+{% block styles %}
+<style>
+	.cursor-pointer { cursor: pointer; }
+	.table-hover tbody tr.cursor-pointer:hover {
+		background-color: rgba(var(--bs-primary-rgb), .08) !important;
+	}
+</style>
 {% endblock %}
 {% block scripts %}
 	{% if viteEntries.admin.js %}

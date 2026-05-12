@@ -1,6 +1,21 @@
 var alertQueue = [];
 var isAlertActive = false;
 var isFetching = false;
+var audioUnlocked = false;
+
+// Pré-déverrouiller l'audio pour les navigateurs/OBS
+(function unlockAudio() {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') {
+        ctx.resume().then(function() { audioUnlocked = true; });
+    } else {
+        audioUnlocked = true;
+    }
+    // Créer un son silencieux pour débloquer la lecture audio
+    var silentAudio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+    silentAudio.volume = 0;
+    silentAudio.play().catch(function() {});
+})();
 
 fetchAlerts();
 setInterval(fetchAlerts, 10000);
@@ -57,21 +72,34 @@ function processAlertQueue() {
     messageTemplate.style.marginTop = '10px';
     messageTemplate.classList.add('fade');
     container.appendChild(messageTemplate);
-    var audio = new Audio(window.sound);
+
+    // Pré-charger le son avant de l'utiliser
+    var audio = null;
+    if (window.sound && window.sound.length > 0) {
+        audio = new Audio(window.sound);
+        audio.volume = window.sound_volume || 0.5;
+        audio.preload = 'auto';
+        audio.load();
+    }
 
     setTimeout(function () {
         mediaElement.classList.add('show');
         messageTemplate.classList.add('show');
 
-        audio.volume = window.sound_volume;
-        audio.play();
+        if (audio) {
+            audio.play().catch(function(err) {
+                console.warn('Impossible de jouer le son :', err);
+            });
+        }
     }, 100)
 
     setTimeout(function () {
         mediaElement.classList.remove('show');
         messageTemplate.classList.remove('show');
-        audio.pause();
-        audio.currentTime = 0;
+        if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+        }
 
         container.innerHTML = '';
         processAlertQueue();
