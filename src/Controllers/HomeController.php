@@ -20,6 +20,12 @@ class HomeController
         return $this->view->render($response, 'index.html.twig', $messages);
     }
 
+    public function register(Request $request, Response $response): Response
+    {
+        $messages = $this->messages->getMessages();
+        return $this->view->render($response, 'register.html.twig', $messages);
+    }
+
     public function forgotPassword(Request $request, Response $response): Response
     {
         return $this->view->render($response, 'password-forgot.html.twig');

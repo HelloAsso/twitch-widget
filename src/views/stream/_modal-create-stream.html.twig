@@ -18,25 +18,25 @@
 				<p class="text-muted small mb-3">Comment souhaitez-vous créer ce stream ?</p>
 				<div class="row g-3 mb-4" id="modeSelectorCards">
 					<div class="col-6">
-						<div class="stream-mode-card card h-100 border border-secondary rounded-3 p-3 text-center cursor-pointer active"
-							id="cardManuel" onclick="selectStreamMode('manuel')">
+					<div class="stream-mode-card card h-100 border border-secondary rounded-3 p-3 text-center cursor-pointer"
+						id="cardManuel" onclick="selectStreamMode('manuel')">
 							<div class="fs-2 mb-2">⌨️</div>
 							<div class="fw-semibold">Manuellement</div>
 							<div class="text-muted small mt-1">Renseignez les slugs vous-même</div>
 						</div>
 					</div>
 					<div class="col-6">
-						<div class="stream-mode-card card h-100 border border-secondary rounded-3 p-3 text-center cursor-pointer"
-							id="cardAsso" onclick="selectStreamMode('asso')">
+					<div class="stream-mode-card card h-100 border border-secondary rounded-3 p-3 text-center cursor-pointer active"
+						id="cardAsso" onclick="selectStreamMode('asso')">
 							<div class="fs-2 mb-2">🔗</div>
 							<div class="fw-semibold">Depuis mon association</div>
-							<div class="text-muted small mt-1">Importez via HelloAsso OAuth</div>
+							<div class="text-muted small mt-1">Importez via votre compte HelloAsso</div>
 						</div>
 					</div>
 				</div>
 
 				{# == MODE MANUEL == #}
-				<div id="modeManuel">
+				<div id="modeManuel" style="display:none">
 					<form action="/admin/stream" method="POST" class="needs-validation" novalidate>
 						{% if events %}
 							<div class="mb-3">
@@ -114,7 +114,7 @@
 				</div>
 
 				{# == MODE DEPUIS MON ASSO == #}
-				<div id="modeAsso" style="display:none">
+				<div id="modeAsso">
 
 					{# Stepper #}
 					<div class="d-flex align-items-center mb-4" id="assoStepper">

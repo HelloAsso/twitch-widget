@@ -190,10 +190,13 @@ $errorMiddleware->setErrorHandler(
     true // handleSubclasses
 );
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
+$app->get('/register', [HomeController::class, 'register'])->setName('app_register');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
 
 $app->post('/login', [LoginController::class, 'login'])->setName('app_login');
+$app->post('/register', [LoginController::class, 'register'])->setName('app_register_post');
+$app->get('/verify-email/{token}', [LoginController::class, 'verifyEmail'])->setName('app_verify_email');
 $app->get('/logout', [LoginController::class, 'logout'])->add(new AuthMiddleware())->setName('app_logout');
 $app->post('/forgot_password', [LoginController::class, 'forgotPassword'])->setName('app_forgot_password_post');
 $app->post('/reset_password', [LoginController::class, 'resetPassword'])->setName('app_reset_password_post');

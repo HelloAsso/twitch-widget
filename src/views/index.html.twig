@@ -2,7 +2,7 @@
 {% block title %}HelloAsso Widgets{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
-	<div class="container">
+	<div class="container" style="max-width: 480px;">
 		<h1 class="my-4 text-center">HelloAsso Widgets</h1>
 		<form action="/login" method="POST">
 			<div class="form-group">
@@ -16,7 +16,10 @@
 			<div class="form-group">
 				<a href="/forgot_password">Mot de passe oublié ?</a>
 			</div>
-			<button type="submit" class="btn btn-primary mt-3">Connexion 🚀</button>
+			<button type="submit" class="btn btn-primary mt-3 w-100">Connexion 🚀</button>
+			<div class="text-center mt-3">
+				<a href="/register">Pas encore de compte ? Créer un compte</a>
+			</div>
 		</form>
 	</div>
 	{% if login_failed %}
@@ -56,6 +59,62 @@
 				</div>
 				<div class="toast-body">
 					Vous pouvez vous connecter 💪
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if register_success %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Inscription réussie</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					Un email de vérification vient de vous être envoyé 📧 Consultez votre boîte mail pour activer votre compte.
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if email_verified %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Email vérifié</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					Votre email a été confirmé, vous pouvez vous connecter 🎉
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if email_verify_error %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Erreur</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					Le lien de vérification est invalide ou a expiré 😞
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if email_not_verified %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Email non vérifié</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					Veuillez confirmer votre adresse email avant de vous connecter. Consultez votre boîte mail 📧
 				</div>
 			</div>
 		</div>

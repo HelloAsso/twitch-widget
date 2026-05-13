@@ -39,6 +39,7 @@ class LoginController
 
     /**
      * Valide la page de connexion après soumission du formulaire.
+     * Vérifie aussi que l'email est confirmé.
      */
     public function login(Request $request, Response $response): Response
     {
@@ -48,6 +49,10 @@ class LoginController
         $user = $this->userRepository->select($email);
 
         if ($user && password_verify($password, $user->password)) {
+            if (isset($user->email_verified) && !$user->email_verified) {
+                $this->messages->addMessage('email_not_verified', true);
+                return $this->redirectToRoute($request, $response, 'app_index');
+            }
             session_regenerate_id(true);
             $_SESSION['user'] = $user;
             return $this->redirectToRoute($request, $response, 'app_admin_index');
@@ -55,6 +60,128 @@ class LoginController
 
         $this->messages->addMessage('login_failed', true);
         return $this->redirectToRoute($request, $response, 'app_index');
+    }
+
+    /**
+     * Inscrit un nouvel utilisateur avec vérification par email.
+     */
+    public function register(Request $request, Response $response): Response
+    {
+        $data = $request->getParsedBody();
+        $email = trim($data['email'] ?? '');
+        $password = $data['password'] ?? '';
+        $passwordRepeat = $data['passwordRepeat'] ?? '';
+
+        // Validation email
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->messages->addMessage('register_error', 'Adresse email invalide.');
+            return $this->redirectToRoute($request, $response, 'app_register');
+        }
+
+        // Validation mot de passe
+        $passwordErrors = $this->validatePassword($password, $passwordRepeat);
+        if (!empty($passwordErrors)) {
+            $this->messages->addMessage('register_error', implode(' ', $passwordErrors));
+            return $this->redirectToRoute($request, $response, 'app_register');
+        }
+
+        // Vérifier si l'utilisateur existe déjà
+        $existing = $this->userRepository->select($email);
+        if ($existing) {
+            $this->messages->addMessage('register_error', 'Un compte avec cet email existe déjà.');
+            return $this->redirectToRoute($request, $response, 'app_register');
+        }
+
+        // Créer l'utilisateur (email non vérifié)
+        $user = $this->userRepository->insertWithPassword($email, $password);
+        $user = $this->userRepository->insertResetToken($user);
+
+        // Envoyer l'email de vérification
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $verifyUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_verify_email', ["token" => $user->reset_token]);
+
+        $this->mailchimp->messages->send([
+            "message" => [
+                "from_email" => "contact@helloasso.io",
+                "from_name" => "HelloAsso",
+                "subject" => "Confirmez votre adresse email",
+                "html" => $this->buildVerificationEmail($verifyUrl),
+                "to" => [["email" => $user->email]],
+            ],
+        ]);
+
+        $this->messages->addMessage('register_success', true);
+        return $this->redirectToRoute($request, $response, 'app_index');
+    }
+
+    /**
+     * Vérifie l'email via le token reçu par mail.
+     */
+    public function verifyEmail(Request $request, Response $response, array $args): Response
+    {
+        $token = $args['token'] ?? '';
+        $user = $this->userRepository->selectByToken($token);
+
+        if ($user) {
+            $this->userRepository->verifyEmail($user);
+            $this->messages->addMessage('email_verified', true);
+        } else {
+            $this->messages->addMessage('email_verify_error', true);
+        }
+
+        return $this->redirectToRoute($request, $response, 'app_index');
+    }
+
+    /**
+     * Valide les règles de mot de passe.
+     */
+    private function validatePassword(string $password, string $passwordRepeat): array
+    {
+        $errors = [];
+
+        if ($password !== $passwordRepeat) {
+            $errors[] = 'Les mots de passe ne correspondent pas.';
+        }
+        if (strlen($password) < 8) {
+            $errors[] = 'Le mot de passe doit contenir au moins 8 caractères.';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Le mot de passe doit contenir au moins une majuscule.';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Le mot de passe doit contenir au moins une minuscule.';
+        }
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = 'Le mot de passe doit contenir au moins un chiffre.';
+        }
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Le mot de passe doit contenir au moins un caractère spécial.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Génère le contenu HTML de l'email de vérification.
+     */
+    private function buildVerificationEmail(string $verifyUrl): string
+    {
+        return <<<HTML
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+            <h1 style="color: #2C88D9;">Confirmez votre adresse email 📧</h1>
+            <p>Bonjour,</p>
+            <p>Merci de vous être inscrit sur <strong>HelloAsso Stream</strong> !</p>
+            <p>Pour activer votre compte, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous :</p>
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{$verifyUrl}" style="background-color: #2C88D9; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Confirmer mon email</a>
+            </p>
+            <p style="font-size: 12px; color: #888;">Ou copiez ce lien dans votre navigateur : {$verifyUrl}</p>
+            <p style="font-size: 12px; color: #888;">Ce lien est valable 1 heure.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p>Si vous n'êtes pas à l'origine de cette inscription, vous pouvez ignorer cet email.</p>
+            <p>L'équipe HelloAsso</p>
+        </div>
+        HTML;
     }
 
     /**
