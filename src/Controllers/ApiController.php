@@ -2,23 +2,17 @@
 
 namespace App\Controllers;
 
-use App\Repositories\FileManager;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Slim\Flash\Messages;
 use Slim\Routing\RouteContext;
-use Slim\Views\Twig;
 
 class ApiController
 {
     public function __construct(
-        private Twig $view,
-        private FileManager $fileManager,
         private StreamRepository $streamRepository,
         private UserRepository $userRepository,
-        private Messages $messages,
     ) {}
 
     public function new(Request $request, Response $response): Response
@@ -36,10 +30,7 @@ class ApiController
         }
 
         $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title);
-        $user = $this->userRepository->select($ownerEmail);
-        if ($user == null) {
-            $user = $this->userRepository->insert($ownerEmail);
-        }
+        $user = $this->userRepository->findOrCreate($ownerEmail);
         $this->userRepository->insertRight($user, $stream, null);
         $this->userRepository->insertResetToken($user);
 

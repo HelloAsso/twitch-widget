@@ -1,67 +1,253 @@
-
-{% block title %}Édition de l'événement{% endblock %}
+{% block title %}HelloAsso Widgets - Édition de l'événement{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
 	<div class="container mb-5">
-		<h1 class="my-4 text-center">Édition</h1>
+		<h1 class="my-4 text-center">Édition de l'évènement</h1>
 
 		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
 
-		<hr class="my-4">
-		<h2>Widget barre de don</h2>
-		<form id="donationBarForm" method="POST">
-			<div class="mb-3">
-				<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
-				<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
+		{# ── Informations de l'événement ──────────────────────────── #}
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">📋 Informations de l'événement</h5>
 			</div>
-			<div class="mb-3">
-				<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
-				<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+			<div class="card-body">
+				<form method="POST">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="mb-3">
+								<label for="event_title" class="form-label fw-semibold">Titre</label>
+								<input type="text" class="form-control" id="event_title" name="event_title" value="{{ event.title }}" required>
+							</div>
+						</div>
+						<div class="col-md-3">
+							<div class="mb-3">
+								<label for="event_goal" class="form-label fw-semibold">Objectif (€)</label>
+								<input type="number" class="form-control" id="event_goal" name="event_goal" value="{{ event.goal }}" min="0">
+							</div>
+						</div>
+						<div class="col-md-3 d-flex align-items-end">
+							<div class="mb-3">
+								<button type="submit" class="btn btn-primary" name="save_event_info">💾 Enregistrer</button>
+							</div>
+						</div>
+					</div>
+				</form>
 			</div>
-			<div class="mb-3">
-				<label for="text_content" class="form-label">Texte</label>
-				<input type="text" class="form-control" id="text_content" name="text_content" value="{{ donationGoalWidget.text_content }}">
+		</div>
+
+		{# ── Streams liés à cet événement ────────────────────────── #}
+		<div class="card mb-4">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">🎮 Streams rattachés</h5>
+				<a href="/admin?createStream=1&eventId={{ event.id }}" class="btn btn-sm btn-success">➕ Créer un stream</a>
 			</div>
-			<div class="mb-3">
-				<label for="bar_color" class="form-label">Couleur de la barre</label>
-				<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
+			<div class="card-body">
+				{% if streams is not empty %}
+					<table class="table table-hover align-middle mb-0">
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>Titre</th>
+								<th>Slug formulaire</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for stream in streams %}
+								<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}" style="cursor:pointer;">
+									<td>{{ stream.id | e }}</td>
+									<td>
+										{{ stream.title | e }}
+										{% if stream.organization_slug in invalidTokenSlugs %}
+											<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — reconnectez l'association.">⚠️ Token invalide</span>
+										{% endif %}
+									</td>
+									<td>{{ stream.form_slug | e }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% else %}
+					<p class="text-muted mb-0">Aucun stream rattaché à cet événement.</p>
+				{% endif %}
 			</div>
-			<div class="mb-3">
-				<label for="background_color" class="form-label">Couleur du fond</label>
-				<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
-			</div>
-			<div class="mb-3">
-				<label for="goal" class="form-label">Objectif</label>
-				<input type="number" class="form-control" id="goal" name="goal" value="{{ donationGoalWidget.goal }}">
-			</div>
-			<br/>
-			<div class="progress">
-				<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
-					<p id="back-goal-current">{{ donationGoalWidget.goal / 2 }}
-						€</p>
-					<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-					<p id="back-goal-total">{{ donationGoalWidget.goal }}
-						€</p>
+		</div>
+
+		<div class="accordion mt-4" id="widgetsAccordion">
+
+			{# ── Widget barre de don ────────────────────────────────── #}
+			<div class="accordion-item">
+				<h2 class="accordion-header" id="headingDonationBar">
+					<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="true" aria-controls="collapseDonationBar">
+						🎯 Widget barre de don
+					</button>
+				</h2>
+				<div id="collapseDonationBar" class="accordion-collapse collapse show" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
+					<div class="accordion-body">
+						<form id="donationBarForm" method="POST">
+							<div class="row">
+								<div class="col-md-6">
+									<div class="mb-3">
+										<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
+										<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
+									</div>
+									<div class="mb-3">
+										<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
+										<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+									</div>
+									<div class="mb-3">
+										<label for="text_content" class="form-label">Texte</label>
+										<input type="text" class="form-control" id="text_content" name="text_content" value="{{ donationGoalWidget.text_content }}">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="mb-3">
+										<label for="bar_color" class="form-label">Couleur de la barre</label>
+										<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="background_color" class="form-label">Couleur du fond</label>
+										<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
+									</div>
+								</div>
+							</div>
+							<div class="progress">
+								<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
+									<p id="back-goal-current">{{ event.goal / 2 }} €</p>
+									<p id="back-title">{{ donationGoalWidget.text_content }}</p>
+									<p id="back-goal-total">{{ event.goal }} €</p>
+								</div>
+								<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
+									<p id="front-goal-current">{{ event.goal / 2 }} €</p>
+									<p id="front-title">{{ donationGoalWidget.text_content }}</p>
+									<p id="front-goal-total">{{ event.goal }} €</p>
+								</div>
+							</div>
+							<div class="d-flex align-items-center justify-content-between mt-3">
+								<h6 class="mb-0">
+									URL : <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
+								</h6>
+								<button type="submit" class="btn btn-primary" name="save_donation_goal">💾 Enregistrer</button>
+							</div>
+						</form>
+					</div>
 				</div>
-				<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
-					<p id="front-goal-current">{{ donationGoalWidget.goal / 2 }}
-						€</p>
-					<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-					<p id="front-goal-total">{{ donationGoalWidget.goal }}
-						€</p>
+			</div>
+
+			{# ── Widget carte de don ────────────────────────────────── #}
+			{% if cardWidget %}
+			<div class="accordion-item">
+				<h2 class="accordion-header" id="headingCardWidget">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCardWidget" aria-expanded="false" aria-controls="collapseCardWidget">
+						🃏 Widget carte de don
+					</button>
+				</h2>
+				<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
+					<div class="accordion-body">
+						<form id="cardWidgetForm" method="POST" enctype="multipart/form-data">
+							<div class="row">
+								<div class="col-md-6">
+									<div class="mb-3">
+										<label for="card_image" class="form-label">Image de fond</label>
+										{% if cardWidget.image %}
+											<div class="form-text">
+												Déjà chargée :
+												<a href="{{ cardWidgetPictureUrl }}" target="_blank">{{ cardWidget.image }}</a>
+											</div>
+										{% endif %}
+										<input type="file" class="form-control" id="card_image" name="card_image" accept="image/*"/>
+									</div>
+									<div class="mb-3">
+										<label for="card_tag" class="form-label">Tag</label>
+										<input type="text" class="form-control" id="card_tag" name="card_tag" value="{{ cardWidget.tag }}" placeholder="Ex: URGENCE NATURE">
+									</div>
+									<div class="mb-3">
+										<label for="card_title" class="form-label">Titre</label>
+										<input type="text" class="form-control" id="card_title" name="card_title" value="{{ cardWidget.title }}" placeholder="Ex: Protégeons nos forêts anciennes">
+									</div>
+									<div class="mb-3">
+										<label for="card_description" class="form-label">Description</label>
+										<textarea class="form-control" id="card_description" name="card_description" rows="3" placeholder="Description de la campagne">{{ cardWidget.description }}</textarea>
+									</div>
+								</div>
+								<div class="col-md-6">
+									<h6>Couleurs</h6>
+									<div class="mb-3">
+										<label for="card_background_color" class="form-label">Fond de la carte</label>
+										<input type="color" class="form-control form-control-color" id="card_background_color" name="card_background_color" value="{{ cardWidget.background_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="card_text_color" class="form-label">Texte</label>
+										<input type="color" class="form-control form-control-color" id="card_text_color" name="card_text_color" value="{{ cardWidget.text_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="card_bar_color" class="form-label">Barre de progression</label>
+										<input type="color" class="form-control form-control-color" id="card_bar_color" name="card_bar_color" value="{{ cardWidget.bar_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="card_bar_background_color" class="form-label">Fond de la barre</label>
+										<input type="color" class="form-control form-control-color" id="card_bar_background_color" name="card_bar_background_color" value="{{ cardWidget.bar_background_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="card_tag_color" class="form-label">Texte du tag</label>
+										<input type="color" class="form-control form-control-color" id="card_tag_color" name="card_tag_color" value="{{ cardWidget.tag_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="card_tag_background_color" class="form-label">Fond du tag</label>
+										<input type="color" class="form-control form-control-color" id="card_tag_background_color" name="card_tag_background_color" value="{{ cardWidget.tag_background_color }}">
+									</div>
+								</div>
+							</div>
+
+							{# ── Prévisualisation ── #}
+							<div class="card-widget-preview mt-3 p-3" style="border: 1px dashed #555; border-radius: 12px;">
+								<div id="cardPreview" style="display:flex; max-width:720px; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.10); background-color:{{ cardWidget.background_color }}; color:{{ cardWidget.text_color }};">
+									<div id="cardPreviewImage" style="flex:0 0 220px; min-height:280px; background-size:cover; background-position:center; {% if cardWidgetPictureUrl %}background-image:url('{{ cardWidgetPictureUrl }}');{% else %}background:#374151;{% endif %}"></div>
+									<div style="flex:1; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; gap:14px;">
+										<div id="cardPreviewTag" style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:5px 14px; border-radius:999px; width:fit-content; color:{{ cardWidget.tag_color }}; background-color:{{ cardWidget.tag_background_color }};">
+											✏️ {{ cardWidget.tag }}
+										</div>
+										<div id="cardPreviewTitle" style="font-size:24px; font-weight:800; line-height:1.15;">{{ cardWidget.title }}</div>
+										<div id="cardPreviewDesc" style="font-size:13px; line-height:1.6; opacity:0.8;">{{ cardWidget.description }}</div>
+										<div>
+											<div id="cardPreviewAmount" style="font-size:28px; font-weight:800;">{{ (event.goal / 2) }} €</div>
+											<div style="display:flex; align-items:center; gap:12px;">
+												<div style="flex:1; height:12px; border-radius:999px; overflow:hidden; background-color:{{ cardWidget.bar_background_color }};">
+													<div id="cardPreviewBarFill" style="height:100%; border-radius:999px; width:50%; background-color:{{ cardWidget.bar_color }};"></div>
+												</div>
+												<div id="cardPreviewGoal" style="font-size:13px; white-space:nowrap;">Objectif : <strong>{{ event.goal }} €</strong></div>
+											</div>
+											<div style="display:flex; gap:24px; margin-top:6px; font-size:13px; opacity:0.75;">
+												<span><strong id="cardPreviewPct">50%</strong> collectés</span>
+												<span><strong>0</strong> donateurs</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="d-flex align-items-center justify-content-between mt-3">
+								<h6 class="mb-0">
+									URL : <a href="{{ widgetCardUrl }}" target="_blank">{{ widgetCardUrl }}</a>
+								</h6>
+								<button type="submit" class="btn btn-primary" name="save_card_widget">💾 Enregistrer</button>
+							</div>
+						</form>
+					</div>
 				</div>
 			</div>
-			<br/>
-			<div class="align-items-center mt-3">
-				<h5>
-					URL du widget :
-					<a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
-				</h5>
-				<br/>
-				<button type="submit" class="btn btn-primary" name="save_donation_goal">💾</button>
-			</div>
-		</form>
+			{% endif %}
+
+		</div>{# /accordion #}
 	</div>
+{% endblock %}
+{% block styles %}
+<style>
+	.cursor-pointer { cursor: pointer; }
+	.table-hover tbody tr.cursor-pointer:hover {
+		background-color: rgba(var(--bs-primary-rgb), .08) !important;
+	}
+</style>
 {% endblock %}
 {% block scripts %}
 	{% if viteEntries.admin.js %}

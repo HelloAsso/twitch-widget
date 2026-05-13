@@ -1,143 +1,44 @@
-
-	{% block title %}Administration des Charity Streams {% endblock %}
+	{% block title %}HelloAsso Widgets{% endblock %}
 
 {% extends "layout.html.twig" %}
 {% block content %}
 
-		<div class="modal fade" id="createStreamModal" tabindex="-1">
-			<div class="modal-dialog modal-lg">
+		{# ── Modal création évènement ── #}
+		<div class="modal fade" id="createEventModal" tabindex="-1">
+			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title">Créer un nouveau Charity Stream</h5>
+						<h5 class="modal-title">Créer un évènement</h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
-
-						{# Toggle switch mode #}
-						<div class="mb-4 d-flex align-items-center gap-3">
-							<span class="fw-semibold">Manuellement</span>
-							<div class="form-check form-switch mb-0">
-								<input class="form-check-input" type="checkbox" role="switch" id="streamModeSwitch" onchange="toggleStreamMode(this)">
+						<form action="/admin/event" method="POST">
+							<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
+							<div class="mb-3">
+								<label for="event_title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="event_title" name="title" required>
 							</div>
-							<span class="fw-semibold">Depuis mon association</span>
-						</div>
-
-						{# == MODE MANUEL == #}
-						<div id="modeManuel">
-							<form action="/admin/stream" method="POST">
-								{% if events %}
-									<div class="mb-3">
-										<label for="parent_event" class="form-label">Évènement parent</label>
-										<select class="form-control" id="parent_event" name="parent_event">
-											<option></option>
-											{% for event in events %}
-												<option value="{{ event.id }}">{{ event.title }}</option>
-											{% endfor %}
-										</select>
-									</div>
-									<div class="mb-3 form-check form-switch">
-										<input class="form-check-input" type="checkbox" role="switch" id="parent_style" name="parent_style">
-										<label for="parent_style" class="form-check-label">Appliquer le même style ?</label>
-									</div>
-								{% endif %}
-								<div class="mb-3">
-									<label for="owner_email" class="form-label">Email</label>
-									<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
-								</div>
-								<div class="mb-3">
-									<label for="organization_slug" class="form-label">Slug association</label>
-									<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
-								</div>
-								<div class="mb-3">
-									<label for="form_slug" class="form-label">Slug formulaire</label>
-									<input type="text" class="form-control" id="form_id" name="form_slug" value="{{ formSlug }}" required>
-								</div>
-								<div class="mb-3">
-									<label for="title" class="form-label">Titre</label>
-									<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
-								</div>
-								<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
-							</form>
-						</div>
-
-						{# == MODE DEPUIS MON ASSO == #}
-						<div id="modeAsso" style="display:none">
-
-							{# Étape 1 : connexion OAuth #}
-							<div id="stepConnect" class="text-center py-3">
-								<p class="text-muted mb-3">Connectez votre association HelloAsso pour récupérer automatiquement vos formulaires de don.</p>
-								<button type="button" class="btn btn-primary btn-lg" id="connectAssoBtn" onclick="connectAsso()">
-									🔑 Connecter mon asso
-								</button>
-								<div id="connectSpinner" class="mt-3" style="display:none">
-									<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-									<span class="ms-2 text-muted">Ouverture de la mire d'autorisation...</span>
-								</div>
-							</div>
-
-							{# Étape 2 : sélection du formulaire (affiché après le callback OAuth) #}
-							<div id="stepForms" style="display:none">
-								<form action="/admin/stream" method="POST">
-
-									<div class="alert alert-success d-flex align-items-center mb-3">
-										<span>✅ Association connectée :&nbsp;<strong id="assoSlugDisplay"></strong></span>
-									</div>
-
-									{% if events %}
-										<div class="mb-3">
-											<label for="asso_parent_event" class="form-label">Évènement parent</label>
-											<select class="form-control" id="asso_parent_event" name="parent_event">
-												<option></option>
-												{% for event in events %}
-													<option value="{{ event.id }}">{{ event.title }}</option>
-												{% endfor %}
-											</select>
-										</div>
-										<div class="mb-3 form-check form-switch">
-											<input class="form-check-input" type="checkbox" role="switch" id="asso_parent_style" name="parent_style">
-											<label for="asso_parent_style" class="form-check-label">Appliquer le même style ?</label>
-										</div>
-									{% endif %}
-
-									<div class="mb-3">
-										<label for="asso_owner_email" class="form-label">Email</label>
-										<input type="email" class="form-control" id="asso_owner_email" name="owner_email" value="{{ currentUser.email }}" required>
-									</div>
-
-									<input type="hidden" id="asso_organization_slug" name="organization_slug">
-
-									<div class="mb-3">
-										<label for="asso_form_slug" class="form-label">Formulaire de don</label>
-										<select class="form-control" id="asso_form_slug" name="form_slug" required>
-											<option value="">Sélectionner un formulaire…</option>
-										</select>
-									</div>
-
-									<div class="mb-3">
-										<label for="asso_title" class="form-label">Titre du stream</label>
-										<input type="text" class="form-control" id="asso_title" name="title" required>
-									</div>
-
-									<button type="submit" class="btn btn-success" name="create_charity_stream">Créer</button>
-								</form>
-							</div>
-
-						</div>
-
+							<button type="submit" class="btn btn-success" name="create_charity_event">Créer</button>
+						</form>
 					</div>
 				</div>
 			</div>
 		</div>
+
+		{# ── Modal création stream (même interface que l'admin, sans le champ email) ── #}
+		{% include 'stream/_modal-create-stream.html.twig' with { isAdmin: false } %}
+
 		<div class="container">
-			<h1 class="my-4 text-center">Administration</h1>
+			<h1 class="my-4 text-center">HelloAsso Widgets</h1>
 
 			<div class="row my-4">
 				<div class="col-10">
-					{% if events %}
-						<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
-							Ajouter un stream 🎮
-						</button>
-					{% endif %}
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+						Ajouter un évènement 👐
+					</button>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+						Ajouter un stream 🎮
+					</button>
 				</div>
 				<div class="col-2 text-end">
 					<a href="/logout" class="btn btn-secondary mb-4">
@@ -147,27 +48,48 @@
 				</div>
 			</div>
 
+			{# ── Onboarding si aucun contenu ── #}
+			{% if events is empty and streams is empty %}
+				<div class="text-center py-5">
+					<div class="mb-4" style="font-size: 4rem;">🚀</div>
+					<h2 class="mb-3">Bienvenue sur HelloAsso Widgets !</h2>
+					<p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
+						Vous n'avez pas encore créé de stream ni d'évènement.<br>
+						Commencez dès maintenant en quelques clics !
+					</p>
+					<div class="d-flex justify-content-center gap-3">
+						<button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createEventModal">
+							👐 Créer un évènement
+						</button>
+						<button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+							🎮 Créer un stream
+						</button>
+					</div>
+				</div>
+			{% else %}
+
 			{% if events %}
-				<h3>Liste des Charity Events</h3>
-				<table class="table table-bordered table-striped">
-					<thead class="thead-dark">
+				<h3>Liste des évènements</h3>
+				<table class="table table-hover align-middle">
+					<thead>
 						<tr>
 							<th>Id</th>
-							<th>Guid</th>
 							<th>Titre</th>
-							<th>Admin</th>
+							<th>Date de création</th>
 							<th>Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 						{% for event in events %}
-							<tr>
+							<tr class="cursor-pointer" onclick="window.location='/admin/event/{{ event.guid }}/edit'" title="GUID : {{ event.guid }}">
 								<td>{{ event.id | e }}</td>
-								<td>{{ event.guid | e }}</td>
 								<td>{{ event.title | e }}</td>
-								<td>{{ event.admin | e }}</td>
-								<td class="d-flex justify-content-evenly">
-									<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<td>{{ event.creation_date ? event.creation_date|date('d/m/Y H:i') : '—' }}</td>
+								<td class="d-flex gap-2" onclick="event.stopPropagation()">
+									<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+									<form action="/admin/event/{{ event.guid }}/delete" method="POST">
+										<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+									</form>
 								</td>
 							</tr>
 						{% endfor %}
@@ -175,14 +97,12 @@
 				</table>
 			{% endif %}
 
-			<h3>Liste des Charity Streams</h3>
-			<table class="table table-bordered table-striped">
-				<thead class="thead-dark">
+			<h3>Liste des stream</h3>
+			<table class="table table-hover align-middle">
+				<thead>
 					<tr>
 						<th>Id</th>
-						<th>Guid</th>
 						<th>Titre</th>
-						<th>Admin</th>
 						<th>Slug formulaire</th>
 						<th>Slug association</th>
 						<th>Actions</th>
@@ -190,94 +110,117 @@
 				</thead>
 				<tbody>
 					{% for stream in streams %}
-						<tr>
+						<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
 							<td>{{ stream.id | e }}</td>
-							<td>{{ stream.guid | e }}</td>
-							<td>{{ stream.title | e }}</td>
-							<td>{{ stream.admin | e }}</td>
+							<td>
+								{{ stream.title | e }}
+								{% if stream.organization_slug in invalidTokenSlugs %}
+									<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — les widgets ne fonctionneront pas. Reconnectez l'association.">⚠️ Token invalide</span>
+								{% endif %}
+							</td>
 							<td>{{ stream.form_slug | e }}</td>
 							<td>{{ stream.organization_slug | e }}</td>
-							<td class="d-flex justify-content-evenly">
-								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-primary mb-3" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-success mb-3" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-								{% if events %}
-									<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
-										<button type="submit" class="btn btn-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-									</form>
-								{% endif %}
+							<td class="d-flex gap-2" onclick="event.stopPropagation()">
+								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
+								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+								</form>
 							</td>
 						</tr>
 					{% endfor %}
 				</tbody>
 			</table>
+
+			{% endif %}{# /onboarding #}
 		</div>
 
+	{% if messages['error'] %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Erreur</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					{{ messages['error'][0] }}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if messages['success'] %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Ok</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					{{ messages['success'][0] }}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+{% endblock %}
+{% block styles %}
+<style>
+	/* ── Lignes de tableau cliquables ── */
+	.cursor-pointer { cursor: pointer; }
+	.table-hover tbody tr.cursor-pointer:hover {
+		background-color: rgba(var(--bs-primary-rgb), .08) !important;
+	}
+
+	/* ── Cartes de sélection de mode ── */
+	.stream-mode-card {
+		cursor: pointer;
+		transition: border-color .2s, box-shadow .2s, transform .1s;
+		user-select: none;
+	}
+	.stream-mode-card:hover {
+		border-color: var(--bs-primary) !important;
+		box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .15);
+		transform: translateY(-2px);
+	}
+	.stream-mode-card.active {
+		border-color: var(--bs-success) !important;
+		box-shadow: 0 0 0 3px rgba(var(--bs-success-rgb), .2);
+		background-color: rgba(var(--bs-success-rgb), .06);
+	}
+
+	/* ── Stepper ── */
+	.asso-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+	.step-bubble {
+		width: 32px; height: 32px;
+		border-radius: 50%;
+		display: flex; align-items: center; justify-content: center;
+		font-weight: 700; font-size: .85rem;
+		background: var(--bs-secondary-bg);
+		border: 2px solid var(--bs-secondary);
+		color: var(--bs-secondary);
+		transition: background .25s, border-color .25s, color .25s;
+	}
+	.asso-step.active .step-bubble {
+		background: var(--bs-primary);
+		border-color: var(--bs-primary);
+		color: #fff;
+	}
+	.asso-step.done .step-bubble {
+		background: var(--bs-success);
+		border-color: var(--bs-success);
+		color: #fff;
+	}
+	.step-label { font-size: .75rem; color: var(--bs-secondary); white-space: nowrap; }
+	.asso-step.active .step-label,
+	.asso-step.done  .step-label { color: var(--bs-body-color); font-weight: 600; }
+	.step-line { height: 2px; background: var(--bs-secondary-bg); margin: 0 8px; margin-bottom: 18px; }
+
+	/* ── Formulaires ── */
+	.needs-validation .form-control:valid,
+	.needs-validation .form-select:valid { border-color: var(--bs-success); }
+	#createStreamModal .input-group-text { font-size: .75rem; }
+</style>
 {% endblock %}
 {% block scripts %}
-<script>
-	function confirmDelete(event) {
-		if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
-			event.preventDefault();
-		}
-	}
-
-	function toggleStreamMode(el) {
-		const isAsso = el.checked;
-		document.getElementById('modeManuel').style.display = isAsso ? 'none' : 'block';
-		document.getElementById('modeAsso').style.display  = isAsso ? 'block' : 'none';
-	}
-
-	function connectAsso() {
-		const btn     = document.getElementById('connectAssoBtn');
-		const spinner = document.getElementById('connectSpinner');
-		btn.disabled = true;
-		spinner.style.display = 'block';
-
-		fetch('/admin/stream/init-auth')
-			.then(function(r) {
-				if (!r.ok) throw new Error('Erreur réseau');
-				return r.json();
-			})
-			.then(function(data) {
-				var authWindow = window.open(data.url, 'ha_auth_stream', 'width=900,height=700,noopener=0');
-				if (!authWindow) {
-					alert('Veuillez autoriser les popups pour ce site afin de connecter votre association.');
-					btn.disabled = false;
-					spinner.style.display = 'none';
-				}
-			})
-			.catch(function() {
-				btn.disabled = false;
-				spinner.style.display = 'none';
-				alert('Une erreur est survenue lors de l\'initialisation de l\'autorisation.');
-			});
-	}
-
-	// Écoute le postMessage envoyé par la page de callback OAuth
-	window.addEventListener('message', function(event) {
-		if (event.origin !== window.location.origin) return;
-		if (!event.data || event.data.type !== 'ha_stream_auth_success') return;
-
-		var organizationSlug = event.data.organizationSlug;
-		var forms = event.data.forms || [];
-
-		// Pré-remplir l'organisation
-		document.getElementById('asso_organization_slug').value = organizationSlug;
-		document.getElementById('assoSlugDisplay').textContent  = organizationSlug;
-
-		// Peupler le select des formulaires de don
-		var formSelect = document.getElementById('asso_form_slug');
-		formSelect.innerHTML = '<option value="">Sélectionner un formulaire…</option>';
-		forms.forEach(function(form) {
-			var opt = document.createElement('option');
-				opt.value = form.formSlug;
-				opt.textContent = form.title || form.formSlug;
-				formSelect.appendChild(opt);
-		});
-
-		// Afficher l'étape 2, masquer l'étape 1
-		document.getElementById('stepConnect').style.display = 'none';
-		document.getElementById('stepForms').style.display   = 'block';
-	});
-</script>
+	{% include 'stream/_scripts-create-stream.html.twig' %}
 {% endblock %}

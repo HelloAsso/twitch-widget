@@ -5,17 +5,21 @@ namespace App\Middlewares;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as Handler;
-use Slim\Psr7\Response as SlimResponse;
 
+/**
+ * @deprecated Utiliser AuthMiddleware('ADMIN') à la place.
+ */
 class AuthAdminMiddleware
 {
+    private AuthMiddleware $middleware;
+
+    public function __construct()
+    {
+        $this->middleware = new AuthMiddleware('ADMIN');
+    }
+
     public function __invoke(Request $request, Handler $handler): Response
     {
-        if (isset($_SESSION['user']) && $_SESSION['user']->role == "ADMIN") {
-            return $handler->handle($request->withAttribute('user', $_SESSION['user']));
-        }
-
-        $response = new SlimResponse();
-        return $response->withHeader('Location', '/')->withStatus(302);
+        return ($this->middleware)($request, $handler);
     }
 }

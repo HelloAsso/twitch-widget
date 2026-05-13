@@ -8,3 +8,4 @@ log.txt
 .idea
 
 node_modules/
+/.phpunit.result.cache

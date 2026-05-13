@@ -1,0 +1,115 @@
+
+{% block title %}Créer un compte — HelloAsso Widgets{% endblock %}
+{% extends "layout.html.twig" %}
+{% block content %}
+	<div class="container" style="max-width: 480px;">
+		<h1 class="my-4 text-center">Créer un compte</h1>
+		<form action="/register" method="POST" id="registerForm" novalidate>
+			<div class="form-group mb-3">
+				<label for="email">Email</label>
+				<input type="email" class="form-control" id="email" name="email" placeholder="vous@exemple.com" required>
+			</div>
+			<div class="form-group mb-3">
+				<label for="password">Mot de passe</label>
+				<input type="password" class="form-control" id="password" name="password" required
+					oninput="checkPasswordStrength()">
+				<div class="mt-2" id="passwordRules">
+					<small id="rule-length" class="text-danger d-block">✗ Au moins 8 caractères</small>
+					<small id="rule-upper" class="text-danger d-block">✗ Au moins une majuscule</small>
+					<small id="rule-lower" class="text-danger d-block">✗ Au moins une minuscule</small>
+					<small id="rule-digit" class="text-danger d-block">✗ Au moins un chiffre</small>
+					<small id="rule-special" class="text-danger d-block">✗ Au moins un caractère spécial</small>
+				</div>
+			</div>
+			<div class="form-group mb-3">
+				<label for="passwordRepeat">Confirmer le mot de passe</label>
+				<input type="password" class="form-control" id="passwordRepeat" name="passwordRepeat" required
+					oninput="checkPasswordMatch()">
+				<small id="rule-match" class="text-danger d-block mt-1" style="display:none !important;"></small>
+			</div>
+			<button type="submit" class="btn btn-success w-100 mt-3" id="submitBtn" disabled>
+				Créer mon compte 🚀
+			</button>
+			<div class="text-center mt-3">
+				<a href="/">Déjà un compte ? Se connecter</a>
+			</div>
+		</form>
+	</div>
+
+	{% if register_error %}
+		<div class="toast-container position-fixed bottom-0 end-0 p-3">
+			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+				<div class="toast-header">
+					<strong class="me-auto">Erreur</strong>
+					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				</div>
+				<div class="toast-body">
+					{{ register_error }}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		var toastEl = document.getElementById('liveToast');
+		if (toastEl) { new bootstrap.Toast(toastEl).show(); }
+	});
+
+	function checkPasswordStrength() {
+		var pw = document.getElementById('password').value;
+		setRule('rule-length', pw.length >= 8);
+		setRule('rule-upper', /[A-Z]/.test(pw));
+		setRule('rule-lower', /[a-z]/.test(pw));
+		setRule('rule-digit', /[0-9]/.test(pw));
+		setRule('rule-special', /[^A-Za-z0-9]/.test(pw));
+		checkPasswordMatch();
+		updateSubmitBtn();
+	}
+
+	function checkPasswordMatch() {
+		var pw = document.getElementById('password').value;
+		var pw2 = document.getElementById('passwordRepeat').value;
+		var el = document.getElementById('rule-match');
+		if (pw2.length === 0) {
+			el.style.display = 'none';
+		} else if (pw === pw2) {
+			el.style.display = 'block';
+			el.className = 'text-success d-block mt-1';
+			el.textContent = '✓ Les mots de passe correspondent';
+		} else {
+			el.style.display = 'block';
+			el.className = 'text-danger d-block mt-1';
+			el.textContent = '✗ Les mots de passe ne correspondent pas';
+		}
+		updateSubmitBtn();
+	}
+
+	function setRule(id, valid) {
+		var el = document.getElementById(id);
+		if (valid) {
+			el.className = 'text-success d-block';
+			el.textContent = '✓' + el.textContent.substring(1);
+		} else {
+			el.className = 'text-danger d-block';
+			el.textContent = '✗' + el.textContent.substring(1);
+		}
+	}
+
+	function updateSubmitBtn() {
+		var pw = document.getElementById('password').value;
+		var pw2 = document.getElementById('passwordRepeat').value;
+		var valid = pw.length >= 8
+			&& /[A-Z]/.test(pw)
+			&& /[a-z]/.test(pw)
+			&& /[0-9]/.test(pw)
+			&& /[^A-Za-z0-9]/.test(pw)
+			&& pw === pw2
+			&& pw2.length > 0;
+		document.getElementById('submitBtn').disabled = !valid;
+	}
+</script>
+{% endblock %}
+

@@ -1,11 +1,24 @@
 import { displayAlertBox } from './alert.js';
 
+/**
+ * Lie une liste d'inputs à une fonction de mise à jour de preview.
+ * Exécute la fonction immédiatement, puis sur chaque événement 'input'.
+ */
+function bindPreviewInputs(inputIds, updateFn) {
+    updateFn();
+    inputIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateFn);
+    });
+}
+
 function updateDonationGoalPreview() {
-    var back = document.querySelector('.back');
-    var front = document.querySelector('.front');
-    var backTitle = document.getElementById('back-title');
-    var frontTitle = document.getElementById('front-title');
-    var goal = document.getElementById('goal');
+    const back = document.querySelector('.back');
+    const front = document.querySelector('.front');
+    const backTitle = document.getElementById('back-title');
+    const frontTitle = document.getElementById('front-title');
+    // L'objectif est maintenant dans le formulaire d'infos (stream_goal ou event_goal)
+    const goalInput = document.getElementById('stream_goal') || document.getElementById('event_goal');
 
     back.style.backgroundColor = document.getElementById('background_color').value;
     front.style.backgroundColor = document.getElementById('bar_color').value;
@@ -13,34 +26,105 @@ function updateDonationGoalPreview() {
     back.style.color = document.getElementById('text_color_main').value;
     front.style.color = document.getElementById('text_color_alt').value;
 
-    backTitle.textContent = document.getElementById('text_content').value;
-    frontTitle.textContent = document.getElementById('text_content').value;
+    const textContent = document.getElementById('text_content').value;
+    backTitle.textContent = textContent;
+    frontTitle.textContent = textContent;
 
-    var goalValue = parseFloat(goal.value) || 0;
-    var currentDonation = goalValue / 2;
+    const goalValue = goalInput ? (parseFloat(goalInput.value) || 0) : 0;
+    const currentDonation = goalValue / 2;
 
-    document.getElementById('back-goal-total').textContent = goalValue + ' €';
-    document.getElementById('front-goal-total').textContent = goalValue + ' €';
-    document.getElementById('back-goal-current').textContent = currentDonation + ' €';
-    document.getElementById('front-goal-current').textContent = currentDonation + ' €';
+    document.getElementById('back-goal-total').textContent = `${goalValue} €`;
+    document.getElementById('front-goal-total').textContent = `${goalValue} €`;
+    document.getElementById('back-goal-current').textContent = `${currentDonation} €`;
+    document.getElementById('front-goal-current').textContent = `${currentDonation} €`;
 
-    front.style.width = goalValue > 0 ? (currentDonation / goalValue * 100) + '%' : '0%';
+    front.style.width = goalValue > 0 ? `${(currentDonation / goalValue) * 100}%` : '0%';
 }
 
-var donationBarForm = document.getElementById('donationBarForm');
+const donationBarForm = document.getElementById('donationBarForm');
 if (donationBarForm) {
-    updateDonationGoalPreview();
-    document.getElementById('text_color_main').addEventListener('input', updateDonationGoalPreview);
-    document.getElementById('text_color_alt').addEventListener('input', updateDonationGoalPreview);
-    document.getElementById('text_content').addEventListener('input', updateDonationGoalPreview);
-    document.getElementById('bar_color').addEventListener('input', updateDonationGoalPreview);
-    document.getElementById('background_color').addEventListener('input', updateDonationGoalPreview);
-    document.getElementById('goal').addEventListener('input', updateDonationGoalPreview);
+    bindPreviewInputs(
+        ['text_color_main', 'text_color_alt', 'text_content', 'bar_color', 'background_color', 'stream_goal', 'event_goal'],
+        updateDonationGoalPreview
+    );
 }
 
-var alertBoxForm = document.getElementById('alertBoxForm');
+const alertBoxForm = document.getElementById('alertBoxForm');
 if (alertBoxForm) {
-    document.getElementById('previewBtn').addEventListener('click', function () {
+    document.getElementById('previewBtn').addEventListener('click', () => {
         displayAlertBox('test de pseudo', 'test de message', '1000');
     });
+}
+
+// ── Card widget live preview ──────────────────────────────────
+const cardWidgetForm = document.getElementById('cardWidgetForm');
+if (cardWidgetForm) {
+    function updateCardPreview() {
+        const preview = document.getElementById('cardPreview');
+        const tag = document.getElementById('cardPreviewTag');
+        const title = document.getElementById('cardPreviewTitle');
+        const desc = document.getElementById('cardPreviewDesc');
+        const amount = document.getElementById('cardPreviewAmount');
+        const barFill = document.getElementById('cardPreviewBarFill');
+        const goalEl = document.getElementById('cardPreviewGoal');
+        const pct = document.getElementById('cardPreviewPct');
+
+        const bgColor = document.getElementById('card_background_color').value;
+        const textColor = document.getElementById('card_text_color').value;
+        const barColor = document.getElementById('card_bar_color').value;
+        const barBgColor = document.getElementById('card_bar_background_color').value;
+        const tagColor = document.getElementById('card_tag_color').value;
+        const tagBgColor = document.getElementById('card_tag_background_color').value;
+        // L'objectif est maintenant dans le formulaire d'infos (stream_goal ou event_goal)
+        const goalInput = document.getElementById('stream_goal') || document.getElementById('event_goal');
+        const goalValue = goalInput ? (parseFloat(goalInput.value) || 1) : 1;
+
+        if (preview) {
+            preview.style.backgroundColor = bgColor;
+            preview.style.color = textColor;
+        }
+        if (tag) {
+            tag.style.color = tagColor;
+            tag.style.backgroundColor = tagBgColor;
+            tag.textContent = `✏️ ${document.getElementById('card_tag').value || ''}`;
+        }
+        if (title) title.textContent = document.getElementById('card_title').value || '';
+        if (desc) desc.textContent = document.getElementById('card_description').value || '';
+
+        const halfGoal = goalValue / 2;
+        if (amount) amount.textContent = `${halfGoal} €`;
+        if (barFill) {
+            barFill.style.backgroundColor = barColor;
+            barFill.style.width = '50%';
+            barFill.parentElement.style.backgroundColor = barBgColor;
+        }
+        if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue} €</strong>`;
+        if (pct) pct.textContent = '50%';
+    }
+
+    bindPreviewInputs(
+        [
+            'card_tag', 'card_title', 'card_description',
+            'card_background_color', 'card_text_color', 'card_bar_color',
+            'card_bar_background_color', 'card_tag_color', 'card_tag_background_color',
+            'stream_goal', 'event_goal',
+        ],
+        updateCardPreview
+    );
+
+    // Live image preview
+    const cardImageInput = document.getElementById('card_image');
+    if (cardImageInput) {
+        cardImageInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imgEl = document.getElementById('cardPreviewImage');
+                if (imgEl) imgEl.style.backgroundImage = `url(${e.target.result})`;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 }

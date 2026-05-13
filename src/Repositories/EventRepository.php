@@ -42,7 +42,7 @@ class EventRepository
 
     public function selectByUserAndId(User $user, int $id): ?Event
     {
-        if ($user->role == "ADMIN") {
+        if ($user->role === "ADMIN") {
             $stmt = $this->pdo->prepare('
             SELECT c.* 
             FROM ' . $this->prefix . 'charity_event c
@@ -68,7 +68,7 @@ class EventRepository
 
     public function selectByUserAndGuid(User $user, string $guid): ?Event
     {
-        if ($user->role == "ADMIN") {
+        if ($user->role === "ADMIN") {
             $stmt = $this->pdo->prepare('
             SELECT c.* 
             FROM ' . $this->prefix . 'charity_event c
@@ -119,6 +119,13 @@ class EventRepository
             $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'widget_donation_goal_bar (charity_event_guid) VALUES (:guid)');
             $stmt->execute([':guid' => $guid]);
 
+            try {
+                $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'widget_card (charity_event_guid, description) VALUES (:guid, "")');
+                $stmt->execute([':guid' => $guid]);
+            } catch (Exception $e) {
+                // Table may not exist yet (migration not run) — skip silently
+            }
+
             $this->pdo->commit();
 
             $event = new Event();
@@ -130,6 +137,28 @@ class EventRepository
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    public function update(Event $event, array $data): void
+    {
+        $fields = [];
+        $params = [];
+
+        if (array_key_exists('title', $data)) {
+            $fields[] = 'title = ?';
+            $params[] = $data['title'];
+        }
+        if (array_key_exists('goal', $data)) {
+            $fields[] = 'goal = ?';
+            $params[] = $data['goal'];
+        }
+
+        if (empty($fields)) return;
+
+        $params[] = $event->id;
+        $sql = 'UPDATE ' . $this->prefix . 'charity_event SET ' . implode(', ', $fields) . ' WHERE id = ?';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     public function delete(Event $event)
@@ -152,6 +181,15 @@ class EventRepository
                 WHERE charity_event_guid = ?';
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([$event->guid]);
+
+            $query = 'DELETE FROM ' . $this->prefix . 'widget_card
+                WHERE charity_event_guid = ?';
+            try {
+                $stmt = $this->pdo->prepare($query);
+                $stmt->execute([$event->guid]);
+            } catch (Exception $e) {
+                // Table may not exist yet — skip silently
+            }
 
             $query = 'DELETE FROM ' . $this->prefix . 'charity_event
                 WHERE id = ?';

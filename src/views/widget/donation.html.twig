@@ -1,5 +1,3 @@
-
-
 {% block title %}Donation Goal Widget{% endblock %}
 {% extends "widget.html.twig" %}
 {% block content %}
@@ -8,21 +6,21 @@
 			<p id="back-goal-current">{{ currentAmount / 100 }}
 				€</p>
 			<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-			<p id="back-goal-total">{{ donationGoalWidget.goal }}
+			<p id="back-goal-total">{{ goal }}
 				€</p>
 		</div>
 		<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
 			<p id="front-goal-current">{{ currentAmount / 100 }}
 				€</p>
 			<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-			<p id="front-goal-total">{{ donationGoalWidget.goal }}
+			<p id="front-goal-total">{{ goal }}
 				€</p>
 		</div>
 	</div>
 {% endblock %}
 {% block scripts %}
 	<script>
-		var goalAmount = {{ donationGoalWidget.goal ?? 0 }};
+		var goalAmount = {{ goal ?? 0 }};
 		var charityStreamId = '{{ donationGoalWidget.charity_stream_guid }}';
 		var charityEventId = '{{ donationGoalWidget.charity_event_guid }}';
 		var currentAmount = {{ currentAmount ?? 0 }};

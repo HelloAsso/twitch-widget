@@ -32,6 +32,37 @@ class UserRepository
         return $user;
     }
 
+    /**
+     * Crée un utilisateur avec un mot de passe choisi et l'email non vérifié.
+     */
+    public function insertWithPassword(string $email, string $password): User
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'users (email, password, email_verified) VALUES (:email, :password, 0)');
+        $stmt->execute([
+            ':email' => $email,
+            ':password' => password_hash($password, PASSWORD_DEFAULT),
+        ]);
+
+        $user = new User();
+        $user->id = $this->pdo->lastInsertId();
+        $user->email = $email;
+        $user->email_verified = 0;
+
+        return $user;
+    }
+
+    /**
+     * Marque l'email d'un utilisateur comme vérifié.
+     */
+    public function verifyEmail(User $user): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE ' . $this->prefix . 'users SET email_verified = 1, reset_token = NULL, reset_token_expires_at = NULL WHERE id = :id');
+        $stmt->execute([':id' => $user->id]);
+        $user->email_verified = 1;
+        $user->reset_token = null;
+        $user->reset_token_expires_at = null;
+    }
+
     public function insertRight(User $user, ?Stream $stream, ?Event $event): void
     {
         $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'user_right (id_user, id_charity_event, id_charity_stream) VALUES (:id_user, :id_charity_event, :id_charity_stream)');
@@ -48,6 +79,18 @@ class UserRepository
         $stmt->execute([$email]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
         return $stmt->fetch() ?: null;
+    }
+
+    public function selectAll(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, email, role, creation_date FROM ' . $this->prefix . 'users ORDER BY creation_date DESC');
+        $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
+        return $stmt->fetchAll();
+    }
+
+    public function findOrCreate(string $email): User
+    {
+        return $this->select($email) ?? $this->insert($email);
     }
 
     /**

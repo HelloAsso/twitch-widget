@@ -1,0 +1,49 @@
+name: Run tests
+
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
+      - '!develop'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+
+    - name: Check if composer.json exists
+      id: check_files
+      uses: andstor/file-existence-action@v1
+      with:
+        files: 'composer.json'
+
+    - name: Run composer install if composer.json exists
+      if: steps.check_files.outputs.files_exists == 'true'
+      run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
+
+    - name: Set up Node.js version
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: npm install
+      run: npm install
+
+    - name: Run PHPUnit tests
+      run: ./vendor/bin/phpunit --testdox
+
