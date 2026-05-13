@@ -110,15 +110,28 @@ class AdminController
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
-        $this->mailchimp->messages->send([
-            "message" => [
-                "from_email" => "contact@helloasso.io",
-                "from_name" => "HelloAsso",
-                "subject" => "Bienvenue sur HelloAsso Stream !",
-                "html" => $this->buildWelcomeEmail($resetUrl),
-                "to" => [["email" => $user->email]],
-            ],
-        ]);
+        try {
+            $result = $this->mailchimp->messages->send([
+                "message" => [
+                    "from_email" => "contact@helloasso.io",
+                    "from_name" => "HelloAsso",
+                    "subject" => "Bienvenue sur HelloAsso Stream !",
+                    "html" => $this->buildWelcomeEmail($resetUrl),
+                    "to" => [["email" => $user->email, "type" => "to"]],
+                ],
+            ]);
+
+            if ($result instanceof \Exception) {
+                throw $result;
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('Échec de l\'envoi de l\'email de bienvenue', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            $this->messages->addMessage('error', 'Utilisateur créé mais l\'email de bienvenue n\'a pas pu être envoyé.');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
+        }
 
         $this->messages->addMessage('success', 'Utilisateur créé : ' . $email . ' — un email de bienvenue a été envoyé.');
         return $this->redirectToRoute($request, $response, 'app_admin_index');

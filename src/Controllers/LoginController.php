@@ -100,15 +100,34 @@ class LoginController
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $verifyUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_verify_email', ["token" => $user->reset_token]);
 
-        $this->mailchimp->messages->send([
-            "message" => [
-                "from_email" => "contact@helloasso.io",
-                "from_name" => "HelloAsso",
-                "subject" => "Confirmez votre adresse email",
-                "html" => $this->buildVerificationEmail($verifyUrl),
-                "to" => [["email" => $user->email]],
-            ],
-        ]);
+        try {
+            $result = $this->mailchimp->messages->send([
+                "message" => [
+                    "from_email" => "contact@helloasso.io",
+                    "from_name" => "HelloAsso",
+                    "subject" => "Confirmez votre adresse email",
+                    "html" => $this->buildVerificationEmail($verifyUrl),
+                    "to" => [["email" => $user->email, "type" => "to"]],
+                ],
+            ]);
+
+            // Le client Mandrill retourne l'exception au lieu de la lancer
+            if ($result instanceof Exception) {
+                throw $result;
+            }
+
+            // Vérifier le statut de l'envoi Mandrill
+            if (is_array($result) && isset($result[0]->status) && in_array($result[0]->status, ['rejected', 'invalid'])) {
+                throw new Exception('Email rejeté par Mandrill : ' . ($result[0]->reject_reason ?? 'raison inconnue'));
+            }
+        } catch (Exception $e) {
+            $this->logger->error('Échec de l\'envoi de l\'email de vérification', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            $this->messages->addMessage('register_error', 'Votre compte a été créé mais l\'email de vérification n\'a pas pu être envoyé. Veuillez réessayer plus tard.');
+            return $this->redirectToRoute($request, $response, 'app_register');
+        }
 
         $this->messages->addMessage('register_success', true);
         return $this->redirectToRoute($request, $response, 'app_index');
@@ -198,15 +217,26 @@ class LoginController
             $routeParser = RouteContext::fromRequest($request)->getRouteParser();
             $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
-            $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Mot de passe oublié",
-                    "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
-                    "to" => [["email" => $user->email]],
-                ],
-            ]);
+            try {
+                $result = $this->mailchimp->messages->send([
+                    "message" => [
+                        "from_email" => "contact@helloasso.io",
+                        "from_name" => "HelloAsso",
+                        "subject" => "Mot de passe oublié",
+                        "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
+                        "to" => [["email" => $user->email, "type" => "to"]],
+                    ],
+                ]);
+
+                if ($result instanceof \Exception) {
+                    throw $result;
+                }
+            } catch (Exception $e) {
+                $this->logger->error('Échec de l\'envoi de l\'email de réinitialisation', [
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $this->messages->addMessage('mail_sent', true);
@@ -310,15 +340,26 @@ class LoginController
         $this->apiWrapper->storeOrUpdateToken($tokenData);
 
         if ($isNewToken) {
-            $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Une association vient de valider sa mire",
-                    "html" => "<p>L'association {$tokenData['organization_slug']} vient de valider sa mire d'authorisation sur l'environnement {$_SERVER['WEBSITE_DOMAIN']}</p>",
-                    "to" => [["email" => "helloasso.stream@helloasso.org"]],
-                ],
-            ]);
+            try {
+                $result = $this->mailchimp->messages->send([
+                    "message" => [
+                        "from_email" => "contact@helloasso.io",
+                        "from_name" => "HelloAsso",
+                        "subject" => "Une association vient de valider sa mire",
+                        "html" => "<p>L'association {$tokenData['organization_slug']} vient de valider sa mire d'authorisation sur l'environnement {$_SERVER['WEBSITE_DOMAIN']}</p>",
+                        "to" => [["email" => "helloasso.stream@helloasso.org", "type" => "to"]],
+                    ],
+                ]);
+
+                if ($result instanceof \Exception) {
+                    throw $result;
+                }
+            } catch (Exception $e) {
+                $this->logger->error('Échec de l\'envoi de la notification de nouvelle association', [
+                    'slug' => $tokenData['organization_slug'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $response->getBody()->write('Votre compte ' . $tokenData['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
