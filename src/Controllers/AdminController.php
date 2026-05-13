@@ -11,6 +11,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
 use Exception;
+use MailchimpTransactional\ApiClient;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
@@ -30,6 +31,7 @@ class AdminController
         private ApiWrapper $apiWrapper,
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
+        private ApiClient $mailchimp,
     ) {}
 
     /**
@@ -102,9 +104,52 @@ class AdminController
             return $this->redirectToRoute($request, $response, 'app_admin_index');
         }
 
-        $this->userRepository->insert($email);
-        $this->messages->addMessage('success', 'Utilisateur créé : ' . $email);
+        $user = $this->userRepository->insert($email);
+        $user = $this->userRepository->insertResetToken($user);
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
+
+        $this->mailchimp->messages->send([
+            "message" => [
+                "from_email" => "contact@helloasso.io",
+                "from_name" => "HelloAsso",
+                "subject" => "Bienvenue sur HelloAsso Stream !",
+                "html" => $this->buildWelcomeEmail($resetUrl),
+                "to" => [["email" => $user->email]],
+            ],
+        ]);
+
+        $this->messages->addMessage('success', 'Utilisateur créé : ' . $email . ' — un email de bienvenue a été envoyé.');
         return $this->redirectToRoute($request, $response, 'app_admin_index');
+    }
+
+    /**
+     * Génère le contenu HTML de l'email de bienvenue envoyé aux nouveaux utilisateurs.
+     */
+    private function buildWelcomeEmail(string $resetUrl): string
+    {
+        return <<<HTML
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+            <h1 style="color: #2C88D9;">Bienvenue sur HelloAsso Stream ! 🎉</h1>
+            <p>Bonjour,</p>
+            <p>Un compte vient d'être créé pour vous sur <strong>HelloAsso Stream</strong>, l'outil qui vous permet de suivre vos collectes en temps réel.</p>
+            <p>Pour commencer, définissez votre mot de passe en cliquant sur le bouton ci-dessous :</p>
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{$resetUrl}" style="background-color: #2C88D9; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Définir mon mot de passe</a>
+            </p>
+            <p style="font-size: 12px; color: #888;">Ou copiez ce lien dans votre navigateur : {$resetUrl}</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+            <h2 style="color: #2C88D9;">Que pourrez-vous faire une fois connecté ?</h2>
+            <h3>📊 Créer un Stream</h3>
+            <p>Un <strong>stream</strong> vous permet d'avoir un <strong>compteur en temps réel</strong> lié à un formulaire de don HelloAsso. Idéal pour afficher la progression d'une collecte lors d'un live ou sur votre site.</p>
+            <h3>🎯 Créer un Évènement</h3>
+            <p>Un <strong>évènement</strong> vous permet d'avoir un <strong>compteur en temps réel</strong> qui agrège <strong>plusieurs streams</strong> (et donc plusieurs formulaires de don). Parfait pour suivre une campagne de collecte globale composée de plusieurs initiatives.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+            <p>À très vite sur la plateforme ! 🚀</p>
+            <p>L'équipe HelloAsso</p>
+        </div>
+        HTML;
     }
 
     public function newEvent(Request $request, Response $response): Response
