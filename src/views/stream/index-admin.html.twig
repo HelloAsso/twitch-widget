@@ -8,20 +8,42 @@
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title">Créer un nouveau Charity Event</h5>
+						<h5 class="modal-title">Créer un nouvel évènement</h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
 						<form action="/admin/event" method="POST">
 							<div class="mb-3">
-								<label for="owner_email" class="form-label">Email</label>
-								<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+								<label for="event_owner_email" class="form-label">Email du propriétaire</label>
+								<input type="email" class="form-control" id="event_owner_email" name="owner_email" value="{{ ownerEmail }}" required>
 							</div>
 							<div class="mb-3">
-								<label for="title" class="form-label">Titre</label>
-								<input type="text" class="form-control" id="title" name="title" value="{{ title }}" required>
+								<label for="event_title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="event_title" name="title" value="{{ title }}" required>
 							</div>
 							<button type="submit" class="btn btn-success" name="create_charity_event">Créer</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# ── Modal création utilisateur ── #}
+		<div class="modal fade" id="createUserModal" tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Ajouter un utilisateur</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form action="/admin/user" method="POST">
+							<div class="mb-3">
+								<label for="user_email" class="form-label">Email</label>
+								<input type="email" class="form-control" id="user_email" name="user_email" placeholder="utilisateur@exemple.com" required>
+								<div class="form-text">Un mot de passe aléatoire sera généré. L'utilisateur devra utiliser « Mot de passe oublié » pour le définir.</div>
+							</div>
+							<button type="submit" class="btn btn-success">✅ Créer l'utilisateur</button>
 						</form>
 					</div>
 				</div>
@@ -34,7 +56,7 @@
 				<div class="modal-header border-bottom border-secondary px-4 py-3">
 					<div class="d-flex align-items-center gap-2">
 						<span class="fs-4">🎮</span>
-						<h5 class="modal-title fw-bold mb-0">Nouveau Charity Stream</h5>
+						<h5 class="modal-title fw-bold mb-0">Nouveau stream</h5>
 					</div>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
@@ -222,7 +244,6 @@
 									</label>
 									<input type="text" class="form-control" id="asso_title" name="title"
 										placeholder="ex : Stream caritatif Juin 2025" required>
-									<div class="form-text text-muted small">Pré-rempli à partir du formulaire sélectionné.</div>
 									<div class="invalid-feedback">Le titre est requis.</div>
 								</div>
 
@@ -245,12 +266,15 @@
 
 			<div class="row my-4">
 				<div class="col-10">
-					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
-						Ajouter un évènement 👐
-					</button>
-					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
-						Ajouter un stream 🎮
-					</button>
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+					Ajouter un évènement 👐
+				</button>
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+					Ajouter un stream 🎮
+				</button>
+				<button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+					Ajouter un utilisateur 👤
+				</button>
 				</div>
 				<div class="col-2 text-end">
 					<a href="/logout" class="btn btn-secondary mb-4">
@@ -260,7 +284,7 @@
 				</div>
 			</div>
 
-			<h3>Liste des Charity Events</h3>
+			<h3>Liste des évènements</h3>
 			<table class="table table-hover align-middle">
 				<thead>
 					<tr>
@@ -289,7 +313,7 @@
 				</tbody>
 			</table>
 
-			<h3>Liste des Charity Streams</h3>
+			<h3>Liste des stream</h3>
 			<table class="table table-hover align-middle">
 				<thead>
 					<tr>
@@ -325,6 +349,36 @@
 					{% endfor %}
 				</tbody>
 			</table>
+
+			{% if users is defined %}
+			<h3>Utilisateurs</h3>
+			<table class="table table-hover align-middle">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Email</th>
+						<th>Rôle</th>
+						<th>Date de création</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for u in users %}
+						<tr>
+							<td>{{ u.id }}</td>
+							<td>{{ u.email | e }}</td>
+							<td>
+								{% if u.role == 'ADMIN' %}
+									<span class="badge text-bg-danger">Admin</span>
+								{% else %}
+									<span class="badge text-bg-secondary">Utilisateur</span>
+								{% endif %}
+							</td>
+							<td>{{ u.creation_date ? u.creation_date|date('d/m/Y H:i') : '—' }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			{% endif %}
 		</div>
 
 	{% if messages['error'] %}

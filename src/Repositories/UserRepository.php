@@ -50,6 +50,13 @@ class UserRepository
         return $stmt->fetch() ?: null;
     }
 
+    public function selectAll(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, email, role, creation_date FROM ' . $this->prefix . 'users ORDER BY creation_date DESC');
+        $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
+        return $stmt->fetchAll();
+    }
+
     public function findOrCreate(string $email): User
     {
         return $this->select($email) ?? $this->insert($email);

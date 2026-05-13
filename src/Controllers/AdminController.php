@@ -73,20 +73,55 @@ class AdminController
             "currentUser" => $user,
             "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
             "openCreateStream" => isset($request->getQueryParams()['createStream']),
+            "openCreateEvent" => isset($request->getQueryParams()['createEvent']),
             "invalidTokenSlugs" => $this->getInvalidTokenSlugs($streams),
+            "ownerEmail" => $user->email,
         ];
+
+        if ($user->role === "ADMIN") {
+            $data["users"] = $this->userRepository->selectAll();
+        }
 
         $template = $user->role === "ADMIN" ? 'stream/index-admin.html.twig' : 'stream/index.html.twig';
         return $this->view->render($response, $template, $data);
     }
 
-    public function newEvent(Request $request, Response $response): Response
+    public function newUser(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
+        $email = trim($data['user_email'] ?? '');
 
-        $user = $this->userRepository->findOrCreate($data['owner_email']);
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->messages->addMessage('error', 'Email invalide');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
+        }
+
+        $existing = $this->userRepository->select($email);
+        if ($existing) {
+            $this->messages->addMessage('error', 'Un utilisateur avec cet email existe déjà');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
+        }
+
+        $this->userRepository->insert($email);
+        $this->messages->addMessage('success', 'Utilisateur créé : ' . $email);
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
+    }
+
+    public function newEvent(Request $request, Response $response): Response
+    {
+        $user = $request->getAttribute('user');
+        $data = $request->getParsedBody();
+
+        $ownerEmail = $data['owner_email'] ?? $user->email;
+
+        // Si l'utilisateur n'est pas admin, il crée l'évènement pour lui-même
+        if ($user->role !== 'ADMIN') {
+            $ownerEmail = $user->email;
+        }
+
+        $owner = $this->userRepository->findOrCreate($ownerEmail);
         $event = $this->eventRepository->insert($data['title']);
-        $this->userRepository->insertRight($user, null, $event);
+        $this->userRepository->insertRight($owner, null, $event);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
         return $this->redirectToRoute($request, $response, 'app_admin_index');
@@ -163,7 +198,12 @@ class AdminController
         $parentEvent = $data['parent_event'] ?? null;
         $parentStyle = isset($data['parent_style']);
 
-        $owner = $this->userRepository->findOrCreate($data['owner_email']);
+        $ownerEmail = $data['owner_email'] ?? $user->email;
+        if ($user->role !== 'ADMIN') {
+            $ownerEmail = $user->email;
+        }
+
+        $owner = $this->userRepository->findOrCreate($ownerEmail);
 
         $event = null;
         if (!empty($parentEvent)) {

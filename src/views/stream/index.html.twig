@@ -1,14 +1,36 @@
-
 	{% block title %}HelloAsso Widgets{% endblock %}
 
 {% extends "layout.html.twig" %}
 {% block content %}
 
+		{# ── Modal création évènement ── #}
+		<div class="modal fade" id="createEventModal" tabindex="-1">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Créer un évènement de collecte</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form action="/admin/event" method="POST">
+							<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
+							<div class="mb-3">
+								<label for="event_title" class="form-label">Titre</label>
+								<input type="text" class="form-control" id="event_title" name="title" required>
+							</div>
+							<button type="submit" class="btn btn-success" name="create_charity_event">Créer</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# ── Modal création collecte ── #}
 		<div class="modal fade" id="createStreamModal" tabindex="-1">
 			<div class="modal-dialog modal-lg">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title">Créer un nouveau Charity Stream</h5>
+						<h5 class="modal-title">Créer un nouveau stream</h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
@@ -40,10 +62,7 @@
 										<label for="parent_style" class="form-check-label">Appliquer le même style ?</label>
 									</div>
 								{% endif %}
-								<div class="mb-3">
-									<label for="owner_email" class="form-label">Email</label>
-									<input type="email" class="form-control" id="owner_email" name="owner_email" value="{{ ownerEmail }}" required>
-								</div>
+								<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
 								<div class="mb-3">
 									<label for="organization_slug" class="form-label">Slug association</label>
 									<input type="text" class="form-control" id="organization_slug" name="organization_slug" value="{{ organizationSlug }}" required>
@@ -99,11 +118,7 @@
 										</div>
 									{% endif %}
 
-									<div class="mb-3">
-										<label for="asso_owner_email" class="form-label">Email</label>
-										<input type="email" class="form-control" id="asso_owner_email" name="owner_email" value="{{ currentUser.email }}" required>
-									</div>
-
+									<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
 									<input type="hidden" id="asso_organization_slug" name="organization_slug">
 
 									<div class="mb-3">
@@ -133,11 +148,12 @@
 
 			<div class="row my-4">
 				<div class="col-10">
-					{% if events %}
-						<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
-							Ajouter un stream 🎮
-						</button>
-					{% endif %}
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+						Ajouter un évènement 👐
+					</button>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+						Ajouter un stream 🎮
+					</button>
 				</div>
 				<div class="col-2 text-end">
 					<a href="/logout" class="btn btn-secondary mb-4">
@@ -147,14 +163,33 @@
 				</div>
 			</div>
 
+			{# ── Onboarding si aucun contenu ── #}
+			{% if events is empty and streams is empty %}
+				<div class="text-center py-5">
+					<div class="mb-4" style="font-size: 4rem;">🚀</div>
+					<h2 class="mb-3">Bienvenue sur HelloAsso Widgets !</h2>
+					<p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
+						Vous n'avez pas encore créé de stream ni d'évènement.<br>
+						Commencez dès maintenant en quelques clics !
+					</p>
+					<div class="d-flex justify-content-center gap-3">
+						<button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createEventModal">
+							👐 Créer un évènement
+						</button>
+						<button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createStreamModal">
+							🎮 Créer un stream
+						</button>
+					</div>
+				</div>
+			{% else %}
+
 			{% if events %}
-				<h3>Liste des Charity Events</h3>
+				<h3>Liste des évènements</h3>
 				<table class="table table-hover align-middle">
 					<thead>
 						<tr>
 							<th>Id</th>
 							<th>Titre</th>
-							<th>Admin</th>
 							<th>Date de création</th>
 							<th>Actions</th>
 						</tr>
@@ -164,10 +199,12 @@
 							<tr class="cursor-pointer" onclick="window.location='/admin/event/{{ event.guid }}/edit'" title="GUID : {{ event.guid }}">
 								<td>{{ event.id | e }}</td>
 								<td>{{ event.title | e }}</td>
-								<td>{{ event.admin | e }}</td>
 								<td>{{ event.creation_date ? event.creation_date|date('d/m/Y H:i') : '—' }}</td>
-								<td onclick="event.stopPropagation()">
+								<td class="d-flex gap-2" onclick="event.stopPropagation()">
 									<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+									<form action="/admin/event/{{ event.guid }}/delete" method="POST">
+										<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+									</form>
 								</td>
 							</tr>
 						{% endfor %}
@@ -175,13 +212,12 @@
 				</table>
 			{% endif %}
 
-			<h3>Liste des Charity Streams</h3>
+			<h3>Liste des stream</h3>
 			<table class="table table-hover align-middle">
 				<thead>
 					<tr>
 						<th>Id</th>
 						<th>Titre</th>
-						<th>Admin</th>
 						<th>Slug formulaire</th>
 						<th>Slug association</th>
 						<th>Actions</th>
@@ -197,22 +233,21 @@
 									<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — les widgets ne fonctionneront pas. Reconnectez l'association.">⚠️ Token invalide</span>
 								{% endif %}
 							</td>
-							<td>{{ stream.admin | e }}</td>
 							<td>{{ stream.form_slug | e }}</td>
 							<td>{{ stream.organization_slug | e }}</td>
 							<td class="d-flex gap-2" onclick="event.stopPropagation()">
 								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
 								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-								{% if events %}
-									<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
-										<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-									</form>
-								{% endif %}
+								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+								</form>
 							</td>
 						</tr>
 					{% endfor %}
 				</tbody>
 			</table>
+
+			{% endif %}{# /onboarding #}
 		</div>
 
 {% endblock %}
@@ -238,6 +273,16 @@
 			var assoParentSelect = document.getElementById('asso_parent_event');
 			if (assoParentSelect) assoParentSelect.value = '{{ selectedEventId }}';
 			{% endif %}
+		}
+	});
+	{% endif %}
+
+	{% if openCreateEvent %}
+	document.addEventListener('DOMContentLoaded', function() {
+		var createEventModal = document.getElementById('createEventModal');
+		if (createEventModal) {
+			var modal = new bootstrap.Modal(createEventModal);
+			modal.show();
 		}
 	});
 	{% endif %}
