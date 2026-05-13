@@ -164,6 +164,17 @@ class StreamRepository
         }
     }
 
+    public function updateEventLink(Stream $stream, ?int $eventId): void
+    {
+        $stmt = $this->pdo->prepare('
+            UPDATE ' . $this->prefix . 'charity_stream
+            SET charity_event_id = ?
+            WHERE id = ?
+        ');
+        $stmt->execute([$eventId, $stream->id]);
+        $stream->charity_event_id = $eventId;
+    }
+
     public function update(Stream $stream, array $data): void
     {
         $fields = [];

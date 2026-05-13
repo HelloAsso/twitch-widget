@@ -263,6 +263,13 @@ class AdminController
             $parentEvent = $this->eventRepository->selectByUserAndId($user, $charityStream->charity_event_id);
         }
 
+        // Liste des events accessibles pour le lien stream ↔ event
+        if ($user->role === 'ADMIN') {
+            $availableEvents = $this->eventRepository->selectList();
+        } else {
+            $availableEvents = $this->eventRepository->selectListByUser($user);
+        }
+
         $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/formulaires/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
@@ -270,6 +277,7 @@ class AdminController
             "logged" => true,
             "charityStream" => $charityStream,
             "parentEvent" => $parentEvent,
+            "availableEvents" => $availableEvents,
             "donationGoalWidget" => $donationGoalWidget,
             "alertBoxWidget" => $alertBoxWidget,
             "alertBoxWidgetPictureUrl" => ($alertBoxWidget && $alertBoxWidget->image) ? $this->fileManager->getPictureUrl($alertBoxWidget->image) : null,
@@ -280,6 +288,7 @@ class AdminController
             "widgetDonationGoalUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_donation', ["id" => $guid]),
             "widgetAlertBoxUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_alert', ["id" => $guid]),
             "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_card', ["id" => $guid]),
+            "messages" => $this->messages->getMessages(),
         ];
 
         return $this->view->render($response, 'stream/edit.html.twig', $data);
@@ -302,6 +311,24 @@ class AdminController
                 $updateData['goal'] = (int) $body['stream_goal'];
             }
             $this->streamRepository->update($charityStream, $updateData);
+        }
+
+        if (isset($body['link_event'])) {
+            $eventId = !empty($body['event_id']) ? (int) $body['event_id'] : null;
+            if ($eventId) {
+                $event = $this->eventRepository->selectByUserAndId($user, $eventId);
+                if ($event) {
+                    $this->streamRepository->updateEventLink($charityStream, $event->id);
+                    $this->messages->addMessage('success', 'Stream lié à l\'événement « ' . $event->title . ' »');
+                } else {
+                    $this->messages->addMessage('error', 'Événement introuvable ou non autorisé');
+                }
+            }
+        }
+
+        if (isset($body['unlink_event'])) {
+            $this->streamRepository->updateEventLink($charityStream, null);
+            $this->messages->addMessage('success', 'Stream délié de son événement');
         }
 
         if (isset($body['save_alert_box'])) {

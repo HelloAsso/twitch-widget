@@ -7,14 +7,52 @@
 		<div class="container">
 			<h1 class="my-4 text-center">Édition du stream</h1>
 
-			<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
+		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
 
-			{% if parentEvent %}
-				<div class="alert alert-info d-flex align-items-center gap-2 mb-3">
-					<span>📅 Événement parent :</span>
-					<a href="/admin/event/{{ parentEvent.guid }}/edit" class="fw-bold text-decoration-underline">{{ parentEvent.title }}</a>
+		{% for key, msgs in messages|default({}) %}
+			{% for msg in msgs %}
+				<div class="alert alert-{{ key == 'error' ? 'danger' : key }} alert-dismissible fade show" role="alert">
+					{{ msg }}
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 				</div>
-			{% endif %}
+			{% endfor %}
+		{% endfor %}
+
+		{# ── Événement parent (lier / délier) ──────────────────────── #}
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">📅 Événement parent</h5>
+			</div>
+			<div class="card-body">
+				{% if parentEvent %}
+					<div class="d-flex align-items-center justify-content-between">
+						<div>
+							<span class="fw-semibold">{{ parentEvent.title }}</span>
+							<a href="/admin/event/{{ parentEvent.guid }}/edit" class="btn btn-sm btn-outline-primary ms-2">🔗 Voir l'événement</a>
+						</div>
+						<form method="POST" class="d-inline" onsubmit="return confirm('Délier ce stream de l\'événement « {{ parentEvent.title | e('js') }} » ?')">
+							<button type="submit" class="btn btn-sm btn-outline-danger" name="unlink_event" value="1">❌ Délier</button>
+						</form>
+					</div>
+				{% else %}
+					<form method="POST" class="d-flex align-items-end gap-3">
+						<div class="flex-grow-1">
+							<label for="event_id" class="form-label fw-semibold">Lier à un événement</label>
+							<select class="form-select" id="event_id" name="event_id" required>
+								<option value="">— Sélectionner un événement —</option>
+								{% for event in availableEvents %}
+									<option value="{{ event.id }}">{{ event.title }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<button type="submit" class="btn btn-success" name="link_event" value="1">🔗 Lier</button>
+					</form>
+					{% if availableEvents is empty %}
+						<p class="text-muted mt-2 mb-0">Aucun événement disponible. <a href="/admin?createEvent=1">Créer un événement</a>.</p>
+					{% endif %}
+				{% endif %}
+			</div>
+		</div>
 
 			{# ── Informations du stream ────────────────────────────────── #}
 			<div class="card mb-4">
