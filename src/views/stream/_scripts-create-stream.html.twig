@@ -1,0 +1,138 @@
+{# ── Scripts partagés pour la création de stream ──
+   Variables attendues : openCreateStream, selectedEventId, openCreateEvent
+#}
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		/* ── Auto-ouverture de la modal de création de stream ── */
+		{% if openCreateStream %}
+		var createStreamModal = document.getElementById('createStreamModal');
+		if (createStreamModal) {
+			var modal = new bootstrap.Modal(createStreamModal);
+			modal.show();
+			{% if selectedEventId %}
+			var parentEventSelect = document.getElementById('parent_event');
+			if (parentEventSelect) parentEventSelect.value = '{{ selectedEventId }}';
+			var assoParentSelect = document.getElementById('asso_parent_event');
+			if (assoParentSelect) assoParentSelect.value = '{{ selectedEventId }}';
+			{% endif %}
+		}
+		{% endif %}
+
+		{% if openCreateEvent %}
+		var createEventModal = document.getElementById('createEventModal');
+		if (createEventModal) {
+			var modal = new bootstrap.Modal(createEventModal);
+			modal.show();
+		}
+		{% endif %}
+
+		/* ── Validation Bootstrap ── */
+		document.querySelectorAll('.needs-validation').forEach(function(form) {
+			form.addEventListener('submit', function(e) {
+				if (!form.checkValidity()) {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+				form.classList.add('was-validated');
+			}, true);
+		});
+
+		/* ── Init tooltips Bootstrap ── */
+		var tooltipEls = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+		tooltipEls.forEach(function(el) { new bootstrap.Tooltip(el); });
+
+		/* ── Auto-show toast ── */
+		var toastEl = document.getElementById('liveToast');
+		if (toastEl) { new bootstrap.Toast(toastEl).show(); }
+	});
+
+	/* ── Sélection du mode (cartes cliquables) ── */
+	function selectStreamMode(mode) {
+		var isAsso = (mode === 'asso');
+		document.getElementById('modeManuel').style.display = isAsso ? 'none' : 'block';
+		document.getElementById('modeAsso').style.display   = isAsso ? 'block' : 'none';
+		document.getElementById('cardManuel').classList.toggle('active', !isAsso);
+		document.getElementById('cardAsso').classList.toggle('active',  isAsso);
+	}
+
+	function confirmDelete(event) {
+		if (!confirm("Êtes-vous sûr de vouloir supprimer cet élément ? Cette action est irréversible.")) {
+			event.preventDefault();
+		}
+	}
+
+	/* ── Stepper helpers ── */
+	function setStepActive(stepNum) {
+		var s1 = document.getElementById('assoStep1Indicator');
+		var s2 = document.getElementById('assoStep2Indicator');
+		if (stepNum === 1) {
+			s1.className = 'asso-step active';
+			s2.className = 'asso-step';
+		} else {
+			s1.className = 'asso-step done';
+			s2.className = 'asso-step active';
+		}
+	}
+
+	/* ── OAuth HelloAsso ── */
+	function connectAsso() {
+		var btn     = document.getElementById('connectAssoBtn');
+		var spinner = document.getElementById('connectSpinner');
+		btn.disabled = true;
+		spinner.style.display = 'block';
+
+		fetch('/admin/stream/init-auth')
+			.then(function(r) {
+				if (!r.ok) throw new Error('Erreur réseau');
+				return r.json();
+			})
+			.then(function(data) {
+				var authWindow = window.open(data.url, 'ha_auth_stream', 'width=900,height=700,noopener=0');
+				if (!authWindow) {
+					alert('Veuillez autoriser les popups pour ce site afin de connecter votre association.');
+					btn.disabled = false;
+					spinner.style.display = 'none';
+				}
+			})
+			.catch(function() {
+				btn.disabled = false;
+				spinner.style.display = 'none';
+				alert('Une erreur est survenue lors de l\'initialisation de l\'autorisation.');
+			});
+	}
+
+	/* ── Écoute du callback OAuth ── */
+	window.addEventListener('message', function(event) {
+		if (event.origin !== window.location.origin) return;
+		if (!event.data || event.data.type !== 'ha_stream_auth_success') return;
+
+		var organizationSlug = event.data.organizationSlug;
+		var forms = event.data.forms || [];
+
+		document.getElementById('asso_organization_slug').value = organizationSlug;
+		document.getElementById('assoSlugDisplay').textContent  = organizationSlug;
+
+		var formSelect = document.getElementById('asso_form_slug');
+		formSelect.innerHTML = '<option value="">— Sélectionner un formulaire —</option>';
+		forms.forEach(function(form) {
+			var slug  = form.slug || form.formSlug || '';
+			var label = form.privateTitle || form.title || slug;
+			var opt = document.createElement('option');
+			opt.value = slug;
+			opt.textContent = label;
+			opt.dataset.title = label;
+			formSelect.appendChild(opt);
+		});
+
+		formSelect.addEventListener('change', function() {
+			var titleInput = document.getElementById('asso_title');
+			var selectedOpt = this.options[this.selectedIndex];
+			titleInput.value = selectedOpt && selectedOpt.dataset.title ? selectedOpt.dataset.title : '';
+		});
+
+		setStepActive(2);
+		document.getElementById('stepConnect').style.display = 'none';
+		document.getElementById('stepForms').style.display   = 'block';
+	});
+</script>
+
