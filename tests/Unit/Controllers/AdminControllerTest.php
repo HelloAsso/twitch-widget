@@ -16,6 +16,7 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
+use MailchimpTransactional\ApiClient;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -39,6 +40,7 @@ class AdminControllerTest extends TestCase
     private ApiWrapper&MockObject $apiWrapper;
     private AccessTokenRepository&MockObject $accessTokenRepository;
     private AuthorizationCodeRepository&MockObject $authorizationCodeRepository;
+    private ApiClient&MockObject $mailchimp;
     private AdminController $controller;
 
     protected function setUp(): void
@@ -53,6 +55,7 @@ class AdminControllerTest extends TestCase
         $this->apiWrapper = $this->createMock(ApiWrapper::class);
         $this->accessTokenRepository = $this->createMock(AccessTokenRepository::class);
         $this->authorizationCodeRepository = $this->createMock(AuthorizationCodeRepository::class);
+        $this->mailchimp = $this->createMock(ApiClient::class);
 
         $this->controller = new AdminController(
             $this->view,
@@ -65,6 +68,7 @@ class AdminControllerTest extends TestCase
             $this->apiWrapper,
             $this->accessTokenRepository,
             $this->authorizationCodeRepository,
+            $this->mailchimp,
         );
     }
 

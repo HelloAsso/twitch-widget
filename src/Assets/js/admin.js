@@ -17,7 +17,8 @@ function updateDonationGoalPreview() {
     const front = document.querySelector('.front');
     const backTitle = document.getElementById('back-title');
     const frontTitle = document.getElementById('front-title');
-    const goal = document.getElementById('goal');
+    // L'objectif est maintenant dans le formulaire d'infos (stream_goal ou event_goal)
+    const goalInput = document.getElementById('stream_goal') || document.getElementById('event_goal');
 
     back.style.backgroundColor = document.getElementById('background_color').value;
     front.style.backgroundColor = document.getElementById('bar_color').value;
@@ -29,7 +30,7 @@ function updateDonationGoalPreview() {
     backTitle.textContent = textContent;
     frontTitle.textContent = textContent;
 
-    const goalValue = parseFloat(goal.value) || 0;
+    const goalValue = goalInput ? (parseFloat(goalInput.value) || 0) : 0;
     const currentDonation = goalValue / 2;
 
     document.getElementById('back-goal-total').textContent = `${goalValue} €`;
@@ -43,7 +44,7 @@ function updateDonationGoalPreview() {
 const donationBarForm = document.getElementById('donationBarForm');
 if (donationBarForm) {
     bindPreviewInputs(
-        ['text_color_main', 'text_color_alt', 'text_content', 'bar_color', 'background_color', 'goal'],
+        ['text_color_main', 'text_color_alt', 'text_content', 'bar_color', 'background_color', 'stream_goal', 'event_goal'],
         updateDonationGoalPreview
     );
 }
@@ -74,7 +75,9 @@ if (cardWidgetForm) {
         const barBgColor = document.getElementById('card_bar_background_color').value;
         const tagColor = document.getElementById('card_tag_color').value;
         const tagBgColor = document.getElementById('card_tag_background_color').value;
-        const goalValue = parseFloat(document.getElementById('card_goal').value) || 1;
+        // L'objectif est maintenant dans le formulaire d'infos (stream_goal ou event_goal)
+        const goalInput = document.getElementById('stream_goal') || document.getElementById('event_goal');
+        const goalValue = goalInput ? (parseFloat(goalInput.value) || 1) : 1;
 
         if (preview) {
             preview.style.backgroundColor = bgColor;
@@ -101,9 +104,10 @@ if (cardWidgetForm) {
 
     bindPreviewInputs(
         [
-            'card_tag', 'card_title', 'card_description', 'card_goal',
+            'card_tag', 'card_title', 'card_description',
             'card_background_color', 'card_text_color', 'card_bar_color',
             'card_bar_background_color', 'card_tag_color', 'card_tag_background_color',
+            'stream_goal', 'event_goal',
         ],
         updateCardPreview
     );

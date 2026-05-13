@@ -164,6 +164,39 @@ class StreamRepository
         }
     }
 
+    public function updateEventLink(Stream $stream, ?int $eventId): void
+    {
+        $stmt = $this->pdo->prepare('
+            UPDATE ' . $this->prefix . 'charity_stream
+            SET charity_event_id = ?
+            WHERE id = ?
+        ');
+        $stmt->execute([$eventId, $stream->id]);
+        $stream->charity_event_id = $eventId;
+    }
+
+    public function update(Stream $stream, array $data): void
+    {
+        $fields = [];
+        $params = [];
+
+        if (array_key_exists('title', $data)) {
+            $fields[] = 'title = ?';
+            $params[] = $data['title'];
+        }
+        if (array_key_exists('goal', $data)) {
+            $fields[] = 'goal = ?';
+            $params[] = $data['goal'];
+        }
+
+        if (empty($fields)) return;
+
+        $params[] = $stream->id;
+        $sql = 'UPDATE ' . $this->prefix . 'charity_stream SET ' . implode(', ', $fields) . ' WHERE id = ?';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+    }
+
     public function delete(Stream $stream): void
     {
         $this->pdo->beginTransaction();

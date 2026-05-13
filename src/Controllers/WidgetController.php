@@ -36,9 +36,23 @@ class WidgetController
         return $this->jsonResponse($response, ['error' => $message], $status);
     }
 
+    private function calculatePercentage(int $amountInCents, int $goal): int
+    {
+        $safeGoal = $goal ?: 1;
+        return min(100, (int) round(($amountInCents / 100) / $safeGoal * 100));
+    }
+
+    private function requireIdArg(array $args, string $label): string
+    {
+        $id = $args['id'] ?? '';
+        if (!$id) {
+            throw new Exception("$label ID manquant ou incorrect.");
+        }
+        return $id;
+    }
+
     /**
      * Agrège les montants de tous les streams d'un event via le cache par stream.
-     * Retourne le cache mis à jour avec le total.
      */
     private function aggregateEventStreams(array $streams, array $cacheData, bool $trackDonors = false): array
     {
@@ -92,20 +106,40 @@ class WidgetController
         return $cacheData;
     }
 
-    // ── Event Donation ───────────────────────────────────────────
+    // ── Stream donation: shared logic ────────────────────────────
 
-    public function widgetEventDonation(Request $request, Response $response, array $args): Response
+    private function fetchStreamDonationData(string $streamGuid): array
     {
-        $eventGuid = $args['id'] ?? '';
-        if (!$eventGuid) {
-            throw new Exception("Event ID manquant ou incorrect.");
+        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
+        if (!$charityStream) {
+            throw new Exception("Charity Stream non trouvé.");
         }
 
-        $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $eventGuid);
-        if (!$donationGoalWidget) {
-            throw new Exception("Aucun widget trouvé pour le Event ID fourni.");
+        $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
+            ?? ['amount' => 0, 'continuation_token' => ''];
+
+        $result = $this->apiWrapper->getAllOrders(
+            $charityStream->organization_slug,
+            $charityStream->form_slug,
+            $cacheData['amount'],
+            $cacheData['continuation_token'],
+        );
+
+        if ($cacheData['continuation_token'] !== $result['continuation_token']
+            || $cacheData['amount'] !== $result['amount']) {
+            $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
+                'amount' => $result['amount'],
+                'continuation_token' => $result['continuation_token'],
+            ]);
         }
 
+        return ['stream' => $charityStream, 'result' => $result];
+    }
+
+    // ── Event donation: shared logic ─────────────────────────────
+
+    private function fetchEventDonationData(string $eventGuid): array
+    {
         $event = $this->eventRepository->selectByGuid($eventGuid);
         if (!$event) {
             throw new Exception("Event non trouvé.");
@@ -122,51 +156,112 @@ class WidgetController
             $this->widgetRepository->updateEventDonationWidgetCacheData($event->guid, $cacheData);
         }
 
-        $data = [
-            "donationGoalWidget" => $donationGoalWidget,
-            "currentAmount" => $cacheData['amount'],
-            "event" => 1
-        ];
+        return ['event' => $event, 'cacheData' => $cacheData];
+    }
 
-        return $this->view->render($response, 'widget/donation.html.twig', $data);
+    // ── Stream card: shared logic ────────────────────────────────
+
+    private function fetchStreamCardData(string $streamGuid): array
+    {
+        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
+        if (!$charityStream) {
+            throw new Exception("Charity Stream non trouvé.");
+        }
+
+        $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
+            ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => ''];
+
+        $result = $this->apiWrapper->getAllOrders(
+            $charityStream->organization_slug,
+            $charityStream->form_slug,
+            $cacheData['amount'],
+            $cacheData['continuation_token'],
+        );
+
+        $newDonors = count($result['donations'] ?? []);
+        $donors = ($cacheData['donors'] ?? 0) + $newDonors;
+
+        if ($cacheData['continuation_token'] !== $result['continuation_token']
+            || $cacheData['amount'] !== $result['amount']) {
+            $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
+                'amount' => $result['amount'],
+                'donors' => $donors,
+                'continuation_token' => $result['continuation_token'],
+            ]);
+        }
+
+        return ['stream' => $charityStream, 'amount' => $result['amount'], 'donors' => $donors];
+    }
+
+    // ── Event card: shared logic ─────────────────────────────────
+
+    private function fetchEventCardData(string $eventGuid): array
+    {
+        $event = $this->eventRepository->selectByGuid($eventGuid);
+        if (!$event) {
+            throw new Exception("Event non trouvé.");
+        }
+
+        $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event)
+            ?? ['amount' => 0, 'donors' => 0, 'streams' => []];
+
+        $streams = $this->streamRepository->selectListByEvent($event);
+        $oldAmount = $cacheData['amount'];
+        $cacheData = $this->aggregateEventStreams($streams, $cacheData, true);
+
+        if ($oldAmount !== $cacheData['amount']) {
+            $this->widgetRepository->updateEventCardWidgetCacheData($event->guid, $cacheData);
+        }
+
+        return ['event' => $event, 'amount' => $cacheData['amount'], 'donors' => $cacheData['donors']];
+    }
+
+    // ── Event Donation ───────────────────────────────────────────
+
+    public function widgetEventDonation(Request $request, Response $response, array $args): Response
+    {
+        $eventGuid = $this->requireIdArg($args, 'Event');
+
+        $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $eventGuid);
+        if (!$donationGoalWidget) {
+            throw new Exception("Aucun widget trouvé pour le Event ID fourni.");
+        }
+
+        $data = $this->fetchEventDonationData($eventGuid);
+
+        return $this->view->render($response, 'widget/donation.html.twig', [
+            'donationGoalWidget' => $donationGoalWidget,
+            'currentAmount' => $data['cacheData']['amount'],
+            'goal' => $data['event']->goal,
+            'event' => 1,
+        ]);
     }
 
     public function widgetEventDonationFetch(Request $request, Response $response, array $args): Response
     {
-        $eventId = $args['id'] ?? '';
-        if (!$eventId) {
+        $eventGuid = $args['id'] ?? '';
+        if (!$eventGuid) {
             return $this->jsonError($response, 'Event ID manquant ou incorrect.', 400);
         }
 
-        $event = $this->eventRepository->selectByGuid($eventId);
+        $event = $this->eventRepository->selectByGuid($eventGuid);
         if (!$event) {
             return $this->jsonError($response, 'Event non trouvé.', 404);
         }
 
-        $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event)
-            ?? ['amount' => 0, 'streams' => []];
-
         try {
-            $streams = $this->streamRepository->selectListByEvent($event);
-            $oldAmount = $cacheData['amount'];
-            $cacheData = $this->aggregateEventStreams($streams, $cacheData);
-
-            if ($oldAmount !== $cacheData['amount']) {
-                $this->widgetRepository->updateEventDonationWidgetCacheData($event->guid, $cacheData);
-            }
-
-            return $this->jsonResponse($response, ['amount' => $cacheData['amount']]);
+            $data = $this->fetchEventDonationData($eventGuid);
+            return $this->jsonResponse($response, ['amount' => $data['cacheData']['amount']]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer le montant', 500);
         }
     }
 
+    // ── Stream Alert ─────────────────────────────────────────────
+
     public function widgetAlert(Request $request, Response $response, array $args): Response
     {
-        $charityStreamId = $args['id'] ?? '';
-        if (!$charityStreamId) {
-            throw new Exception("Charity Stream ID manquant ou incorrect.");
-        }
+        $charityStreamId = $this->requireIdArg($args, 'Charity Stream');
 
         $alertBoxWidget = $this->widgetRepository->selectAlertWidgetByGuid($charityStreamId);
         if (!$alertBoxWidget) {
@@ -174,38 +269,31 @@ class WidgetController
         }
 
         $charityStream = $this->streamRepository->selectByGuid($charityStreamId);
-
         if (!$charityStream) {
             throw new Exception("Charity Stream non trouvé.");
         }
 
-        $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream);
-        if (!$cacheData) {
-            $cacheData = [
-                'continuation_token' => "",
-            ];
-        }
+        $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
+            ?? ['continuation_token' => ''];
 
         $result = $this->apiWrapper->getAllOrders(
             $charityStream->organization_slug,
             $charityStream->form_slug,
             0,
-            $cacheData["continuation_token"],
+            $cacheData['continuation_token'],
         );
 
-        if ($cacheData["continuation_token"] !== $result['continuation_token']) {
+        if ($cacheData['continuation_token'] !== $result['continuation_token']) {
             $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                "continuation_token" => $result['continuation_token']
+                'continuation_token' => $result['continuation_token'],
             ]);
         }
 
-        $data = [
-            "alertBoxWidget" => $alertBoxWidget,
-            "alertBoxWidgetPictureUrl" => $this->fileManager->getPictureUrl($alertBoxWidget->image),
-            "alertBoxWidgetSoundUrl" => $this->fileManager->getSoundUrl($alertBoxWidget->sound),
-        ];
-
-        return $this->view->render($response, 'widget/alert.html.twig', $data);
+        return $this->view->render($response, 'widget/alert.html.twig', [
+            'alertBoxWidget' => $alertBoxWidget,
+            'alertBoxWidgetPictureUrl' => $this->fileManager->getPictureUrl($alertBoxWidget->image),
+            'alertBoxWidgetSoundUrl' => $this->fileManager->getSoundUrl($alertBoxWidget->sound),
+        ]);
     }
 
     public function widgetAlertFetch(Request $request, Response $response, array $args): Response
@@ -233,7 +321,7 @@ class WidgetController
 
             if ($cacheData['continuation_token'] !== $result['continuation_token']) {
                 $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                    "continuation_token" => $result['continuation_token']
+                    'continuation_token' => $result['continuation_token'],
                 ]);
             }
 
@@ -243,47 +331,25 @@ class WidgetController
         }
     }
 
+    // ── Stream Donation ──────────────────────────────────────────
+
     public function widgetDonation(Request $request, Response $response, array $args): Response
     {
-        $streamGuid = $args['id'] ?? '';
-        if (!$streamGuid) {
-            throw new Exception("Charity Stream ID manquant ou incorrect.");
-        }
+        $streamGuid = $this->requireIdArg($args, 'Charity Stream');
 
         $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid($streamGuid, null);
         if (!$donationGoalWidget) {
             throw new Exception("Aucun widget trouvé pour le Charity Stream ID fourni.");
         }
 
-        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
-        if (!$charityStream) {
-            throw new Exception("Charity Stream non trouvé.");
-        }
+        $data = $this->fetchStreamDonationData($streamGuid);
 
-        $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'continuation_token' => ''];
-
-        $result = $this->apiWrapper->getAllOrders(
-            $charityStream->organization_slug,
-            $charityStream->form_slug,
-            $cacheData['amount'],
-            $cacheData['continuation_token'],
-        );
-
-        if ($cacheData['continuation_token'] !== $result['continuation_token'] || $cacheData['amount'] !== $result['amount']) {
-            $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
-                "amount" => $result['amount'],
-                "continuation_token" => $result['continuation_token']
-            ]);
-        }
-
-        $data = [
-            "donationGoalWidget" => $donationGoalWidget,
-            "currentAmount" => $result['amount'],
-            "stream" => 1
-        ];
-
-        return $this->view->render($response, 'widget/donation.html.twig', $data);
+        return $this->view->render($response, 'widget/donation.html.twig', [
+            'donationGoalWidget' => $donationGoalWidget,
+            'currentAmount' => $data['result']['amount'],
+            'goal' => $data['stream']->goal,
+            'stream' => 1,
+        ]);
     }
 
     public function widgetDonationFetch(Request $request, Response $response, array $args): Response
@@ -298,26 +364,9 @@ class WidgetController
             return $this->jsonError($response, 'Charity Stream non trouvé.', 404);
         }
 
-        $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'continuation_token' => ''];
-
         try {
-            $result = $this->apiWrapper->getAllOrders(
-                $charityStream->organization_slug,
-                $charityStream->form_slug,
-                $cacheData['amount'],
-                $cacheData['continuation_token']
-            );
-
-            if ($cacheData['continuation_token'] !== $result['continuation_token']
-                || $cacheData['amount'] !== $result['amount']) {
-                $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
-                    "amount" => $result['amount'],
-                    "continuation_token" => $result['continuation_token']
-                ]);
-            }
-
-            return $this->jsonResponse($response, $result);
+            $data = $this->fetchStreamDonationData($charityStreamId);
+            return $this->jsonResponse($response, $data['result']);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les commandes.', 500);
         }
@@ -327,56 +376,24 @@ class WidgetController
 
     public function widgetStreamCard(Request $request, Response $response, array $args): Response
     {
-        $streamGuid = $args['id'] ?? '';
-        if (!$streamGuid) {
-            throw new Exception("Charity Stream ID manquant ou incorrect.");
-        }
+        $streamGuid = $this->requireIdArg($args, 'Charity Stream');
 
         $cardWidget = $this->widgetRepository->selectCardWidgetByGuid($streamGuid, null);
         if (!$cardWidget) {
             throw new Exception("Aucun widget card trouvé pour le Charity Stream ID fourni.");
         }
 
-        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
-        if (!$charityStream) {
-            throw new Exception("Charity Stream non trouvé.");
-        }
+        $data = $this->fetchStreamCardData($streamGuid);
 
-        $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => ''];
-
-        $result = $this->apiWrapper->getAllOrders(
-            $charityStream->organization_slug,
-            $charityStream->form_slug,
-            $cacheData['amount'],
-            $cacheData['continuation_token'],
-        );
-
-        $newDonors = count($result['donations'] ?? []);
-        $donors = ($cacheData['donors'] ?? 0) + $newDonors;
-
-        if ($cacheData['continuation_token'] !== $result['continuation_token'] || $cacheData['amount'] !== $result['amount']) {
-            $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
-                "amount" => $result['amount'],
-                "donors" => $donors,
-                "continuation_token" => $result['continuation_token']
-            ]);
-        }
-
-        $currentAmount = $result['amount'];
-        $goal = $cardWidget->goal ?: 1;
-        $percentage = min(100, round(($currentAmount / 100) / $goal * 100));
-
-        $data = [
-            "cardWidget" => $cardWidget,
-            "cardWidgetPictureUrl" => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
-            "currentAmount" => $currentAmount,
-            "donorCount" => $donors,
-            "percentage" => $percentage,
-            "stream" => 1
-        ];
-
-        return $this->view->render($response, 'widget/card.html.twig', $data);
+        return $this->view->render($response, 'widget/card.html.twig', [
+            'cardWidget' => $cardWidget,
+            'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
+            'currentAmount' => $data['amount'],
+            'donorCount' => $data['donors'],
+            'percentage' => $this->calculatePercentage($data['amount'], $data['stream']->goal),
+            'goal' => $data['stream']->goal ?: 1,
+            'stream' => 1,
+        ]);
     }
 
     public function widgetStreamCardFetch(Request $request, Response $response, array $args): Response
@@ -386,35 +403,9 @@ class WidgetController
             return $this->jsonError($response, 'Charity Stream ID manquant ou incorrect.', 400);
         }
 
-        $charityStream = $this->streamRepository->selectByGuid($charityStreamId);
-        if (!$charityStream) {
-            return $this->jsonError($response, 'Charity Stream non trouvé.', 404);
-        }
-
-        $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => ''];
-
         try {
-            $result = $this->apiWrapper->getAllOrders(
-                $charityStream->organization_slug,
-                $charityStream->form_slug,
-                $cacheData['amount'],
-                $cacheData['continuation_token']
-            );
-
-            $newDonors = count($result['donations'] ?? []);
-            $donors = ($cacheData['donors'] ?? 0) + $newDonors;
-
-            if ($cacheData['continuation_token'] !== $result['continuation_token']
-                || $cacheData['amount'] !== $result['amount']) {
-                $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
-                    "amount" => $result['amount'],
-                    "donors" => $donors,
-                    "continuation_token" => $result['continuation_token']
-                ]);
-            }
-
-            return $this->jsonResponse($response, ['amount' => $result['amount'], 'donors' => $donors]);
+            $data = $this->fetchStreamCardData($charityStreamId);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }
@@ -424,45 +415,24 @@ class WidgetController
 
     public function widgetEventCard(Request $request, Response $response, array $args): Response
     {
-        $eventGuid = $args['id'] ?? '';
-        if (!$eventGuid) {
-            throw new Exception("Event ID manquant ou incorrect.");
-        }
+        $eventGuid = $this->requireIdArg($args, 'Event');
 
         $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $eventGuid);
         if (!$cardWidget) {
             throw new Exception("Aucun widget card trouvé pour le Event ID fourni.");
         }
 
-        $event = $this->eventRepository->selectByGuid($eventGuid);
-        if (!$event) {
-            throw new Exception("Event non trouvé.");
-        }
+        $data = $this->fetchEventCardData($eventGuid);
 
-        $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event)
-            ?? ['amount' => 0, 'donors' => 0, 'streams' => []];
-
-        $streams = $this->streamRepository->selectListByEvent($event);
-        $oldAmount = $cacheData['amount'];
-        $cacheData = $this->aggregateEventStreams($streams, $cacheData, true);
-
-        if ($oldAmount !== $cacheData['amount']) {
-            $this->widgetRepository->updateEventCardWidgetCacheData($event->guid, $cacheData);
-        }
-
-        $goal = $cardWidget->goal ?: 1;
-        $percentage = min(100, round(($cacheData['amount'] / 100) / $goal * 100));
-
-        $data = [
-            "cardWidget" => $cardWidget,
-            "cardWidgetPictureUrl" => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
-            "currentAmount" => $cacheData['amount'],
-            "donorCount" => $cacheData['donors'],
-            "percentage" => $percentage,
-            "event" => 1
-        ];
-
-        return $this->view->render($response, 'widget/card.html.twig', $data);
+        return $this->view->render($response, 'widget/card.html.twig', [
+            'cardWidget' => $cardWidget,
+            'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
+            'currentAmount' => $data['amount'],
+            'donorCount' => $data['donors'],
+            'percentage' => $this->calculatePercentage($data['amount'], $data['event']->goal),
+            'goal' => $data['event']->goal ?: 1,
+            'event' => 1,
+        ]);
     }
 
     public function widgetEventCardFetch(Request $request, Response $response, array $args): Response
@@ -472,27 +442,9 @@ class WidgetController
             return $this->jsonError($response, 'Event ID manquant ou incorrect.', 400);
         }
 
-        $event = $this->eventRepository->selectByGuid($eventId);
-        if (!$event) {
-            return $this->jsonError($response, 'Event non trouvé.', 404);
-        }
-
-        $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event)
-            ?? ['amount' => 0, 'donors' => 0, 'streams' => []];
-
         try {
-            $streams = $this->streamRepository->selectListByEvent($event);
-            $oldAmount = $cacheData['amount'];
-            $cacheData = $this->aggregateEventStreams($streams, $cacheData, true);
-
-            if ($oldAmount !== $cacheData['amount']) {
-                $this->widgetRepository->updateEventCardWidgetCacheData($event->guid, $cacheData);
-            }
-
-            return $this->jsonResponse($response, [
-                'amount' => $cacheData['amount'],
-                'donors' => $cacheData['donors']
-            ]);
+            $data = $this->fetchEventCardData($eventId);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }

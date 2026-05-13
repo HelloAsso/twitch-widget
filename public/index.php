@@ -190,10 +190,13 @@ $errorMiddleware->setErrorHandler(
     true // handleSubclasses
 );
 $app->get('/', [HomeController::class, 'index'])->setName('app_index');
+$app->get('/register', [HomeController::class, 'register'])->setName('app_register');
 $app->get('/forgot_password', [HomeController::class, 'forgotPassword'])->setName('app_forgot_password');
 $app->get('/reset_password/{token}', [HomeController::class, 'resetPassword'])->setName('app_reset_password');
 
 $app->post('/login', [LoginController::class, 'login'])->setName('app_login');
+$app->post('/register', [LoginController::class, 'register'])->setName('app_register_post');
+$app->get('/verify-email/{token}', [LoginController::class, 'verifyEmail'])->setName('app_verify_email');
 $app->get('/logout', [LoginController::class, 'logout'])->add(new AuthMiddleware())->setName('app_logout');
 $app->post('/forgot_password', [LoginController::class, 'forgotPassword'])->setName('app_forgot_password_post');
 $app->post('/reset_password', [LoginController::class, 'resetPassword'])->setName('app_reset_password_post');
@@ -201,8 +204,9 @@ $app->get('/redirect_auth_page', [LoginController::class, 'redirectAuthPage'])->
 $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->setName('app_validate_auth_page');
 
 $app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
-$app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthAdminMiddleware())->setName('app_event_new');
-$app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthAdminMiddleware())->setName('app_event_delete');
+$app->post('/admin/user', [AdminController::class, 'newUser'])->add(new AuthAdminMiddleware())->setName('app_user_new');
+$app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthMiddleware())->setName('app_event_new');
+$app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthMiddleware())->setName('app_event_delete');
 $app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');
 $app->post('/admin/event/{id}/edit', [AdminController::class, 'editEventPost'])->add(new AuthMiddleware())->setName('app_event_edit_post');
 $app->post('/admin/stream', [AdminController::class, 'newStream'])->add(new AuthMiddleware())->setName('app_stream_new');

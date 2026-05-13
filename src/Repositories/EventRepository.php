@@ -139,6 +139,28 @@ class EventRepository
         }
     }
 
+    public function update(Event $event, array $data): void
+    {
+        $fields = [];
+        $params = [];
+
+        if (array_key_exists('title', $data)) {
+            $fields[] = 'title = ?';
+            $params[] = $data['title'];
+        }
+        if (array_key_exists('goal', $data)) {
+            $fields[] = 'goal = ?';
+            $params[] = $data['goal'];
+        }
+
+        if (empty($fields)) return;
+
+        $params[] = $event->id;
+        $sql = 'UPDATE ' . $this->prefix . 'charity_event SET ' . implode(', ', $fields) . ' WHERE id = ?';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+    }
+
     public function delete(Event $event)
     {
         $this->pdo->beginTransaction();

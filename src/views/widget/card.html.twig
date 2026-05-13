@@ -149,7 +149,7 @@
 						<div class="card-widget__bar-fill" id="card-bar-fill"
 							 style="background-color: {{ cardWidget.bar_color }}; width: {{ percentage }}%"></div>
 					</div>
-					<div class="card-widget__goal">Objectif : <strong>{{ cardWidget.goal }} €</strong></div>
+					<div class="card-widget__goal">Objectif : <strong>{{ goal }} €</strong></div>
 				</div>
 				<div class="card-widget__stats">
 					<span><strong id="card-percentage">{{ percentage }}%</strong> collectés</span>
@@ -161,7 +161,7 @@
 {% endblock %}
 {% block scripts %}
 	<script>
-		window.goalAmount = {{ cardWidget.goal ?? 0 }};
+		window.goalAmount = {{ goal ?? 0 }};
 		window.charityStreamId = '{{ cardWidget.charity_stream_guid }}';
 		window.charityEventId = '{{ cardWidget.charity_event_guid }}';
 		window.currentAmount = {{ currentAmount ?? 0 }};
