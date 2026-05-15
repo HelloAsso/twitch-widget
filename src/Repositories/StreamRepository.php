@@ -22,6 +22,7 @@ class StreamRepository
             FROM ' . $this->prefix . 'charity_stream c
             INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_stream = c.id
             INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
+            ORDER BY c.creation_date DESC
         ');
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, Stream::class);
@@ -56,6 +57,8 @@ class StreamRepository
             INNER JOIN ' . $this->prefix . 'user_right ur on ur.id_charity_event = c.charity_event_id
             INNER JOIN ' . $this->prefix . 'users u ON u.id = ur.id_user
             WHERE ur.id_user = :id_user
+
+            ORDER BY creation_date DESC
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, Stream::class);
         $stmt->execute([':id_user' => $user->id]);

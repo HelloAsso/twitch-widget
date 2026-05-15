@@ -74,101 +74,153 @@
 				</div>
 			</div>
 
-			<h3>Liste des évènements</h3>
-			<table class="table table-hover align-middle">
-				<thead>
-					<tr>
-						<th>Id</th>
-						<th>Titre</th>
-						<th>Admin</th>
-						<th>Date de création</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for event in events %}
-						<tr class="cursor-pointer" onclick="window.location='/admin/event/{{ event.guid }}/edit'" title="GUID : {{ event.guid }}">
-							<td>{{ event.id | e }}</td>
-							<td>{{ event.title | e }}</td>
-							<td>{{ event.admin | e }}</td>
-							<td>{{ event.creation_date ? event.creation_date|date('d/m/Y H:i') : '—' }}</td>
-							<td class="d-flex gap-2" onclick="event.stopPropagation()">
-								<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-								<form action="/admin/event/{{ event.guid }}/delete" method="POST">
-									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-								</form>
-							</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
+			{# ── Onglets ── #}
+			<ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
+				<li class="nav-item" role="presentation">
+					<button class="nav-link active" id="events-tab" data-bs-toggle="tab" data-bs-target="#events-pane" type="button" role="tab" aria-controls="events-pane" aria-selected="true">
+						Évènements <span class="badge text-bg-secondary ms-1">{{ events|length }}</span>
+					</button>
+				</li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="streams-tab" data-bs-toggle="tab" data-bs-target="#streams-pane" type="button" role="tab" aria-controls="streams-pane" aria-selected="false">
+						Streams <span class="badge text-bg-secondary ms-1">{{ streams|length }}</span>
+					</button>
+				</li>
+				{% if users is defined %}
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab" aria-controls="users-pane" aria-selected="false">
+						Utilisateurs <span class="badge text-bg-secondary ms-1">{{ users|length }}</span>
+					</button>
+				</li>
+				{% endif %}
+			</ul>
 
-			<h3>Liste des stream</h3>
-			<table class="table table-hover align-middle">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Titre</th>
-						<th>Admin</th>
-						<th>Slug formulaire</th>
-						<th>Slug association</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for stream in streams %}
-						<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
-							<td>{{ stream.id | e }}</td>
-							<td>
-								{{ stream.title | e }}
-								{% if stream.organization_slug in invalidTokenSlugs %}
-									<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — les widgets ne fonctionneront pas. Reconnectez l'association.">⚠️ Token invalide</span>
-								{% endif %}
-							</td>
-							<td>{{ stream.admin | e }}</td>
-							<td>{{ stream.form_slug | e }}</td>
-							<td>{{ stream.organization_slug | e }}</td>
-							<td class="d-flex gap-2" onclick="event.stopPropagation()">
-								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
-								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
-								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
-									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
-								</form>
-							</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
+			<div class="tab-content" id="adminTabsContent">
+				{# ── Onglet Évènements ── #}
+				<div class="tab-pane fade show active" id="events-pane" role="tabpanel" aria-labelledby="events-tab">
+					<table class="table table-hover align-middle">
+						<thead>
+							<tr>
+								<th>Id</th>
+								<th>Titre</th>
+								<th>Admin</th>
+								<th>Date de création</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for event in events %}
+								<tr class="cursor-pointer" onclick="window.location='/admin/event/{{ event.guid }}/edit'" title="GUID : {{ event.guid }}">
+									<td>{{ event.id | e }}</td>
+									<td>{{ event.title | e }}</td>
+									<td>{{ event.admin | e }}</td>
+									<td>{{ event.creation_date ? event.creation_date|date('d/m/Y H:i') : '—' }}</td>
+									<td class="d-flex gap-2" onclick="event.stopPropagation()">
+										<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+										<form action="/admin/event/{{ event.guid }}/delete" method="POST">
+											<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+										</form>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
 
-			{% if users is defined %}
-			<h3>Utilisateurs</h3>
-			<table class="table table-hover align-middle">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Email</th>
-						<th>Rôle</th>
-						<th>Date de création</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for u in users %}
-						<tr>
-							<td>{{ u.id }}</td>
-							<td>{{ u.email | e }}</td>
-							<td>
-								{% if u.role == 'ADMIN' %}
-									<span class="badge text-bg-danger">Admin</span>
-								{% else %}
-									<span class="badge text-bg-secondary">Utilisateur</span>
-								{% endif %}
-							</td>
-							<td>{{ u.creation_date ? u.creation_date|date('d/m/Y H:i') : '—' }}</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-			{% endif %}
+				{# ── Onglet Streams ── #}
+				<div class="tab-pane fade" id="streams-pane" role="tabpanel" aria-labelledby="streams-tab">
+					<table class="table table-hover align-middle">
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>Titre</th>
+								<th>Activité</th>
+								<th>Admin</th>
+								<th>Slug formulaire</th>
+								<th>Slug association</th>
+								<th>Date de création</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for stream in streams %}
+								{% set activity = streamActivity[stream.guid] ?? null %}
+								{% set amount = activity ? activity.amount : 0 %}
+								{% set widgetLastUpdate = activity ? activity.widget_last_update : null %}
+								<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
+									<td>{{ stream.id | e }}</td>
+									<td>
+										{{ stream.title | e }}
+										{% if stream.organization_slug in invalidTokenSlugs %}
+											<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — les widgets ne fonctionneront pas. Reconnectez l'association.">⚠️ Token invalide</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if widgetLastUpdate and (date(widgetLastUpdate).timestamp > date('-5 minutes').timestamp) %}
+											<span class="badge text-bg-success" data-bs-toggle="tooltip" data-bs-title="Widget consulté il y a moins de 5 min">🟢 En direct</span>
+										{% elseif amount > 0 %}
+											<span class="badge text-bg-info" data-bs-toggle="tooltip" data-bs-title="Dernière activité : {{ widgetLastUpdate ? widgetLastUpdate|date('d/m/Y H:i') : '—' }}">💰 {{ (amount / 100)|number_format(0, ',', ' ') }} €</span>
+										{% else %}
+											<span class="badge text-bg-secondary">⚪ Inactif</span>
+										{% endif %}
+									</td>
+									<td>{{ stream.admin | e }}</td>
+									<td>{{ stream.form_slug | e }}</td>
+									<td>{{ stream.organization_slug | e }}</td>
+									<td>{{ stream.creation_date ? stream.creation_date|date('d/m/Y H:i') : '—' }}</td>
+									<td class="d-flex gap-2" onclick="event.stopPropagation()">
+										<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
+										<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
+										<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+											<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
+										</form>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+
+				{# ── Onglet Utilisateurs ── #}
+				{% if users is defined %}
+				<div class="tab-pane fade" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
+					<table class="table table-hover align-middle">
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>Email</th>
+								<th>Rôle</th>
+								<th>Email vérifié</th>
+								<th>Date de création</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for u in users %}
+								<tr>
+									<td>{{ u.id }}</td>
+									<td>{{ u.email | e }}</td>
+									<td>
+										{% if u.role == 'ADMIN' %}
+											<span class="badge text-bg-danger">Admin</span>
+										{% else %}
+											<span class="badge text-bg-secondary">Utilisateur</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if u.email_verified %}
+											<span class="badge text-bg-success">✅ Vérifié</span>
+										{% else %}
+											<span class="badge text-bg-warning">⏳ Non vérifié</span>
+										{% endif %}
+									</td>
+									<td>{{ u.creation_date ? u.creation_date|date('d/m/Y H:i') : '—' }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				{% endif %}
+			</div>
 		</div>
 
 	{% if messages['error'] %}

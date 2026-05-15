@@ -14,6 +14,8 @@ use Slim\Views\Twig;
 
 class WidgetController
 {
+    private int $cacheTtl;
+
     public function __construct(
         private Twig $view,
         private ApiWrapper $apiWrapper,
@@ -21,7 +23,9 @@ class WidgetController
         private EventRepository $eventRepository,
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
-    ) {}
+    ) {
+        $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 15);
+    }
 
     // ── Helpers ───────────────────────────────────────────────────
 
@@ -118,6 +122,15 @@ class WidgetController
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
             ?? ['amount' => 0, 'continuation_token' => ''];
 
+        // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
+        if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+            return ['stream' => $charityStream, 'result' => [
+                'amount' => $cacheData['amount'],
+                'donations' => [],
+                'continuation_token' => $cacheData['continuation_token'],
+            ]];
+        }
+
         $result = $this->apiWrapper->getAllOrders(
             $charityStream->organization_slug,
             $charityStream->form_slug,
@@ -130,6 +143,12 @@ class WidgetController
             $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
                 'amount' => $result['amount'],
                 'continuation_token' => $result['continuation_token'],
+            ]);
+        } else {
+            // Même si rien n'a changé, on met à jour le timestamp du cache
+            $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
+                'amount' => $cacheData['amount'],
+                'continuation_token' => $cacheData['continuation_token'],
             ]);
         }
 
@@ -148,11 +167,19 @@ class WidgetController
         $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event)
             ?? ['amount' => 0, 'streams' => []];
 
+        // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
+        if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+            return ['event' => $event, 'cacheData' => $cacheData];
+        }
+
         $streams = $this->streamRepository->selectListByEvent($event);
         $oldAmount = $cacheData['amount'];
         $cacheData = $this->aggregateEventStreams($streams, $cacheData);
 
         if ($oldAmount !== $cacheData['amount']) {
+            $this->widgetRepository->updateEventDonationWidgetCacheData($event->guid, $cacheData);
+        } else {
+            // Même si rien n'a changé, on met à jour le timestamp du cache
             $this->widgetRepository->updateEventDonationWidgetCacheData($event->guid, $cacheData);
         }
 
@@ -171,6 +198,11 @@ class WidgetController
         $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
             ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => ''];
 
+        // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
+        if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+            return ['stream' => $charityStream, 'amount' => $cacheData['amount'], 'donors' => $cacheData['donors'] ?? 0];
+        }
+
         $result = $this->apiWrapper->getAllOrders(
             $charityStream->organization_slug,
             $charityStream->form_slug,
@@ -187,6 +219,13 @@ class WidgetController
                 'amount' => $result['amount'],
                 'donors' => $donors,
                 'continuation_token' => $result['continuation_token'],
+            ]);
+        } else {
+            // Même si rien n'a changé, on met à jour le timestamp du cache
+            $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
+                'amount' => $cacheData['amount'],
+                'donors' => $donors,
+                'continuation_token' => $cacheData['continuation_token'],
             ]);
         }
 
@@ -205,11 +244,19 @@ class WidgetController
         $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event)
             ?? ['amount' => 0, 'donors' => 0, 'streams' => []];
 
+        // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
+        if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+            return ['event' => $event, 'amount' => $cacheData['amount'], 'donors' => $cacheData['donors'] ?? 0];
+        }
+
         $streams = $this->streamRepository->selectListByEvent($event);
         $oldAmount = $cacheData['amount'];
         $cacheData = $this->aggregateEventStreams($streams, $cacheData, true);
 
         if ($oldAmount !== $cacheData['amount']) {
+            $this->widgetRepository->updateEventCardWidgetCacheData($event->guid, $cacheData);
+        } else {
+            // Même si rien n'a changé, on met à jour le timestamp du cache
             $this->widgetRepository->updateEventCardWidgetCacheData($event->guid, $cacheData);
         }
 
@@ -276,17 +323,24 @@ class WidgetController
         $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
             ?? ['continuation_token' => ''];
 
-        $result = $this->apiWrapper->getAllOrders(
-            $charityStream->organization_slug,
-            $charityStream->form_slug,
-            0,
-            $cacheData['continuation_token'],
-        );
+        if (!$this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+            $result = $this->apiWrapper->getAllOrders(
+                $charityStream->organization_slug,
+                $charityStream->form_slug,
+                0,
+                $cacheData['continuation_token'],
+            );
 
-        if ($cacheData['continuation_token'] !== $result['continuation_token']) {
-            $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                'continuation_token' => $result['continuation_token'],
-            ]);
+            if ($cacheData['continuation_token'] !== $result['continuation_token']) {
+                $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                    'continuation_token' => $result['continuation_token'],
+                ]);
+            } else {
+                // Même si rien n'a changé, on met à jour le timestamp du cache
+                $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                    'continuation_token' => $cacheData['continuation_token'],
+                ]);
+            }
         }
 
         return $this->view->render($response, 'widget/alert.html.twig', [
@@ -312,6 +366,15 @@ class WidgetController
             ?? ['continuation_token' => ''];
 
         try {
+            // Si le cache est encore frais, on retourne un résultat vide (pas de nouvelles donations)
+            if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+                return $this->jsonResponse($response, [
+                    'amount' => 0,
+                    'donations' => [],
+                    'continuation_token' => $cacheData['continuation_token'],
+                ]);
+            }
+
             $result = $this->apiWrapper->getAllOrders(
                 $charityStream->organization_slug,
                 $charityStream->form_slug,
@@ -322,6 +385,11 @@ class WidgetController
             if ($cacheData['continuation_token'] !== $result['continuation_token']) {
                 $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
                     'continuation_token' => $result['continuation_token'],
+                ]);
+            } else {
+                // Même si rien n'a changé, on met à jour le timestamp du cache
+                $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                    'continuation_token' => $cacheData['continuation_token'],
                 ]);
             }
 
