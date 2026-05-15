@@ -36,5 +36,10 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 - What actually happens
 - **Note:** Full code to reproduce the issue, and details about your environment
 
+## Security conventions for contributors
+- Any new HTML form with `method="POST"` must include `{% include '_csrf.html.twig' %}`.
+- Do not bypass CSRF on web routes. Only technical API routes (e.g. `/api/*`) are exempt.
+- Keep CSRF failures as minimal `403 Forbidden` responses.
+
 ## License
 By contributing, you agree that your contributions will be licensed under its GPLv3 License.

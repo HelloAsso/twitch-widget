@@ -31,11 +31,13 @@
 							<a href="/admin/event/{{ parentEvent.guid }}/edit" class="btn btn-sm btn-outline-primary ms-2">🔗 Voir l'événement</a>
 						</div>
 						<form method="POST" class="d-inline" onsubmit="return confirm('Délier ce stream de l\'événement « {{ parentEvent.title | e('js') }} » ?')">
+							{% include '_csrf.html.twig' %}
 							<button type="submit" class="btn btn-sm btn-outline-danger" name="unlink_event" value="1">❌ Délier</button>
 						</form>
 					</div>
 				{% else %}
 					<form method="POST" class="d-flex align-items-end gap-3">
+						{% include '_csrf.html.twig' %}
 						<div class="flex-grow-1">
 							<label for="event_id" class="form-label fw-semibold">Lier à un événement</label>
 							<select class="form-select" id="event_id" name="event_id" required>
@@ -61,6 +63,7 @@
 				</div>
 				<div class="card-body">
 					<form method="POST">
+						{% include '_csrf.html.twig' %}
 						<div class="row">
 							<div class="col-md-6">
 								<div class="mb-3">
@@ -101,6 +104,7 @@
 					<div id="collapseDonationBar" class="accordion-collapse collapse show" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
 						<div class="accordion-body">
 							<form id="donationBarForm" method="POST">
+								{% include '_csrf.html.twig' %}
 								<div class="row">
 									<div class="col-md-6">
 										<div class="mb-3">
@@ -160,6 +164,7 @@
 					<div id="collapseAlertBox" class="accordion-collapse collapse" aria-labelledby="headingAlertBox" data-bs-parent="#widgetsAccordion">
 						<div class="accordion-body">
 							<form id="alertBoxForm" method="POST" enctype="multipart/form-data">
+								{% include '_csrf.html.twig' %}
 								<div class="row">
 									<div class="col-md-6">
 										<div class="mb-3">
@@ -234,6 +239,7 @@
 					<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
 						<div class="accordion-body">
 							<form id="cardWidgetForm" method="POST" enctype="multipart/form-data">
+								{% include '_csrf.html.twig' %}
 								<div class="row">
 									<div class="col-md-6">
 										<div class="mb-3">

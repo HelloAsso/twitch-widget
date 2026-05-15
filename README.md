@@ -128,6 +128,12 @@ Tests run automatically on every push via GitHub Actions, **before** deployment,
 
 A test failure blocks the pipeline immediately — the artifact is never built or deployed.
 
+## Security Conventions
+
+- Every HTML form using `method="POST"` must include the CSRF partial: `{% include '_csrf.html.twig' %}`.
+- CSRF protection applies to browser/web routes; technical API endpoints under `/api/*` are excluded by design.
+- A missing or invalid CSRF token must return a minimal `403 Forbidden` response.
+
 ## Architecture & Code Organization
 
 ### Framework & Technologies

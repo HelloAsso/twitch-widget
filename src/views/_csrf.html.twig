@@ -1,0 +1,5 @@
+{% if csrf is defined and csrf.name and csrf.value %}
+	<input type="hidden" name="{{ csrf.nameKey }}" value="{{ csrf.name }}">
+	<input type="hidden" name="{{ csrf.valueKey }}" value="{{ csrf.value }}">
+{% endif %}
+

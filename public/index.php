@@ -28,6 +28,7 @@ use Monolog\Handler\RotatingFileHandler;
 
 use Slim\Factory\AppFactory;
 use Slim\Flash\Messages;
+use Slim\Csrf\Guard;
 use Slim\Views\Twig;
 use Twig\Extra\Intl\IntlExtension;
 
@@ -169,6 +170,47 @@ $app->addRoutingMiddleware();
 
 if (!session_id())
     @session_start();
+
+$csrfGuard = new Guard($app->getResponseFactory());
+$csrfGuard->setFailureHandler(function (
+    \Psr\Http\Message\ServerRequestInterface $request,
+    \Psr\Http\Server\RequestHandlerInterface $handler
+): \Psr\Http\Message\ResponseInterface {
+    $response = new \Slim\Psr7\Response(403);
+    $response->getBody()->write('Forbidden');
+    return $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+});
+
+// Expose la paire de tokens CSRF aux templates Twig.
+$app->add(function (
+    \Psr\Http\Message\ServerRequestInterface $request,
+    \Psr\Http\Server\RequestHandlerInterface $handler
+) use ($container, $csrfGuard): \Psr\Http\Message\ResponseInterface {
+    if (!str_starts_with($request->getUri()->getPath(), '/api/')) {
+        $tokenNameKey = $csrfGuard->getTokenNameKey();
+        $tokenValueKey = $csrfGuard->getTokenValueKey();
+        $container->get(Twig::class)->getEnvironment()->addGlobal('csrf', [
+            'nameKey' => $tokenNameKey,
+            'valueKey' => $tokenValueKey,
+            'name' => $request->getAttribute($tokenNameKey),
+            'value' => $request->getAttribute($tokenValueKey),
+        ]);
+    }
+
+    return $handler->handle($request);
+});
+
+// Active CSRF uniquement sur les routes web/formulaires (hors API technique).
+$app->add(function (
+    \Psr\Http\Message\ServerRequestInterface $request,
+    \Psr\Http\Server\RequestHandlerInterface $handler
+) use ($csrfGuard): \Psr\Http\Message\ResponseInterface {
+    if (str_starts_with($request->getUri()->getPath(), '/api/')) {
+        return $handler->handle($request);
+    }
+
+    return $csrfGuard($request, $handler);
+});
 
 if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     // Active Whoops uniquement en dev

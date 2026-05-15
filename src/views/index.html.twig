@@ -5,6 +5,7 @@
 	<div class="container" style="max-width: 480px;">
 		<h1 class="my-4 text-center">HelloAsso Widgets</h1>
 		<form action="/login" method="POST">
+			{% include '_csrf.html.twig' %}
 			<div class="form-group">
 				<label for="email">Email</label>
 				<input type="text" class="form-control" id="email" name="email" required>

@@ -13,6 +13,7 @@
 					</div>
 					<div class="modal-body">
 						<form action="/admin/event" method="POST">
+							{% include '_csrf.html.twig' %}
 							<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
 							<div class="mb-3">
 								<label for="event_title" class="form-label">Titre</label>
@@ -88,6 +89,7 @@
 								<td class="d-flex gap-2" onclick="event.stopPropagation()">
 									<a href="/admin/event/{{ event.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
 									<form action="/admin/event/{{ event.guid }}/delete" method="POST">
+										{% include '_csrf.html.twig' %}
 										<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
 									</form>
 								</td>
@@ -124,6 +126,7 @@
 								<a href="/admin/stream/{{ stream.guid }}/edit" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" data-bs-title="Édition">📝</a>
 								<a href="/redirect_auth_page?organizationSlug={{ stream.organization_slug }}" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Mire d'authorisation" target="_blank">🔑</a>
 								<form action="/admin/stream/{{ stream.guid }}/delete" method="POST">
+									{% include '_csrf.html.twig' %}
 									<button type="submit" class="btn btn-sm btn-outline-danger" name="delete" data-bs-toggle="tooltip" data-bs-title="Suppression" onclick="confirmDelete(event)">🗑️</button>
 								</form>
 							</td>

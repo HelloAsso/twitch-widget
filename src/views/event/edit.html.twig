@@ -13,6 +13,7 @@
 			</div>
 			<div class="card-body">
 				<form method="POST">
+					{% include '_csrf.html.twig' %}
 					<div class="row">
 						<div class="col-md-6">
 							<div class="mb-3">
@@ -85,6 +86,7 @@
 				<div id="collapseDonationBar" class="accordion-collapse collapse show" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
 					<div class="accordion-body">
 						<form id="donationBarForm" method="POST">
+							{% include '_csrf.html.twig' %}
 							<div class="row">
 								<div class="col-md-6">
 									<div class="mb-3">
@@ -145,6 +147,7 @@
 				<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
 					<div class="accordion-body">
 						<form id="cardWidgetForm" method="POST" enctype="multipart/form-data">
+							{% include '_csrf.html.twig' %}
 							<div class="row">
 								<div class="col-md-6">
 									<div class="mb-3">
