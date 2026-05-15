@@ -239,6 +239,31 @@ class WidgetRepository
         }
     }
 
+    // ── Stream activity map ──────────────────────────────────────
+
+    /**
+     * Retourne une map guid => {amount, widget_last_update} pour tous les streams.
+     * Utilisé pour afficher un indicateur d'activité dans l'admin.
+     */
+    public function selectStreamActivityMap(): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT charity_stream_guid AS guid, cache_data, last_update AS widget_last_update
+            FROM ' . $this->prefix . 'widget_donation_goal_bar
+            WHERE charity_stream_guid IS NOT NULL
+        ');
+
+        $map = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $cacheData = json_decode($row['cache_data'] ?? '', true);
+            $map[$row['guid']] = [
+                'amount' => $cacheData['amount'] ?? 0,
+                'widget_last_update' => $row['widget_last_update'],
+            ];
+        }
+        return $map;
+    }
+
     // ── Card widget cache ─────────────────────────────────────────
 
     public function selectStreamCardWidgetCacheData(Stream $stream): ?array

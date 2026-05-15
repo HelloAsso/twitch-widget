@@ -21,6 +21,7 @@ class EventRepository
             FROM ' . $this->prefix . 'charity_event c
             INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_event = c.id
             INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
+            ORDER BY c.creation_date DESC
         ');
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, Event::class);
@@ -34,6 +35,7 @@ class EventRepository
             FROM ' . $this->prefix . 'charity_event c
             INNER JOIN ' . $this->prefix . 'user_right ur on ur.id_charity_event = c.id
             WHERE ur.id_user = ? 
+            ORDER BY c.creation_date DESC
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, Event::class);
         $stmt->execute([$user->id]);

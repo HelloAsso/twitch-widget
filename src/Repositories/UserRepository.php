@@ -83,7 +83,7 @@ class UserRepository
 
     public function selectAll(): array
     {
-        $stmt = $this->pdo->query('SELECT id, email, role, creation_date FROM ' . $this->prefix . 'users ORDER BY creation_date DESC');
+        $stmt = $this->pdo->query('SELECT id, email, role, email_verified, creation_date FROM ' . $this->prefix . 'users ORDER BY creation_date DESC');
         $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
         return $stmt->fetchAll();
     }
