@@ -14,6 +14,7 @@ class WidgetDonation
     public $background_color;
     public $goal;
     public $cache_data;
+    public $cache_updated_at;
     public $creation_date;
     public $last_update;
 }

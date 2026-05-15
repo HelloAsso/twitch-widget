@@ -20,8 +20,20 @@ class WidgetRepository
     public function selectDonationWidgetByGuid(?string $streamGuid, ?string $eventGuid): ?WidgetDonation
     {
         $stmt = $this->pdo->prepare('
-            SELECT * 
-            FROM ' . $this->prefix . 'widget_donation_goal_bar 
+            SELECT
+                id,
+                charity_event_guid,
+                charity_stream_guid,
+                text_color_main,
+                text_color_alt,
+                text_content,
+                bar_color,
+                background_color,
+                goal,
+                cache_data,
+                creation_date,
+                last_update
+            FROM ' . $this->prefix . 'widget_donation_goal_bar
             WHERE charity_stream_guid = ?
             OR charity_event_guid = ?
         ');
@@ -33,8 +45,18 @@ class WidgetRepository
     public function selectAlertWidgetByGuid(string $guid): ?WidgetAlert
     {
         $stmt = $this->pdo->prepare('
-            SELECT * 
-            FROM ' . $this->prefix . 'widget_alert_box 
+            SELECT
+                id,
+                charity_stream_guid,
+                image,
+                alert_duration,
+                message_template,
+                sound,
+                sound_volume,
+                cache_data,
+                creation_date,
+                last_update
+            FROM ' . $this->prefix . 'widget_alert_box
             WHERE charity_stream_guid = ?
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, WidgetAlert::class);
@@ -171,7 +193,24 @@ class WidgetRepository
     {
         try {
             $stmt = $this->pdo->prepare('
-                SELECT *
+                SELECT
+                    id,
+                    charity_stream_guid,
+                    charity_event_guid,
+                    image,
+                    tag,
+                    title,
+                    description,
+                    goal,
+                    background_color,
+                    bar_color,
+                    bar_background_color,
+                    text_color,
+                    tag_color,
+                    tag_background_color,
+                    cache_data,
+                    creation_date,
+                    last_update
                 FROM ' . $this->prefix . 'widget_card
                 WHERE charity_stream_guid = ?
                 OR charity_event_guid = ?
