@@ -78,6 +78,7 @@ class AdminController
             "openCreateEvent" => isset($request->getQueryParams()['createEvent']),
             "invalidTokenSlugs" => $this->getInvalidTokenSlugs($streams),
             "ownerEmail" => $user->email,
+            "streamActivity" => $this->widgetRepository->selectStreamActivityMap(),
         ];
 
         if ($user->role === "ADMIN") {
