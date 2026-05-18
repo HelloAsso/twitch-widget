@@ -5,23 +5,55 @@ require __DIR__ . '/../vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
 
-$dsn = "mysql:host={$_SERVER['DBURL']};port={$_SERVER['DBPORT']};dbname={$_SERVER['DBNAME']};charset=utf8mb4";
-$pdo = new PDO($dsn, $_SERVER['DBUSER'], $_SERVER['DBPASSWORD'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-]);
+$requiredVars = ['DBURL', 'DBPORT', 'DBNAME', 'DBUSER', 'DBPASSWORD', 'DBPREFIX'];
+foreach ($requiredVars as $var) {
+    if (empty($_SERVER[$var]) && empty($_ENV[$var])) {
+        echo "ERROR: Missing required environment variable: $var\n";
+        exit(1);
+    }
+}
+
+// Prefer $_ENV over $_SERVER for dotenv compatibility
+$dbUrl = $_ENV['DBURL'] ?? $_SERVER['DBURL'];
+$dbPort = $_ENV['DBPORT'] ?? $_SERVER['DBPORT'];
+$dbName = $_ENV['DBNAME'] ?? $_SERVER['DBNAME'];
+$dbUser = $_ENV['DBUSER'] ?? $_SERVER['DBUSER'];
+$dbPassword = $_ENV['DBPASSWORD'] ?? $_SERVER['DBPASSWORD'];
+$dbPrefix = $_ENV['DBPREFIX'] ?? $_SERVER['DBPREFIX'];
+
+try {
+    $dsn = "mysql:host={$dbUrl};port={$dbPort};dbname={$dbName};charset=utf8mb4";
+    $pdo = new PDO($dsn, $dbUser, $dbPassword, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+} catch (PDOException $e) {
+    echo "ERROR: Database connection failed: " . $e->getMessage() . "\n";
+    exit(1);
+}
 
 function execute()
 {
+    global $pdo, $dbPrefix;
+
     $migrations = getMigrations();
     if (count($migrations) == 0) {
+        echo "No migration files found.\n";
         return;
     }
 
     $executedMigrations = getExecutedMigrations();
+    $pending = array_diff($migrations, $executedMigrations);
 
-    foreach (array_diff($migrations, $executedMigrations) as $migration) {
+    if (count($pending) == 0) {
+        echo "All migrations are up to date.\n";
+        return;
+    }
+
+    foreach ($pending as $migration) {
+        echo "Running migration: $migration ... ";
         executeFile($migration);
+        echo "OK\n";
     }
 }
 
@@ -34,17 +66,18 @@ function getMigrations()
 
 function getExecutedMigrations()
 {
-    $stmt = $GLOBALS['pdo']->prepare('
-        CREATE TABLE IF NOT EXISTS `' . $_SERVER['DBPREFIX'] . 'migrations` (
+    global $pdo, $dbPrefix;
+
+    $pdo->exec('
+        CREATE TABLE IF NOT EXISTS `' . $dbPrefix . 'migrations` (
             `name` varchar(255) NOT NULL,
             `date` datetime NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ');
-    $stmt->execute();
 
-    $stmt = $GLOBALS['pdo']->prepare('
+    $stmt = $pdo->prepare('
         SELECT name
-        FROM ' . $_SERVER['DBPREFIX'] . 'migrations;
+        FROM ' . $dbPrefix . 'migrations
     ');
     $stmt->execute();
     return $stmt->fetchAll(\PDO::FETCH_COLUMN);
@@ -52,24 +85,24 @@ function getExecutedMigrations()
 
 function executeFile($fileName)
 {
+    global $pdo, $dbPrefix;
+
     $sql = file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . $fileName);
-    $sql = str_replace('{prefix}', $_SERVER['DBPREFIX'], $sql);
+    $sql = str_replace('{prefix}', $dbPrefix, $sql);
 
-    // Split SQL into individual statements to avoid PDO multi-statement errors
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
+    $pdo->exec($sql);
 
-    foreach ($statements as $statement) {
-        if (!empty($statement) && $statement !== '') {
-            $stmt = $GLOBALS['pdo']->prepare($statement);
-            $stmt->execute();
-        }
-    }
-
-    $stmt = $GLOBALS['pdo']->prepare('
-        INSERT INTO ' . $_SERVER['DBPREFIX'] . 'migrations VALUES
-        (?, CURTIME());
+    $stmt = $pdo->prepare('
+        INSERT INTO ' . $dbPrefix . 'migrations VALUES
+        (?, NOW());
     ');
     $stmt->execute([$fileName]);
 }
 
-execute();
+try {
+    execute();
+} catch (Exception $e) {
+    echo "ERROR: " . $e->getMessage() . "\n";
+    echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
+    exit(1);
+}
