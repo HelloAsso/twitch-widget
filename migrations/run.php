@@ -55,8 +55,15 @@ function executeFile($fileName)
     $sql = file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . $fileName);
     $sql = str_replace('{prefix}', $_SERVER['DBPREFIX'], $sql);
 
-    $stmt = $GLOBALS['pdo']->prepare($sql);
-    $stmt->execute();
+    // Split SQL into individual statements to avoid PDO multi-statement errors
+    $statements = array_filter(array_map('trim', explode(';', $sql)));
+
+    foreach ($statements as $statement) {
+        if (!empty($statement) && $statement !== '') {
+            $stmt = $GLOBALS['pdo']->prepare($statement);
+            $stmt->execute();
+        }
+    }
 
     $stmt = $GLOBALS['pdo']->prepare('
         INSERT INTO ' . $_SERVER['DBPREFIX'] . 'migrations VALUES
