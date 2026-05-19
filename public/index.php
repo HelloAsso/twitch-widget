@@ -108,7 +108,11 @@ $container->set(ApiWrapper::class, function ($c) {
     if ($globalToken === null) {
         throw new Exception('Impossible de générer un token d\'accès global.');
     }
-    $apiWrapper->setClientDomain($globalToken->access_token);
+    try {
+        $apiWrapper->setClientDomain($globalToken->access_token);
+    } catch (Exception $e) {
+        $c->get('logger.api')->warning('Échec de la configuration du domaine client (non bloquant) : ' . $e->getMessage());
+    }
 
     return $apiWrapper;
 });
