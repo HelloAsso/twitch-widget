@@ -19,6 +19,7 @@ class WidgetCard
     public string $tag_color = '#166534';
     public string $tag_background_color = '#dcfce7';
     public ?string $cache_data = null;
+    public ?string $cache_updated_at = null;
     public ?string $creation_date = null;
     public ?string $last_update = null;
 }

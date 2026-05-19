@@ -203,6 +203,23 @@ The application provides two main widget types:
    - Real-time goal tracking
    - Animated progress bars
 
+3. **Card Widget** (`/widget-stream-card/{id}` / `/widget-event-card/{id}`)
+   - Donation card with progress bar, amount and donor count
+
+#### Cache & mise à jour des widgets
+
+Les widgets se mettent à jour via un **polling AJAX toutes les 10 secondes** côté navigateur (appel aux endpoints `/fetch`).
+
+Pour éviter de surcharger l'API HelloAsso, un **cache serveur avec TTL** est en place :
+
+- Chaque widget stocke ses données en cache dans la colonne `cache_data` (JSON) et un horodatage `cache_updated_at` en base de données.
+- Lors d'un appel `/fetch`, le serveur vérifie d'abord si le cache est encore **frais** (âge < TTL). Si oui, les données en cache sont retournées directement **sans aucun appel à l'API HelloAsso**.
+- Si le cache est expiré, l'API HelloAsso est interrogée, puis le cache est mis à jour avec les nouvelles données et un nouveau timestamp.
+
+**Le TTL est configurable** via la variable d'environnement `WIDGET_CACHE_TTL` (en secondes, défaut : **15 secondes**).
+
+Cela garantit qu'**un seul appel API HelloAsso** est effectué par widget et par période de TTL, quel que soit le nombre de visiteurs simultanés.
+
 ### Database Migrations
 Database schema is managed through SQL migration files in the `migrations/` directory:
 - `00-init-db.sql`: Initial database setup
@@ -230,3 +247,4 @@ Key environment variables include:
 - Azure Blob Storage (BLOB_CONNECTION_STRING, BLOB_URL)
 - Email service (MANDRILL_API)
 - Application domain (WEBSITE_DOMAIN)
+- Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 15)

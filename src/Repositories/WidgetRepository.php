@@ -20,8 +20,20 @@ class WidgetRepository
     public function selectDonationWidgetByGuid(?string $streamGuid, ?string $eventGuid): ?WidgetDonation
     {
         $stmt = $this->pdo->prepare('
-            SELECT * 
-            FROM ' . $this->prefix . 'widget_donation_goal_bar 
+            SELECT
+                id,
+                charity_event_guid,
+                charity_stream_guid,
+                text_color_main,
+                text_color_alt,
+                text_content,
+                bar_color,
+                background_color,
+                goal,
+                cache_data,
+                creation_date,
+                last_update
+            FROM ' . $this->prefix . 'widget_donation_goal_bar
             WHERE charity_stream_guid = ?
             OR charity_event_guid = ?
         ');
@@ -33,8 +45,18 @@ class WidgetRepository
     public function selectAlertWidgetByGuid(string $guid): ?WidgetAlert
     {
         $stmt = $this->pdo->prepare('
-            SELECT * 
-            FROM ' . $this->prefix . 'widget_alert_box 
+            SELECT
+                id,
+                charity_stream_guid,
+                image,
+                alert_duration,
+                message_template,
+                sound,
+                sound_volume,
+                cache_data,
+                creation_date,
+                last_update
+            FROM ' . $this->prefix . 'widget_alert_box
             WHERE charity_stream_guid = ?
         ');
         $stmt->setFetchMode(PDO::FETCH_CLASS, WidgetAlert::class);
@@ -115,20 +137,48 @@ class WidgetRepository
     private function selectCacheData(string $table, string $column, string $guid): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT cache_data FROM ' . $this->prefix . $table . ' WHERE ' . $column . ' = ?'
+            'SELECT cache_data, cache_updated_at FROM ' . $this->prefix . $table . ' WHERE ' . $column . ' = ?'
         );
         $stmt->execute([$guid]);
         $data = $stmt->fetch();
 
-        return $data ? json_decode($data["cache_data"] ?? "", true) : null;
+        if (!$data || !$data['cache_data']) {
+            return null;
+        }
+
+        $result = json_decode($data['cache_data'], true);
+        if ($result !== null && isset($data['cache_updated_at'])) {
+            $result['_cache_updated_at'] = $data['cache_updated_at'];
+        }
+
+        return $result;
     }
 
     private function updateCacheData(string $table, string $column, string $guid, array $data): void
     {
+        // Remove internal metadata before persisting
+        unset($data['_cache_updated_at']);
+
         $stmt = $this->pdo->prepare(
-            'UPDATE ' . $this->prefix . $table . ' SET cache_data = ? WHERE ' . $column . ' = ?'
+            'UPDATE ' . $this->prefix . $table . ' SET cache_data = ?, cache_updated_at = NOW(6) WHERE ' . $column . ' = ?'
         );
         $stmt->execute([json_encode($data), $guid]);
+    }
+
+    /**
+     * Vérifie si le cache est encore frais (non expiré) selon le TTL donné en secondes.
+     */
+    public function isCacheFresh(?array $cacheData, int $ttlSeconds): bool
+    {
+        if ($cacheData === null || !isset($cacheData['_cache_updated_at'])) {
+            return false;
+        }
+
+        $updatedAt = new \DateTime($cacheData['_cache_updated_at']);
+        $now = new \DateTime();
+        $age = $now->getTimestamp() - $updatedAt->getTimestamp();
+
+        return $age < $ttlSeconds;
     }
 
     // ── Alert widget cache ────────────────────────────────────────
@@ -171,7 +221,24 @@ class WidgetRepository
     {
         try {
             $stmt = $this->pdo->prepare('
-                SELECT *
+                SELECT
+                    id,
+                    charity_stream_guid,
+                    charity_event_guid,
+                    image,
+                    tag,
+                    title,
+                    description,
+                    goal,
+                    background_color,
+                    bar_color,
+                    bar_background_color,
+                    text_color,
+                    tag_color,
+                    tag_background_color,
+                    cache_data,
+                    creation_date,
+                    last_update
                 FROM ' . $this->prefix . 'widget_card
                 WHERE charity_stream_guid = ?
                 OR charity_event_guid = ?
@@ -237,6 +304,31 @@ class WidgetRepository
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    // ── Stream activity map ──────────────────────────────────────
+
+    /**
+     * Retourne une map guid => {amount, widget_last_update} pour tous les streams.
+     * Utilisé pour afficher un indicateur d'activité dans l'admin.
+     */
+    public function selectStreamActivityMap(): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT charity_stream_guid AS guid, cache_data, last_update AS widget_last_update
+            FROM ' . $this->prefix . 'widget_donation_goal_bar
+            WHERE charity_stream_guid IS NOT NULL
+        ');
+
+        $map = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $cacheData = json_decode($row['cache_data'] ?? '', true);
+            $map[$row['guid']] = [
+                'amount' => $cacheData['amount'] ?? 0,
+                'widget_last_update' => $row['widget_last_update'],
+            ];
+        }
+        return $map;
     }
 
     // ── Card widget cache ─────────────────────────────────────────

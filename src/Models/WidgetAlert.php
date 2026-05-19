@@ -12,6 +12,7 @@ class WidgetAlert
     public $sound;
     public $sound_volume;
     public $cache_data;
+    public $cache_updated_at;
     public $creation_date;
     public $last_update;
 }
