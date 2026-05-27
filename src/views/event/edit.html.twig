@@ -312,32 +312,34 @@ a					<div class="row">
 
 	{% if event.is_test_mode %}
 	<script>
-	document.getElementById('simulateDonationForm')?.addEventListener('submit', async function(e) {
-		e.preventDefault();
-		const pseudo = document.getElementById('sim_pseudo').value;
-		const amount = Math.round(parseFloat(document.getElementById('sim_amount').value) * 100);
-		const message = document.getElementById('sim_message').value;
-		const alertBox = document.getElementById('simulateAlert');
+	document.addEventListener('DOMContentLoaded', function() {
+		document.getElementById('simulateDonationForm')?.addEventListener('submit', async function(e) {
+			e.preventDefault();
+			const pseudo = document.getElementById('sim_pseudo').value;
+			const amount = Math.round(parseFloat(document.getElementById('sim_amount').value) * 100);
+			const message = document.getElementById('sim_message').value;
+			const alertBox = document.getElementById('simulateAlert');
 
-		try {
-			const resp = await fetch('/widget-event/{{ event.guid }}/simulate', {
-				method: 'POST',
-				headers: {'Content-Type': 'application/json'},
-				body: JSON.stringify({ pseudo, amount, message })
-			});
-			const json = await resp.json();
-			if (resp.ok) {
-				document.getElementById('testAmountDisplay').textContent = (json.amount / 100).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
-				alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>✅ Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
-				alertBox.style.display = 'block';
-			} else {
-				alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ ' + (json.error || 'Erreur') + '</small></div>';
+			try {
+				const resp = await fetch('/widget-event/{{ event.guid }}/simulate', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({ pseudo, amount, message })
+				});
+				const json = await resp.json();
+				if (resp.ok) {
+					document.getElementById('testAmountDisplay').textContent = (json.amount / 100).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
+					alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>✅ Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
+					alertBox.style.display = 'block';
+				} else {
+					alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ ' + (json.error || 'Erreur') + '</small></div>';
+					alertBox.style.display = 'block';
+				}
+			} catch(err) {
+				alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ Erreur réseau</small></div>';
 				alertBox.style.display = 'block';
 			}
-		} catch(err) {
-			alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ Erreur réseau</small></div>';
-			alertBox.style.display = 'block';
-		}
+		});
 	});
 	</script>
 	{% endif %}
