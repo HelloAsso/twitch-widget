@@ -6,6 +6,52 @@
 
 		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
 
+		{# ── Mode test ─────────────────────────────────────────────── #}
+		<div class="card mb-4 {{ event.is_test_mode ? 'border-warning' : '' }}">
+			<div class="card-header d-flex justify-content-between align-items-center {{ event.is_test_mode ? 'bg-warning bg-opacity-25' : '' }}">
+				<h5 class="mb-0">🧪 Mode test</h5>
+				<form method="POST" class="d-inline">
+					{% if event.is_test_mode %}
+						<button type="submit" class="btn btn-sm btn-outline-danger" name="toggle_test_mode" value="1">❌ Désactiver le mode test</button>
+					{% else %}
+						<button type="submit" class="btn btn-sm btn-outline-warning" name="toggle_test_mode" value="1">🧪 Activer le mode test</button>
+					{% endif %}
+				</form>
+			</div>
+			{% if event.is_test_mode %}
+			<div class="card-body">
+				<div class="row align-items-end">
+					<div class="col-md-4">
+						<p class="mb-1 fw-semibold">Montant test actuel : <span id="testAmountDisplay">{{ (event.test_amount / 100) | number_format(2, ',', ' ') }} €</span></p>
+						<form method="POST" class="d-inline">
+							<button type="submit" class="btn btn-sm btn-outline-secondary" name="reset_test_amount" value="1">🔄 Remettre à zéro</button>
+						</form>
+					</div>
+					<div class="col-md-8">
+						<form id="simulateDonationForm" class="row g-2 align-items-end">
+							<div class="col-md-3">
+								<label for="sim_pseudo" class="form-label mb-0">Pseudo</label>
+								<input type="text" class="form-control form-control-sm" id="sim_pseudo" value="Testeur" required>
+							</div>
+							<div class="col-md-2">
+								<label for="sim_amount" class="form-label mb-0">Montant (€)</label>
+								<input type="number" class="form-control form-control-sm" id="sim_amount" value="10" min="1" step="1" required>
+							</div>
+							<div class="col-md-4">
+								<label for="sim_message" class="form-label mb-0">Message</label>
+								<input type="text" class="form-control form-control-sm" id="sim_message" value="Don de test">
+							</div>
+							<div class="col-md-3">
+								<button type="submit" class="btn btn-sm btn-warning w-100">💸 Simuler un don</button>
+							</div>
+						</form>
+					</div>
+				</div>
+				<div id="simulateAlert" class="mt-2" style="display:none;"></div>
+			</div>
+			{% endif %}
+		</div>
+
 		{# ── Informations de l'événement ──────────────────────────── #}
 		<div class="card mb-4">
 			<div class="card-header">
@@ -262,5 +308,37 @@ a					<div class="row">
 {% block scripts %}
 	{% if viteEntries.admin.js %}
 	<script type="module" src="/dist/{{ viteEntries.admin.js }}"></script>
+	{% endif %}
+
+	{% if event.is_test_mode %}
+	<script>
+	document.getElementById('simulateDonationForm')?.addEventListener('submit', async function(e) {
+		e.preventDefault();
+		const pseudo = document.getElementById('sim_pseudo').value;
+		const amount = Math.round(parseFloat(document.getElementById('sim_amount').value) * 100);
+		const message = document.getElementById('sim_message').value;
+		const alertBox = document.getElementById('simulateAlert');
+
+		try {
+			const resp = await fetch('/widget-event/{{ event.guid }}/simulate', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({ pseudo, amount, message })
+			});
+			const json = await resp.json();
+			if (resp.ok) {
+				document.getElementById('testAmountDisplay').textContent = (json.amount / 100).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
+				alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>✅ Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
+				alertBox.style.display = 'block';
+			} else {
+				alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ ' + (json.error || 'Erreur') + '</small></div>';
+				alertBox.style.display = 'block';
+			}
+		} catch(err) {
+			alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ Erreur réseau</small></div>';
+			alertBox.style.display = 'block';
+		}
+	});
+	</script>
 	{% endif %}
 {% endblock %}

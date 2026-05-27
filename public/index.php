@@ -234,4 +234,7 @@ $app->get('/widget-stream-card/{id}/fetch', [WidgetController::class, 'widgetStr
 $app->get('/widget-event-card/{id}', [WidgetController::class, 'widgetEventCard'])->setName('app_event_widget_card');
 $app->get('/widget-event-card/{id}/fetch', [WidgetController::class, 'widgetEventCardFetch'])->setName('app_event_widget_card_fetch');
 
+$app->post('/widget-stream/{id}/simulate', [WidgetController::class, 'simulateStreamDonation'])->add(new AuthMiddleware())->setName('app_stream_simulate_donation');
+$app->post('/widget-event/{id}/simulate', [WidgetController::class, 'simulateEventDonation'])->add(new AuthMiddleware())->setName('app_event_simulate_donation');
+
 $app->run();

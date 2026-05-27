@@ -119,6 +119,15 @@ class WidgetController
             throw new Exception("Charity Stream non trouvé.");
         }
 
+        // Mode test : retourner le montant simulé sans appeler l'API
+        if ($charityStream->is_test_mode) {
+            return ['stream' => $charityStream, 'result' => [
+                'amount' => (int) $charityStream->test_amount,
+                'donations' => [],
+                'continuation_token' => '',
+            ]];
+        }
+
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
             ?? ['amount' => 0, 'continuation_token' => ''];
 
@@ -164,6 +173,14 @@ class WidgetController
             throw new Exception("Event non trouvé.");
         }
 
+        // Mode test : retourner le montant simulé sans appeler l'API
+        if ($event->is_test_mode) {
+            return ['event' => $event, 'cacheData' => [
+                'amount' => (int) $event->test_amount,
+                'streams' => [],
+            ]];
+        }
+
         $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event)
             ?? ['amount' => 0, 'streams' => []];
 
@@ -193,6 +210,15 @@ class WidgetController
         $charityStream = $this->streamRepository->selectByGuid($streamGuid);
         if (!$charityStream) {
             throw new Exception("Charity Stream non trouvé.");
+        }
+
+        // Mode test : retourner le montant simulé sans appeler l'API
+        if ($charityStream->is_test_mode) {
+            return [
+                'stream' => $charityStream,
+                'amount' => (int) $charityStream->test_amount,
+                'donors' => 0,
+            ];
         }
 
         $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
@@ -241,6 +267,15 @@ class WidgetController
             throw new Exception("Event non trouvé.");
         }
 
+        // Mode test : retourner le montant simulé sans appeler l'API
+        if ($event->is_test_mode) {
+            return [
+                'event' => $event,
+                'amount' => (int) $event->test_amount,
+                'donors' => 0,
+            ];
+        }
+
         $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event)
             ?? ['amount' => 0, 'donors' => 0, 'streams' => []];
 
@@ -281,6 +316,7 @@ class WidgetController
             'currentAmount' => $data['cacheData']['amount'],
             'goal' => $data['event']->goal,
             'event' => 1,
+            'isTestMode' => (bool) $data['event']->is_test_mode,
         ]);
     }
 
@@ -320,26 +356,28 @@ class WidgetController
             throw new Exception("Charity Stream non trouvé.");
         }
 
-        $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
-            ?? ['continuation_token' => ''];
+        // En mode test, on ne fait pas d'appel API pour l'init
+        if (!$charityStream->is_test_mode) {
+            $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
+                ?? ['continuation_token' => ''];
 
-        if (!$this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
-            $result = $this->apiWrapper->getAllOrders(
-                $charityStream->organization_slug,
-                $charityStream->form_slug,
-                0,
-                $cacheData['continuation_token'],
-            );
+            if (!$this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
+                $result = $this->apiWrapper->getAllOrders(
+                    $charityStream->organization_slug,
+                    $charityStream->form_slug,
+                    0,
+                    $cacheData['continuation_token'],
+                );
 
-            if ($cacheData['continuation_token'] !== $result['continuation_token']) {
-                $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                    'continuation_token' => $result['continuation_token'],
-                ]);
-            } else {
-                // Même si rien n'a changé, on met à jour le timestamp du cache
-                $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                    'continuation_token' => $cacheData['continuation_token'],
-                ]);
+                if ($cacheData['continuation_token'] !== $result['continuation_token']) {
+                    $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                        'continuation_token' => $result['continuation_token'],
+                    ]);
+                } else {
+                    $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                        'continuation_token' => $cacheData['continuation_token'],
+                    ]);
+                }
             }
         }
 
@@ -347,6 +385,7 @@ class WidgetController
             'alertBoxWidget' => $alertBoxWidget,
             'alertBoxWidgetPictureUrl' => $this->fileManager->getPictureUrl($alertBoxWidget->image),
             'alertBoxWidgetSoundUrl' => $this->fileManager->getSoundUrl($alertBoxWidget->sound),
+            'isTestMode' => (bool) $charityStream->is_test_mode,
         ]);
     }
 
@@ -360,6 +399,15 @@ class WidgetController
         $charityStream = $this->streamRepository->selectByGuid($charityStreamId);
         if (!$charityStream) {
             return $this->jsonError($response, 'Charity Stream non trouvé.', 404);
+        }
+
+        // En mode test, retourner un résultat vide (les alertes sont simulées via l'endpoint dédié)
+        if ($charityStream->is_test_mode) {
+            return $this->jsonResponse($response, [
+                'amount' => 0,
+                'donations' => [],
+                'continuation_token' => '',
+            ]);
         }
 
         $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
@@ -417,6 +465,7 @@ class WidgetController
             'currentAmount' => $data['result']['amount'],
             'goal' => $data['stream']->goal,
             'stream' => 1,
+            'isTestMode' => (bool) $data['stream']->is_test_mode,
         ]);
     }
 
@@ -461,6 +510,7 @@ class WidgetController
             'percentage' => $this->calculatePercentage($data['amount'], $data['stream']->goal),
             'goal' => $data['stream']->goal ?: 1,
             'stream' => 1,
+            'isTestMode' => (bool) $data['stream']->is_test_mode,
         ]);
     }
 
@@ -500,6 +550,7 @@ class WidgetController
             'percentage' => $this->calculatePercentage($data['amount'], $data['event']->goal),
             'goal' => $data['event']->goal ?: 1,
             'event' => 1,
+            'isTestMode' => (bool) $data['event']->is_test_mode,
         ]);
     }
 
@@ -516,5 +567,75 @@ class WidgetController
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }
+    }
+
+    // ── Test mode: simulate donation ─────────────────────────────
+
+    public function simulateStreamDonation(Request $request, Response $response, array $args): Response
+    {
+        $streamGuid = $args['id'] ?? '';
+        if (!$streamGuid) {
+            return $this->jsonError($response, 'Stream ID manquant.', 400);
+        }
+
+        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
+        if (!$charityStream) {
+            return $this->jsonError($response, 'Stream non trouvé.', 404);
+        }
+
+        if (!$charityStream->is_test_mode) {
+            return $this->jsonError($response, 'Le stream n\'est pas en mode test.', 400);
+        }
+
+        $body = $request->getParsedBody();
+        $amount = (int) ($body['amount'] ?? 1000);
+        $pseudo = $body['pseudo'] ?? 'Testeur';
+        $message = $body['message'] ?? 'Don de test';
+
+        $newAmount = (int) $charityStream->test_amount + $amount;
+        $this->streamRepository->update($charityStream, ['test_amount' => $newAmount]);
+
+        return $this->jsonResponse($response, [
+            'amount' => $newAmount,
+            'donation' => [
+                'pseudo' => $pseudo,
+                'message' => $message,
+                'amount' => $amount,
+            ],
+        ]);
+    }
+
+    public function simulateEventDonation(Request $request, Response $response, array $args): Response
+    {
+        $eventGuid = $args['id'] ?? '';
+        if (!$eventGuid) {
+            return $this->jsonError($response, 'Event ID manquant.', 400);
+        }
+
+        $event = $this->eventRepository->selectByGuid($eventGuid);
+        if (!$event) {
+            return $this->jsonError($response, 'Event non trouvé.', 404);
+        }
+
+        if (!$event->is_test_mode) {
+            return $this->jsonError($response, 'L\'événement n\'est pas en mode test.', 400);
+        }
+
+        $body = $request->getParsedBody();
+        $amount = (int) ($body['amount'] ?? 1000);
+        $pseudo = $body['pseudo'] ?? 'Testeur';
+        $message = $body['message'] ?? 'Don de test';
+
+        $newAmount = (int) $event->test_amount + $amount;
+        $this->eventRepository->update($event, ['test_amount' => $newAmount]);
+
+        return $this->jsonResponse($response, [
+            'amount' => $newAmount,
+            'donation' => [
+                'pseudo' => $pseudo,
+                'message' => $message,
+                'amount' => $amount,
+            ],
+        ]);
     }
 }

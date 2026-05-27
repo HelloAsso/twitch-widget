@@ -273,6 +273,23 @@ class AdminController
             $this->eventRepository->update($event, $updateData);
         }
 
+        // Toggle mode test
+        if (isset($body['toggle_test_mode'])) {
+            $newMode = $event->is_test_mode ? 0 : 1;
+            $updateData = ['is_test_mode' => $newMode];
+            if ($newMode === 0) {
+                $updateData['test_amount'] = 0;
+            }
+            $this->eventRepository->update($event, $updateData);
+            $this->messages->addMessage('success', $newMode ? 'Mode test activé' : 'Mode test désactivé (montant réinitialisé)');
+        }
+
+        // Reset montant test
+        if (isset($body['reset_test_amount'])) {
+            $this->eventRepository->update($event, ['test_amount' => 0]);
+            $this->messages->addMessage('success', 'Montant test réinitialisé à 0');
+        }
+
         $this->handleWidgetFormSave($request, null, $event->guid);
 
         return $this->redirectToRoute($request, $response, 'app_event_edit', ["id" => $event->guid]);
@@ -417,6 +434,23 @@ class AdminController
         if (isset($body['unlink_event'])) {
             $this->streamRepository->updateEventLink($charityStream, null);
             $this->messages->addMessage('success', 'Stream délié de son événement');
+        }
+
+        // Toggle mode test
+        if (isset($body['toggle_test_mode'])) {
+            $newMode = $charityStream->is_test_mode ? 0 : 1;
+            $updateData = ['is_test_mode' => $newMode];
+            if ($newMode === 0) {
+                $updateData['test_amount'] = 0;
+            }
+            $this->streamRepository->update($charityStream, $updateData);
+            $this->messages->addMessage('success', $newMode ? 'Mode test activé' : 'Mode test désactivé (montant réinitialisé)');
+        }
+
+        // Reset montant test
+        if (isset($body['reset_test_amount'])) {
+            $this->streamRepository->update($charityStream, ['test_amount' => 0]);
+            $this->messages->addMessage('success', 'Montant test réinitialisé à 0');
         }
 
         if (isset($body['save_alert_box'])) {
