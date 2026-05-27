@@ -151,7 +151,6 @@ class ApiWrapper
         $obj->organization_slug = $organizationSlug;
         $obj->access_token_expires_at = $accessTokenExpiresAt;
         $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
-        $this->apiLogger->info('New organisation access token generated successfully. it will expires at ' . $obj->access_token_expires_at->format('Y-m-d H:i:s'));
         return $this->accessTokenRepository->update($obj);
     }
   
@@ -164,26 +163,21 @@ class ApiWrapper
     {
         $tokenData = $this->accessTokenRepository->selectBySlug(null);
         
-        $expiration_access_date = $tokenData->access_token_expires_at ?? false;
-
-        // si null ou expiré, on génère un nouveau token global
-        $this->apiLogger->info('Check expiration for global access token');
-        if ($this->isExpired($expiration_access_date) || $tokenData == null) {
-            $this->apiLogger->debug('Global access token is invalid. Attempting to generate new one.');
+        if ($tokenData == null || $this->isExpired($tokenData->access_token_expires_at ?? false)) {
+            $this->apiLogger->info('Global access token absent ou expiré, génération d\'un nouveau.');
             $tokenData = $this->generateGlobalAccessToken();
         }
-        $this->apiLogger->info('Global access token is valid. Expiry time: ' . 
-        ($tokenData->access_token_expires_at instanceof DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
 
         return $tokenData;
-        
     }
 
     /**
      * Récupère le token d'accès pour une organisation donnée.
+     * Gère les accès concurrents : si le refresh échoue (token déjà utilisé par un autre process),
+     * on re-lit la DB pour récupérer le token fraîchement rafraîchi par l'autre process.
      *
-     * @param string $organization_slug
-     * @return AccessToken|null
+     * @param string $organizationSlug
+     * @return AccessToken
      */
     public function getOrganizationAccessToken(string $organizationSlug): AccessToken
     {
@@ -194,28 +188,48 @@ class ApiWrapper
             throw new Exception('Aucun token trouvé pour l\'organisation: ' . $organizationSlug);
         }
 
-        $this->apiLogger->info('Check expiration for access token of organization_slug: ' . $organizationSlug);
-
         if ($this->isExpired($tokenData->refresh_token_expires_at ?? false)) {
-            $this->apiLogger->error('Refresh token is expired for organization_slug: ' . $organizationSlug);
+            $this->apiLogger->error('Refresh token expiré pour organization_slug: ' . $organizationSlug);
             throw new Exception('Invalid token data: refresh_token is expired');
         }
 
-        if ($this->isExpired($tokenData->access_token_expires_at ?? false)) {
-            $this->apiLogger->debug('Access token for organization_slug: ' . $organizationSlug . ' is expired. Attempting to refresh token.');
-            $tokenData = $this->refreshToken($tokenData->refresh_token, $organizationSlug);
-            $this->apiLogger->info('Access token refreshed for organization_slug: ' . $organizationSlug . '. New expiry time: ' .
-                ($tokenData->access_token_expires_at instanceof \DateTime ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s') : $tokenData->access_token_expires_at));
+        // Access token encore valide → on l'utilise directement
+        if (!$this->isExpired($tokenData->access_token_expires_at ?? false)) {
+            return $tokenData;
         }
 
-        return $tokenData;
+        // Access token expiré — re-lire la DB au cas où un autre process vient de le rafraîchir
+        $freshToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
+        if ($freshToken && !$this->isExpired($freshToken->access_token_expires_at ?? false)) {
+            $this->apiLogger->debug('Token déjà rafraîchi par un autre process pour ' . $organizationSlug);
+            return $freshToken;
+        }
+
+        // Toujours expiré → on rafraîchit
+        try {
+            $this->apiLogger->info('Rafraîchissement du token pour organization_slug: ' . $organizationSlug);
+            $tokenData = $this->refreshToken(($freshToken ?? $tokenData)->refresh_token, $organizationSlug);
+            $this->apiLogger->info('Token rafraîchi pour ' . $organizationSlug . '. Nouvelle expiration : ' .
+                ($tokenData->access_token_expires_at instanceof \DateTime
+                    ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s')
+                    : $tokenData->access_token_expires_at));
+            return $tokenData;
+        } catch (Exception $e) {
+            // Le refresh a échoué — peut-être qu'un autre process a déjà utilisé le refresh token.
+            // On re-lit la DB une dernière fois.
+            $retryToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
+            if ($retryToken && !$this->isExpired($retryToken->access_token_expires_at ?? false)) {
+                $this->apiLogger->info('Token récupéré après échec refresh (rafraîchi par un autre process) pour ' . $organizationSlug);
+                return $retryToken;
+            }
+
+            $this->apiLogger->error('Échec du refresh token pour ' . $organizationSlug . ' : ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
      * Vérifie si une date d'expiration est dépassée par rapport à la date actuelle.
-     *
-     * @param [type] $expirationDate
-     * @return boolean
      */
     private function isExpired(string|\DateTime|false $expirationDate): bool
     {
@@ -223,10 +237,7 @@ class ApiWrapper
             return true;
         }
         $expiration = is_string($expirationDate) ? new \DateTime($expirationDate) : $expirationDate;
-        $now = new \DateTime();
-        $this->apiLogger->debug('Current time: ' . $now->format('Y-m-d H:i:s'));
-        $this->apiLogger->debug('Token expiry time: ' . $expiration->format('Y-m-d H:i:s'));
-        return $expiration < $now;
+        return $expiration < new \DateTime();
     }
 
     /**
@@ -419,7 +430,14 @@ class ApiWrapper
         try {
             $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
         } catch (Exception $e) {
-            throw new Exception('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.', 401, $e);
+            $isTokenError = str_contains($e->getMessage(), 'token')
+                || str_contains($e->getMessage(), 'Token')
+                || str_contains($e->getMessage(), 'expired')
+                || $e->getCode() === 401;
+            if ($isTokenError) {
+                throw new Exception('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.', 401, $e);
+            }
+            throw new Exception('Erreur lors de la récupération du token pour l\'organisation ' . $organizationSlug . ' : ' . $e->getMessage(), 0, $e);
         }
 
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {

@@ -309,14 +309,23 @@ class WidgetController
             throw new Exception("Aucun widget trouvé pour le Event ID fourni.");
         }
 
-        $data = $this->fetchEventDonationData($eventGuid);
+        try {
+            $data = $this->fetchEventDonationData($eventGuid);
+            $currentAmount = $data['cacheData']['amount'];
+            $event = $data['event'];
+        } catch (Exception $e) {
+            error_log('[WidgetEventDonation] Erreur API init pour event ' . $eventGuid . ' : ' . $e->getMessage());
+            $event = $this->eventRepository->selectByGuid($eventGuid);
+            $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event);
+            $currentAmount = $cacheData['amount'] ?? 0;
+        }
 
         return $this->view->render($response, 'widget/donation.html.twig', [
             'donationGoalWidget' => $donationGoalWidget,
-            'currentAmount' => $data['cacheData']['amount'],
-            'goal' => $data['event']->goal,
+            'currentAmount' => $currentAmount,
+            'goal' => $event->goal,
             'event' => 1,
-            'isTestMode' => (bool) $data['event']->is_test_mode,
+            'isTestMode' => (bool) $event->is_test_mode,
         ]);
     }
 
@@ -362,21 +371,27 @@ class WidgetController
                 ?? ['continuation_token' => ''];
 
             if (!$this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
-                $result = $this->apiWrapper->getAllOrders(
-                    $charityStream->organization_slug,
-                    $charityStream->form_slug,
-                    0,
-                    $cacheData['continuation_token'],
-                );
+                try {
+                    $result = $this->apiWrapper->getAllOrders(
+                        $charityStream->organization_slug,
+                        $charityStream->form_slug,
+                        0,
+                        $cacheData['continuation_token'],
+                    );
 
-                if ($cacheData['continuation_token'] !== $result['continuation_token']) {
-                    $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                        'continuation_token' => $result['continuation_token'],
-                    ]);
-                } else {
-                    $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
-                        'continuation_token' => $cacheData['continuation_token'],
-                    ]);
+                    if ($cacheData['continuation_token'] !== $result['continuation_token']) {
+                        $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                            'continuation_token' => $result['continuation_token'],
+                        ]);
+                    } else {
+                        $this->widgetRepository->updateAlertWidgetCacheData($charityStream->guid, [
+                            'continuation_token' => $cacheData['continuation_token'],
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    // Token invalide ou erreur API : on rend le widget avec le cache existant
+                    // Le polling (fetch) réessaiera automatiquement
+                    error_log('[WidgetAlert] Erreur API init pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
                 }
             }
         }
@@ -443,7 +458,12 @@ class WidgetController
 
             return $this->jsonResponse($response, $result);
         } catch (Exception $e) {
-            return $this->jsonError($response, 'Impossible de récupérer les commandes.', 500);
+            $status = $e->getCode() === 401 ? 401 : 500;
+            $message = $status === 401
+                ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
+                : 'Impossible de récupérer les commandes.';
+            error_log('[WidgetAlertFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            return $this->jsonError($response, $message, $status);
         }
     }
 
@@ -458,14 +478,24 @@ class WidgetController
             throw new Exception("Aucun widget trouvé pour le Charity Stream ID fourni.");
         }
 
-        $data = $this->fetchStreamDonationData($streamGuid);
+        try {
+            $data = $this->fetchStreamDonationData($streamGuid);
+            $currentAmount = $data['result']['amount'];
+            $stream = $data['stream'];
+        } catch (Exception $e) {
+            // Token invalide ou erreur API : on rend le widget avec le cache existant
+            error_log('[WidgetDonation] Erreur API init pour stream ' . $streamGuid . ' : ' . $e->getMessage());
+            $stream = $this->streamRepository->selectByGuid($streamGuid);
+            $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($stream);
+            $currentAmount = $cacheData['amount'] ?? 0;
+        }
 
         return $this->view->render($response, 'widget/donation.html.twig', [
             'donationGoalWidget' => $donationGoalWidget,
-            'currentAmount' => $data['result']['amount'],
-            'goal' => $data['stream']->goal,
+            'currentAmount' => $currentAmount,
+            'goal' => $stream->goal,
             'stream' => 1,
-            'isTestMode' => (bool) $data['stream']->is_test_mode,
+            'isTestMode' => (bool) $stream->is_test_mode,
         ]);
     }
 
@@ -485,7 +515,12 @@ class WidgetController
             $data = $this->fetchStreamDonationData($charityStreamId);
             return $this->jsonResponse($response, $data['result']);
         } catch (Exception $e) {
-            return $this->jsonError($response, 'Impossible de récupérer les commandes.', 500);
+            $status = $e->getCode() === 401 ? 401 : 500;
+            $message = $status === 401
+                ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
+                : 'Impossible de récupérer les commandes.';
+            error_log('[WidgetDonationFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            return $this->jsonError($response, $message, $status);
         }
     }
 
@@ -500,17 +535,29 @@ class WidgetController
             throw new Exception("Aucun widget card trouvé pour le Charity Stream ID fourni.");
         }
 
-        $data = $this->fetchStreamCardData($streamGuid);
+        try {
+            $data = $this->fetchStreamCardData($streamGuid);
+            $currentAmount = $data['amount'];
+            $donors = $data['donors'];
+            $stream = $data['stream'];
+        } catch (Exception $e) {
+            // Token invalide ou erreur API : on rend le widget avec le cache existant
+            error_log('[WidgetCard] Erreur API init pour stream ' . $streamGuid . ' : ' . $e->getMessage());
+            $stream = $this->streamRepository->selectByGuid($streamGuid);
+            $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($stream);
+            $currentAmount = $cacheData['amount'] ?? 0;
+            $donors = $cacheData['donors'] ?? 0;
+        }
 
         return $this->view->render($response, 'widget/card.html.twig', [
             'cardWidget' => $cardWidget,
             'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
-            'currentAmount' => $data['amount'],
-            'donorCount' => $data['donors'],
-            'percentage' => $this->calculatePercentage($data['amount'], $data['stream']->goal),
-            'goal' => $data['stream']->goal ?: 1,
+            'currentAmount' => $currentAmount,
+            'donorCount' => $donors,
+            'percentage' => $this->calculatePercentage($currentAmount, $stream->goal),
+            'goal' => $stream->goal ?: 1,
             'stream' => 1,
-            'isTestMode' => (bool) $data['stream']->is_test_mode,
+            'isTestMode' => (bool) $stream->is_test_mode,
         ]);
     }
 
@@ -525,7 +572,12 @@ class WidgetController
             $data = $this->fetchStreamCardData($charityStreamId);
             return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
         } catch (Exception $e) {
-            return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
+            $status = $e->getCode() === 401 ? 401 : 500;
+            $message = $status === 401
+                ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
+                : 'Impossible de récupérer les données.';
+            error_log('[WidgetCardFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            return $this->jsonError($response, $message, $status);
         }
     }
 
@@ -540,17 +592,28 @@ class WidgetController
             throw new Exception("Aucun widget card trouvé pour le Event ID fourni.");
         }
 
-        $data = $this->fetchEventCardData($eventGuid);
+        try {
+            $data = $this->fetchEventCardData($eventGuid);
+            $currentAmount = $data['amount'];
+            $donors = $data['donors'];
+            $event = $data['event'];
+        } catch (Exception $e) {
+            error_log('[WidgetEventCard] Erreur API init pour event ' . $eventGuid . ' : ' . $e->getMessage());
+            $event = $this->eventRepository->selectByGuid($eventGuid);
+            $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event);
+            $currentAmount = $cacheData['amount'] ?? 0;
+            $donors = $cacheData['donors'] ?? 0;
+        }
 
         return $this->view->render($response, 'widget/card.html.twig', [
             'cardWidget' => $cardWidget,
             'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
-            'currentAmount' => $data['amount'],
-            'donorCount' => $data['donors'],
-            'percentage' => $this->calculatePercentage($data['amount'], $data['event']->goal),
-            'goal' => $data['event']->goal ?: 1,
+            'currentAmount' => $currentAmount,
+            'donorCount' => $donors,
+            'percentage' => $this->calculatePercentage($currentAmount, $event->goal),
+            'goal' => $event->goal ?: 1,
             'event' => 1,
-            'isTestMode' => (bool) $data['event']->is_test_mode,
+            'isTestMode' => (bool) $event->is_test_mode,
         ]);
     }
 

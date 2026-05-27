@@ -42,8 +42,9 @@ class AdminController
         $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
         $invalidSlugs = [];
         foreach ($streams as $stream) {
-            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
-                $invalidSlugs[] = $stream->organization_slug;
+            $slug = $stream->organization_slug;
+            if ($slug && !in_array(strtolower($slug), array_map('strtolower', $validSlugs))) {
+                $invalidSlugs[] = $slug;
             }
         }
         return array_unique($invalidSlugs);
