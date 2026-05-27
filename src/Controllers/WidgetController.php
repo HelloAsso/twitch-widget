@@ -588,6 +588,9 @@ class WidgetController
         }
 
         $body = $request->getParsedBody();
+        if (empty($body)) {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+        }
         $amount = (int) ($body['amount'] ?? 1000);
         $pseudo = $body['pseudo'] ?? 'Testeur';
         $message = $body['message'] ?? 'Don de test';
@@ -622,6 +625,9 @@ class WidgetController
         }
 
         $body = $request->getParsedBody();
+        if (empty($body)) {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+        }
         $amount = (int) ($body['amount'] ?? 1000);
         $pseudo = $body['pseudo'] ?? 'Testeur';
         $message = $body['message'] ?? 'Don de test';

@@ -170,6 +170,7 @@ $container->set(Messages::class, function () {
 
 $app = AppFactory::createFromContainer($container);
 $app->addRoutingMiddleware();
+$app->addBodyParsingMiddleware();
 
 if (!session_id())
     @session_start();
