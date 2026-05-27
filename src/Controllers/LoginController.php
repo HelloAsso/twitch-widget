@@ -265,6 +265,9 @@ class LoginController
 
         if ($user && $password && $passwordRepeat && $password === $passwordRepeat) {
             $this->userRepository->updatePassword($user, $password);
+            if (!$user->email_verified) {
+                $this->userRepository->verifyEmail($user);
+            }
             $this->messages->addMessage('password_reset', true);
             return $this->redirectToRoute($request, $response, 'app_index');
         }

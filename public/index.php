@@ -209,6 +209,7 @@ $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->
 
 $app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
 $app->post('/admin/user', [AdminController::class, 'newUser'])->add(new AuthAdminMiddleware())->setName('app_user_new');
+$app->post('/admin/user/{id}/delete', [AdminController::class, 'deleteUser'])->add(new AuthAdminMiddleware())->setName('app_user_delete');
 $app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthMiddleware())->setName('app_event_new');
 $app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthMiddleware())->setName('app_event_delete');
 $app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');

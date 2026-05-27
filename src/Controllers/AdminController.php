@@ -139,6 +139,31 @@ class AdminController
     }
 
     /**
+     * Supprime un utilisateur (réservé aux admins).
+     * Un admin ne peut pas se supprimer lui-même.
+     */
+    public function deleteUser(Request $request, Response $response, array $args): Response
+    {
+        $currentUser = $request->getAttribute('user');
+        $userId = (int) $args['id'];
+
+        if ($currentUser->id == $userId) {
+            $this->messages->addMessage('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
+        }
+
+        $user = $this->userRepository->selectById($userId);
+        if (!$user) {
+            $this->messages->addMessage('error', 'Utilisateur introuvable.');
+            return $this->redirectToRoute($request, $response, 'app_admin_index');
+        }
+
+        $this->userRepository->deleteById($userId);
+        $this->messages->addMessage('success', 'Utilisateur ' . $user->email . ' supprimé.');
+        return $this->redirectToRoute($request, $response, 'app_admin_index');
+    }
+
+    /**
      * Génère le contenu HTML de l'email de bienvenue envoyé aux nouveaux utilisateurs.
      */
     private function buildWelcomeEmail(string $resetUrl): string

@@ -88,6 +88,14 @@ class UserRepository
         return $stmt->fetchAll();
     }
 
+    public function selectById(int $id): ?User
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM ' . $this->prefix . 'users WHERE id = ?');
+        $stmt->execute([$id]);
+        $stmt->setFetchMode(PDO::FETCH_CLASS, User::class);
+        return $stmt->fetch() ?: null;
+    }
+
     public function findOrCreate(string $email): User
     {
         return $this->select($email) ?? $this->insert($email);
@@ -146,5 +154,14 @@ class UserRepository
     {
         $stmt = $this->pdo->prepare('DELETE FROM ' . $this->prefix . 'users WHERE email = ?');
         $stmt->execute([$email]);
+    }
+
+    public function deleteById(int $id): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM ' . $this->prefix . 'user_right WHERE id_user = ?');
+        $stmt->execute([$id]);
+
+        $stmt = $this->pdo->prepare('DELETE FROM ' . $this->prefix . 'users WHERE id = ?');
+        $stmt->execute([$id]);
     }
 }

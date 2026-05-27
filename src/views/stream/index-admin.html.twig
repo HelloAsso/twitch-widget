@@ -192,6 +192,7 @@
 								<th>Rôle</th>
 								<th>Email vérifié</th>
 								<th>Date de création</th>
+								<th>Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -214,6 +215,13 @@
 										{% endif %}
 									</td>
 									<td>{{ u.creation_date ? u.creation_date|date('d/m/Y H:i') : '—' }}</td>
+									<td>
+										{% if u.id != currentUser.id %}
+											<form action="/admin/user/{{ u.id }}/delete" method="POST" class="d-inline">
+												<button type="submit" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" data-bs-title="Supprimer" onclick="confirmDelete(event)">🗑️</button>
+											</form>
+										{% endif %}
+									</td>
 								</tr>
 							{% endfor %}
 						</tbody>
