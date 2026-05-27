@@ -46,7 +46,12 @@ try {
 
     $logger->info('Cron démarré. IP du serveur : ' . gethostbyname(gethostname()) . '. API_AUTH_URL : ' . $_SERVER['API_AUTH_URL']);
     echo count($tokens) . " token(s) à rafraîchir\n";
-    foreach ($tokens as $token) {
+    foreach ($tokens as $index => $token) {
+        // Pause de 2s entre chaque refresh pour respecter le rate limit auth HelloAsso
+        // (max 10 appels / 10s, 20 appels / 10min, 50 appels / heure)
+        if ($index > 0) {
+            sleep(2);
+        }
         try {
             $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
             echo "Token rafraîchi pour " . ($token->organization_slug ?? 'global') . "\n";

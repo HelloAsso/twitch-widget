@@ -216,7 +216,7 @@ Pour éviter de surcharger l'API HelloAsso, un **cache serveur avec TTL** est en
 - Lors d'un appel `/fetch`, le serveur vérifie d'abord si le cache est encore **frais** (âge < TTL). Si oui, les données en cache sont retournées directement **sans aucun appel à l'API HelloAsso**.
 - Si le cache est expiré, l'API HelloAsso est interrogée, puis le cache est mis à jour avec les nouvelles données et un nouveau timestamp.
 
-**Le TTL est configurable** via la variable d'environnement `WIDGET_CACHE_TTL` (en secondes, défaut : **15 secondes**).
+**Le TTL est configurable** via la variable d'environnement `WIDGET_CACHE_TTL` (en secondes, défaut : **30 secondes**).
 
 Cela garantit qu'**un seul appel API HelloAsso** est effectué par widget et par période de TTL, quel que soit le nombre de visiteurs simultanés.
 
@@ -247,4 +247,4 @@ Key environment variables include:
 - Azure Blob Storage (BLOB_CONNECTION_STRING, BLOB_URL)
 - Email service (MANDRILL_API)
 - Application domain (WEBSITE_DOMAIN)
-- Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 15)
+- Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 30)

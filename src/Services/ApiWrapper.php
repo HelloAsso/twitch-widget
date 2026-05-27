@@ -20,6 +20,21 @@ class ApiWrapper
 {
     private Client $client;
 
+    /**
+     * Fichier partagé pour tracer les appels auth (rate limiting inter-processus).
+     */
+    private string $authRateLimitFile;
+
+    /**
+     * Règles de rate limit HelloAsso pour l'API d'authentification.
+     * Chaque règle : [max_calls, window_seconds]
+     */
+    private const AUTH_RATE_LIMITS = [
+        [10, 10],      // Règle #1 : 10 appels / 10 secondes
+        [20, 600],     // Règle #2 : 20 appels / 10 minutes
+        [50, 3600],    // Règle #3 : 50 appels / heure
+    ];
+
     public function __construct(
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
@@ -32,27 +47,56 @@ class ApiWrapper
         private Logger $apiLogger,
     ) {
         $this->client = new Client();
+        $this->authRateLimitFile = sys_get_temp_dir() . '/twitch_widget_auth_rate_limit.json';
     }
 
     /**
      * Exécute une requête HTTP via Guzzle avec gestion d'erreur centralisée.
+     * Gère le rate limiting (HTTP 429) avec retry automatique.
      *
      * @return \Psr\Http\Message\ResponseInterface
      */
     private function httpRequest(string $method, string $url, array $options, string $errorContext): \Psr\Http\Message\ResponseInterface
     {
-        try {
-            return $this->client->request($method, $url, $options);
-        } catch (RequestException $e) {
-            $this->apiLogger->error("Erreur lors de {$errorContext}: " . $e->getMessage());
-            if ($e->hasResponse()) {
-                $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+        $maxRetries = 2;
+
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response = $this->client->request($method, $url, $options);
+
+                // Log si on approche du rate limit
+                $remaining = $response->getHeaderLine('X-RateLimit-Remaining');
+                if ($remaining !== '' && (int) $remaining <= 5) {
+                    $this->apiLogger->warning("Rate limit proche pour {$errorContext} : {$remaining} requêtes restantes.");
+                }
+
+                return $response;
+            } catch (RequestException $e) {
+                // Gestion HTTP 429 — Too Many Requests
+                if ($e->hasResponse() && $e->getResponse()->getStatusCode() === 429) {
+                    $retryAfter = (int) ($e->getResponse()->getHeaderLine('Retry-After') ?: 5);
+                    $retryAfter = min($retryAfter, 30); // Cap à 30 secondes
+                    $this->apiLogger->warning("Rate limit atteint pour {$errorContext}. Retry dans {$retryAfter}s (tentative " . ($attempt + 1) . "/{$maxRetries}).");
+
+                    if ($attempt < $maxRetries) {
+                        sleep($retryAfter);
+                        continue;
+                    }
+                }
+
+                $this->apiLogger->error("Erreur lors de {$errorContext}: " . $e->getMessage());
+                if ($e->hasResponse()) {
+                    $this->apiLogger->error('Response body: ' . $e->getResponse()->getBody());
+                }
+                throw new Exception("Erreur lors de {$errorContext} : " . $e->getMessage(), 0, $e);
+            } catch (GuzzleException $e) {
+                $this->apiLogger->error("Erreur Guzzle lors de {$errorContext}: " . $e->getMessage());
+                throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
             }
-            throw new Exception("Erreur lors de {$errorContext} : " . $e->getMessage(), 0, $e);
-        } catch (GuzzleException $e) {
-            $this->apiLogger->error("Erreur Guzzle lors de {$errorContext}: " . $e->getMessage());
-            throw new Exception("Erreur de connexion à l'API : " . $e->getMessage(), 0, $e);
         }
+
+        // Ne devrait jamais être atteint
+        throw new Exception("Erreur inattendue lors de {$errorContext}.");
     }
 
     /**
@@ -75,6 +119,8 @@ class ApiWrapper
      */
     private function generateGlobalAccessToken(): AccessToken
     {
+        $this->throttleAuthCall();
+
         $response = $this->httpRequest('POST', $this->apiAuthUrl, [
             'form_params' => [
                 'grant_type' => 'client_credentials',
@@ -120,11 +166,13 @@ class ApiWrapper
      * Rafraîchit un token d'accès pour une organisation donnée en utilisant le refresh token, et met à jour la base de données.
      *
      * @param string $refreshToken
-     * @param string $organization_slug
+     * @param string $organizationSlug
      * @return AccessToken
      */
     public function refreshToken(string $refreshToken, string $organizationSlug): ?AccessToken
     {
+        $this->throttleAuthCall();
+
         $response = $this->httpRequest('POST', $this->apiAuthUrl, [
             'form_params' => [
                 'grant_type' => 'refresh_token',
@@ -155,14 +203,14 @@ class ApiWrapper
     }
   
     /**
-     * Récupère le token d'accès global ou pour une organisation donnée, et le rafraîchit si nécessaire.
-     * 
+     * Récupère le token d'accès global, et le régénère si nécessaire.
+     *
      * @return AccessToken
      */
     public function getGlobalAccessToken(): AccessToken
     {
         $tokenData = $this->accessTokenRepository->selectBySlug(null);
-        
+
         if ($tokenData == null || $this->isExpired($tokenData->access_token_expires_at ?? false)) {
             $this->apiLogger->info('Global access token absent ou expiré, génération d\'un nouveau.');
             $tokenData = $this->generateGlobalAccessToken();
@@ -352,6 +400,8 @@ class ApiWrapper
      */
     public function exchangeAuthorizationCode(string $code, string $redirectUri, string $codeVerifier): array
     {
+        $this->throttleAuthCall();
+
         $response = $this->httpRequest('POST', $this->apiAuthUrl, [
             'form_params' => [
                 'grant_type' => 'authorization_code',
@@ -392,7 +442,7 @@ class ApiWrapper
      */
     private function getDonationFormOrders(string $organizationSlug, string $donationSlug, string $accessToken, ?string $continuationToken = null): array
     {
-        $query = ['withDetails' => 'true', 'sortOrder' => 'asc'];
+        $query = ['withDetails' => 'true', 'sortOrder' => 'asc', 'pageSize' => 100];
         if ($continuationToken) {
             $query['continuationToken'] = $continuationToken;
         }
@@ -443,6 +493,7 @@ class ApiWrapper
         if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
             throw new Exception('Jeton d\'accès API non trouvé ou expiré pour l\'organisation ' . $organizationSlug . '.', 401);
         }
+
         do {
             $formOrdersData = $this->getDonationFormOrders(
                 $organizationSlug,
@@ -485,6 +536,11 @@ class ApiWrapper
 
             $previousToken = $continuationToken;
             $continuationToken = $formOrdersData['pagination']['continuationToken'] ?? null;
+
+            // Pause entre les pages pour respecter le rate limit HelloAsso
+            if ($continuationToken && $continuationToken !== $previousToken) {
+                usleep(200_000); // 200ms entre chaque page
+            }
         } while ($continuationToken && $continuationToken !== $previousToken);
 
         return [
@@ -493,4 +549,116 @@ class ApiWrapper
             'continuation_token' => $continuationToken
         ];
     }
+
+    /**
+     * Vérifie et applique le rate limiting pour les appels à l'API d'authentification HelloAsso.
+     * Utilise un fichier partagé pour coordonner entre les processus PHP concurrents.
+     *
+     * Règles :
+     * - 10 appels max toutes les 10 secondes
+     * - 20 appels max toutes les 10 minutes
+     * - 50 appels max par heure
+     *
+     * @throws Exception si le rate limit est atteint et ne peut pas être résolu par attente
+     */
+    private function throttleAuthCall(): void
+    {
+        $maxWait = 15; // Attente max en secondes avant d'abandonner
+        $waited = 0;
+
+        while ($waited < $maxWait) {
+            $timestamps = $this->readAuthTimestamps();
+            $now = microtime(true);
+
+            // Nettoyer les timestamps de plus d'1 heure (plus grande fenêtre)
+            $timestamps = array_values(array_filter($timestamps, fn($ts) => ($now - $ts) < 3600));
+
+            $waitNeeded = 0;
+
+            foreach (self::AUTH_RATE_LIMITS as [$maxCalls, $windowSeconds]) {
+                $windowStart = $now - $windowSeconds;
+                $callsInWindow = count(array_filter($timestamps, fn($ts) => $ts >= $windowStart));
+
+                if ($callsInWindow >= $maxCalls) {
+                    // Calculer combien de temps attendre pour que le plus ancien appel sorte de la fenêtre
+                    $oldestInWindow = array_values(array_filter($timestamps, fn($ts) => $ts >= $windowStart));
+                    sort($oldestInWindow);
+                    $waitForThis = ceil($oldestInWindow[0] - $windowStart + 1);
+                    $waitNeeded = max($waitNeeded, $waitForThis);
+
+                    $this->apiLogger->warning(
+                        "Auth rate limit proche : {$callsInWindow}/{$maxCalls} appels dans les {$windowSeconds}s. Attente de {$waitForThis}s."
+                    );
+                }
+            }
+
+            if ($waitNeeded === 0) {
+                // Pas de limite atteinte, enregistrer cet appel et continuer
+                $timestamps[] = $now;
+                $this->writeAuthTimestamps($timestamps);
+                return;
+            }
+
+            // Attendre et réessayer
+            $sleepTime = min($waitNeeded, $maxWait - $waited);
+            if ($sleepTime <= 0) {
+                break;
+            }
+
+            $this->apiLogger->info("Auth rate limit : attente de {$sleepTime}s avant le prochain appel auth.");
+            sleep((int) $sleepTime);
+            $waited += $sleepTime;
+        }
+
+        throw new Exception("Rate limit auth HelloAsso atteint. Impossible d'effectuer l'appel après {$maxWait}s d'attente.");
+    }
+
+    /**
+     * Lit les timestamps des appels auth depuis le fichier partagé.
+     *
+     * @return float[]
+     */
+    private function readAuthTimestamps(): array
+    {
+        if (!file_exists($this->authRateLimitFile)) {
+            return [];
+        }
+
+        $fp = fopen($this->authRateLimitFile, 'r');
+        if (!$fp) {
+            return [];
+        }
+
+        flock($fp, LOCK_SH);
+        $content = stream_get_contents($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
+        $data = json_decode($content, true);
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Écrit les timestamps des appels auth dans le fichier partagé.
+     *
+     * @param float[] $timestamps
+     */
+    private function writeAuthTimestamps(array $timestamps): void
+    {
+        $fp = fopen($this->authRateLimitFile, 'c');
+        if (!$fp) {
+            $this->apiLogger->warning('Impossible d\'écrire le fichier de rate limit auth.');
+            return;
+        }
+
+        flock($fp, LOCK_EX);
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode(array_values($timestamps)));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
 }
+
+

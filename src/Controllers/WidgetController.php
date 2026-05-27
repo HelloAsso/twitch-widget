@@ -24,7 +24,7 @@ class WidgetController
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
     ) {
-        $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 15);
+        $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
     }
 
     // ── Helpers ───────────────────────────────────────────────────
