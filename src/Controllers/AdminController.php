@@ -49,10 +49,13 @@ class AdminController
         return array_unique($invalidSlugs);
     }
 
-    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = []): Response
+    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = [], array $queryParams = []): Response
     {
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor($routeName, $params);
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
         return $response->withHeader('Location', $url)->withStatus(302);
     }
 
@@ -73,6 +76,7 @@ class AdminController
             "events" => $events,
             "messages" => $this->messages->getMessages(),
             "currentUser" => $user,
+            "activeTab" => $request->getQueryParams()['tab'] ?? 'events',
             "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
             "openCreateStream" => isset($request->getQueryParams()['createStream']),
             "openCreateEvent" => isset($request->getQueryParams()['createEvent']),
@@ -96,13 +100,13 @@ class AdminController
 
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->messages->addMessage('error', 'Email invalide');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $existing = $this->userRepository->select($email);
         if ($existing) {
             $this->messages->addMessage('error', 'Un utilisateur avec cet email existe déjà');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $user = $this->userRepository->insert($email);
@@ -131,11 +135,11 @@ class AdminController
                 'error' => $e->getMessage(),
             ]);
             $this->messages->addMessage('error', 'Utilisateur créé mais l\'email de bienvenue n\'a pas pu être envoyé.');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $this->messages->addMessage('success', 'Utilisateur créé : ' . $email . ' — un email de bienvenue a été envoyé.');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
     }
 
     /**
@@ -149,18 +153,18 @@ class AdminController
 
         if ($currentUser->id == $userId) {
             $this->messages->addMessage('error', 'Vous ne pouvez pas supprimer votre propre compte.');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $user = $this->userRepository->selectById($userId);
         if (!$user) {
             $this->messages->addMessage('error', 'Utilisateur introuvable.');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $this->userRepository->deleteById($userId);
         $this->messages->addMessage('success', 'Utilisateur ' . $user->email . ' supprimé.');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
     }
 
     /**
@@ -208,7 +212,7 @@ class AdminController
         $this->userRepository->insertRight($owner, null, $event);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
     }
 
     public function deleteEvent(Request $request, Response $response, array $args): Response
@@ -218,13 +222,13 @@ class AdminController
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
         if (!$event) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès cet évènement');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
         }
 
         $this->eventRepository->delete($event);
         $this->messages->addMessage('success', 'Évènement supprimé');
 
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
     }
 
     public function editEvent(Request $request, Response $response, array $args): Response
@@ -313,7 +317,7 @@ class AdminController
         }
 
         $this->messages->addMessage('success', 'Stream ajouté');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
     }
 
     public function deleteStream(Request $request, Response $response, array $args): Response
@@ -323,13 +327,13 @@ class AdminController
         $stream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         if (!$stream) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
         }
 
         $this->streamRepository->delete($stream);
         $this->messages->addMessage('success', 'Stream supprimé');
 
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
     }
 
     public function editStream(Request $request, Response $response, array $args): Response

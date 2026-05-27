@@ -77,18 +77,18 @@
 			{# ── Onglets ── #}
 			<ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
 				<li class="nav-item" role="presentation">
-					<button class="nav-link active" id="events-tab" data-bs-toggle="tab" data-bs-target="#events-pane" type="button" role="tab" aria-controls="events-pane" aria-selected="true">
+					<button class="nav-link {{ activeTab == 'events' ? 'active' : '' }}" id="events-tab" data-bs-toggle="tab" data-bs-target="#events-pane" type="button" role="tab" aria-controls="events-pane" aria-selected="{{ activeTab == 'events' ? 'true' : 'false' }}">
 						Évènements <span class="badge text-bg-secondary ms-1">{{ events|length }}</span>
 					</button>
 				</li>
 				<li class="nav-item" role="presentation">
-					<button class="nav-link" id="streams-tab" data-bs-toggle="tab" data-bs-target="#streams-pane" type="button" role="tab" aria-controls="streams-pane" aria-selected="false">
+					<button class="nav-link {{ activeTab == 'streams' ? 'active' : '' }}" id="streams-tab" data-bs-toggle="tab" data-bs-target="#streams-pane" type="button" role="tab" aria-controls="streams-pane" aria-selected="{{ activeTab == 'streams' ? 'true' : 'false' }}">
 						Streams <span class="badge text-bg-secondary ms-1">{{ streams|length }}</span>
 					</button>
 				</li>
 				{% if users is defined %}
 				<li class="nav-item" role="presentation">
-					<button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab" aria-controls="users-pane" aria-selected="false">
+					<button class="nav-link {{ activeTab == 'users' ? 'active' : '' }}" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab" aria-controls="users-pane" aria-selected="{{ activeTab == 'users' ? 'true' : 'false' }}">
 						Utilisateurs <span class="badge text-bg-secondary ms-1">{{ users|length }}</span>
 					</button>
 				</li>
@@ -97,7 +97,7 @@
 
 			<div class="tab-content" id="adminTabsContent">
 				{# ── Onglet Évènements ── #}
-				<div class="tab-pane fade show active" id="events-pane" role="tabpanel" aria-labelledby="events-tab">
+				<div class="tab-pane fade {{ activeTab == 'events' ? 'show active' : '' }}" id="events-pane" role="tabpanel" aria-labelledby="events-tab">
 					<table class="table table-hover align-middle">
 						<thead>
 							<tr>
@@ -128,7 +128,7 @@
 				</div>
 
 				{# ── Onglet Streams ── #}
-				<div class="tab-pane fade" id="streams-pane" role="tabpanel" aria-labelledby="streams-tab">
+				<div class="tab-pane fade {{ activeTab == 'streams' ? 'show active' : '' }}" id="streams-pane" role="tabpanel" aria-labelledby="streams-tab">
 					<table class="table table-hover align-middle">
 						<thead>
 							<tr>
@@ -183,7 +183,7 @@
 
 				{# ── Onglet Utilisateurs ── #}
 				{% if users is defined %}
-				<div class="tab-pane fade" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
+				<div class="tab-pane fade {{ activeTab == 'users' ? 'show active' : '' }}" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
 					<table class="table table-hover align-middle">
 						<thead>
 							<tr>
