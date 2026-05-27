@@ -6,6 +6,7 @@ use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
+use App\Models\User;
 use App\Services\ApiWrapper;
 use Exception;
 use MailchimpTransactional\ApiClient;
@@ -50,6 +51,7 @@ class LoginController
 
         if ($user && password_verify($password, $user->password)) {
             if (isset($user->email_verified) && !$user->email_verified) {
+                $this->sendVerificationEmail($request, $user);
                 $this->messages->addMessage('email_not_verified', true);
                 return $this->redirectToRoute($request, $response, 'app_index');
             }
@@ -94,40 +96,9 @@ class LoginController
 
         // Créer l'utilisateur (email non vérifié)
         $user = $this->userRepository->insertWithPassword($email, $password);
-        $user = $this->userRepository->insertResetToken($user);
 
         // Envoyer l'email de vérification
-        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
-        $verifyUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_verify_email', ["token" => $user->reset_token]);
-
-        try {
-            $result = $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Confirmez votre adresse email",
-                    "html" => $this->buildVerificationEmail($verifyUrl),
-                    "to" => [["email" => $user->email, "type" => "to"]],
-                ],
-            ]);
-
-            // Le client Mandrill retourne l'exception au lieu de la lancer
-            if ($result instanceof Exception) {
-                throw $result;
-            }
-
-            // Vérifier le statut de l'envoi Mandrill
-            if (is_array($result) && isset($result[0]->status) && in_array($result[0]->status, ['rejected', 'invalid'])) {
-                throw new Exception('Email rejeté par Mandrill : ' . ($result[0]->reject_reason ?? 'raison inconnue'));
-            }
-        } catch (Exception $e) {
-            $this->logger->error('Échec de l\'envoi de l\'email de vérification', [
-                'email' => $user->email,
-                'error' => $e->getMessage(),
-            ]);
-            $this->messages->addMessage('register_error', 'Votre compte a été créé mais l\'email de vérification n\'a pas pu être envoyé. Veuillez réessayer plus tard.');
-            return $this->redirectToRoute($request, $response, 'app_register');
-        }
+        $this->sendVerificationEmail($request, $user);
 
         $this->messages->addMessage('register_success', true);
         return $this->redirectToRoute($request, $response, 'app_index');
@@ -178,6 +149,43 @@ class LoginController
         }
 
         return $errors;
+    }
+
+    /**
+     * Envoie (ou renvoie) l'email de vérification à un utilisateur.
+     * Génère un nouveau token de réinitialisation avant l'envoi.
+     */
+    private function sendVerificationEmail(Request $request, User $user): void
+    {
+        $user = $this->userRepository->insertResetToken($user);
+
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $verifyUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_verify_email', ["token" => $user->reset_token]);
+
+        try {
+            $result = $this->mailchimp->messages->send([
+                "message" => [
+                    "from_email" => "contact@helloasso.io",
+                    "from_name" => "HelloAsso",
+                    "subject" => "Confirmez votre adresse email",
+                    "html" => $this->buildVerificationEmail($verifyUrl),
+                    "to" => [["email" => $user->email, "type" => "to"]],
+                ],
+            ]);
+
+            if ($result instanceof Exception) {
+                throw $result;
+            }
+
+            if (is_array($result) && isset($result[0]->status) && in_array($result[0]->status, ['rejected', 'invalid'])) {
+                throw new Exception('Email rejeté par Mandrill : ' . ($result[0]->reject_reason ?? 'raison inconnue'));
+            }
+        } catch (Exception $e) {
+            $this->logger->error('Échec de l\'envoi de l\'email de vérification', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
