@@ -363,6 +363,33 @@ class ApiWrapper
     }
 
     /**
+     * Récupère la liste des formulaires d'une organisation pour les types donnés.
+     *
+     * @param string $organizationSlug
+     * @param array $formTypes Liste des types de formulaires à récupérer (ex: ['Donation', 'CrowdFunding'])
+     * @return array
+     */
+    public function getOrganizationForms(string $organizationSlug, array $formTypes = ['Donation', 'CrowdFunding']): array
+    {
+        $tokenData = $this->getOrganizationAccessToken($organizationSlug);
+
+        $response = $this->httpRequest('GET', "{$this->apiUrl}/organizations/{$organizationSlug}/forms", [
+            'query' => [
+                'formTypes' => implode(',', $formTypes),
+                'pageSize' => 50,
+            ],
+            'headers' => [
+                'Authorization' => 'Bearer ' . $tokenData->access_token,
+                'accept' => 'application/json',
+            ],
+        ], "la récupération des formulaires pour {$organizationSlug}");
+
+        $data = $this->decodeJsonResponse($response);
+
+        return $data['data'] ?? [];
+    }
+
+    /**
      * Récupère la liste des formulaires de don d'une organisation.
      *
      * @param string $organizationSlug
@@ -370,22 +397,7 @@ class ApiWrapper
      */
     public function getDonationForms(string $organizationSlug): array
     {
-        $tokenData = $this->getOrganizationAccessToken($organizationSlug);
-
-        $response = $this->httpRequest('GET', "{$this->apiUrl}/organizations/{$organizationSlug}/forms", [
-            'query' => [
-                'formTypes' => 'Donation',
-                'pageSize' => 50,
-            ],
-            'headers' => [
-                'Authorization' => 'Bearer ' . $tokenData->access_token,
-                'accept' => 'application/json',
-            ],
-        ], "la récupération des formulaires de don pour {$organizationSlug}");
-
-        $data = $this->decodeJsonResponse($response);
-
-        return $data['data'] ?? [];
+        return $this->getOrganizationForms($organizationSlug, ['Donation']);
     }
 
     /**
@@ -480,16 +492,18 @@ class ApiWrapper
      * @param [type] $continuationToken
      * @return array
      */
-    private function getDonationFormOrders(string $organizationSlug, string $donationSlug, string $accessToken, ?string $continuationToken = null): array
+    private function getDonationFormOrders(string $organizationSlug, string $donationSlug, string $accessToken, ?string $continuationToken = null, string $formType = 'Donation'): array
     {
         $query = ['withDetails' => 'true', 'sortOrder' => 'asc', 'pageSize' => 100];
         if ($continuationToken) {
             $query['continuationToken'] = $continuationToken;
         }
 
+        $formTypePath = $formType ?: 'Donation';
+
         $response = $this->httpRequest(
             'GET',
-            "{$this->apiUrl}/organizations/{$organizationSlug}/forms/donation/{$donationSlug}/orders",
+            "{$this->apiUrl}/organizations/{$organizationSlug}/forms/{$formTypePath}/{$donationSlug}/orders",
             [
                 'query' => $query,
                 'headers' => [
@@ -512,7 +526,7 @@ class ApiWrapper
      * @param [type] $continuationToken
      * @return array
      */
-    public function getAllOrders(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null): array
+    public function getAllOrders(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null, string $formType = 'Donation'): array
     {
         $previousToken = '';
         $donations = [];
@@ -539,7 +553,8 @@ class ApiWrapper
                 $organizationSlug,
                 $formSlug,
                 $organizationAccessToken->access_token,
-                $continuationToken
+                $continuationToken,
+                $formType
             );
 
             if (!isset($formOrdersData['data'])) {

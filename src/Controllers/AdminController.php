@@ -316,7 +316,7 @@ class AdminController
             $event = $this->eventRepository->selectByUserAndId($user, $parentEvent);
         }
 
-        $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null);
+        $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null, $data['form_type'] ?? 'Donation');
         $this->userRepository->insertRight($owner, $stream, null);
 
         if ($event !== null && $parentStyle) {
@@ -376,7 +376,8 @@ class AdminController
             $availableEvents = $this->eventRepository->selectListByUser($user);
         }
 
-        $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/formulaires/' . $charityStream->form_slug;
+        $formTypeUrlSegment = ($charityStream->form_type === 'CrowdFunding') ? 'collectes' : 'formulaires';
+        $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/' . $formTypeUrlSegment . '/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
@@ -552,8 +553,8 @@ class AdminController
             // Stocker / mettre à jour les tokens
             $this->apiWrapper->storeOrUpdateToken($tokenData);
 
-            // Récupérer les formulaires de don
-            $forms = $this->apiWrapper->getDonationForms($organizationSlug);
+            // Récupérer les formulaires de don et de crowdfunding
+            $forms = $this->apiWrapper->getOrganizationForms($organizationSlug, ['Donation', 'CrowdFunding']);
         } catch (Exception $e) {
             $response->getBody()->write($this->buildCallbackPage(null, [], $e->getMessage()));
             return $response;

@@ -132,6 +132,11 @@
 
 			<h5 class="d-flex align-items-center gap-2">
 				Formulaire HelloAsso lié
+				{% if charityStream.form_type == 'CrowdFunding' %}
+					<span class="badge bg-info">🚀 Crowdfunding</span>
+				{% else %}
+					<span class="badge bg-success">🎁 Don</span>
+				{% endif %}
 				<a href="{{ donationUrl }}" target="_blank" class="btn btn-sm btn-outline-primary">🔗 Ouvrir le formulaire</a>
 			</h5>
 

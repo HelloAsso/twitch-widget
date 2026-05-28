@@ -88,14 +88,23 @@
 						</div>
 						<div class="mb-3">
 							<label for="form_id" class="form-label fw-semibold">
-								<span class="me-1">📋</span> Slug du formulaire de don
+								<span class="me-1">📋</span> Slug du formulaire
 							</label>
 							<div class="input-group">
-								<span class="input-group-text text-muted small">…/formulaires/don/</span>
+								<span class="input-group-text text-muted small" id="manual_form_prefix">…/formulaires/don/</span>
 								<input type="text" class="form-control" id="form_id" name="form_slug"
-									value="{{ formSlug }}" placeholder="mon-formulaire-de-don" required>
+									value="{{ formSlug }}" placeholder="mon-formulaire" required>
 							</div>
 							<div class="invalid-feedback">Le slug du formulaire est requis.</div>
+						</div>
+						<div class="mb-3">
+							<label for="form_type" class="form-label fw-semibold">
+								<span class="me-1">📦</span> Type de formulaire
+							</label>
+							<select class="form-select" id="form_type" name="form_type" onchange="updateManualFormPrefix()">
+								<option value="Donation" selected>Formulaire de don</option>
+								<option value="CrowdFunding">Crowdfunding</option>
+							</select>
 						</div>
 						<div class="mb-4">
 							<label for="title" class="form-label fw-semibold">
@@ -133,7 +142,7 @@
 					<div id="stepConnect" class="text-center py-2">
 						<div class="mb-3 p-4 rounded-3 bg-body-tertiary">
 							<div class="fs-1 mb-2">🔑</div>
-							<p class="text-muted mb-0">Connectez votre association HelloAsso pour récupérer automatiquement vos formulaires de don.</p>
+							<p class="text-muted mb-0">Connectez votre association HelloAsso pour récupérer automatiquement vos formulaires de don et de crowdfunding.</p>
 						</div>
 						<button type="button" class="btn btn-primary btn-lg px-5 fw-semibold" id="connectAssoBtn" onclick="connectAsso()">
 							Connecter mon asso
@@ -191,14 +200,16 @@
 							{% endif %}
 
 							<input type="hidden" id="asso_organization_slug" name="organization_slug">
+						<input type="hidden" id="asso_form_type" name="form_type" value="Donation">
 
 							<div class="mb-3">
 								<label for="asso_form_slug" class="form-label fw-semibold">
-									<span class="me-1">📋</span> Formulaire de don
+									<span class="me-1">📋</span> Formulaire
 								</label>
 								<select class="form-select" id="asso_form_slug" name="form_slug" required>
 									<option value="">— Sélectionner un formulaire —</option>
 								</select>
+								<div class="form-text text-muted small" id="asso_form_type_hint"></div>
 								<div class="invalid-feedback">Veuillez sélectionner un formulaire.</div>
 							</div>
 

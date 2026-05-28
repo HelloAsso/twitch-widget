@@ -87,7 +87,8 @@ class WidgetController
                 $stream->organization_slug,
                 $stream->form_slug,
                 $streamCache['amount'],
-                $streamCache['continuation_token']
+                $streamCache['continuation_token'],
+                $stream->form_type ?? 'Donation'
             );
 
             $streamCache['amount'] = $result['amount'];
@@ -145,6 +146,7 @@ class WidgetController
             $charityStream->form_slug,
             $cacheData['amount'],
             $cacheData['continuation_token'],
+            $charityStream->form_type ?? 'Donation',
         );
 
         if ($cacheData['continuation_token'] !== $result['continuation_token']
@@ -234,6 +236,7 @@ class WidgetController
             $charityStream->form_slug,
             $cacheData['amount'],
             $cacheData['continuation_token'],
+            $charityStream->form_type ?? 'Donation',
         );
 
         $newDonors = count($result['donations'] ?? []);
@@ -377,6 +380,7 @@ class WidgetController
                         $charityStream->form_slug,
                         0,
                         $cacheData['continuation_token'],
+                        $charityStream->form_type ?? 'Donation',
                     );
 
                     if ($cacheData['continuation_token'] !== $result['continuation_token']) {
@@ -442,7 +446,8 @@ class WidgetController
                 $charityStream->organization_slug,
                 $charityStream->form_slug,
                 0,
-                $cacheData['continuation_token']
+                $cacheData['continuation_token'],
+                $charityStream->form_type ?? 'Donation'
             );
 
             if ($cacheData['continuation_token'] !== $result['continuation_token']) {
