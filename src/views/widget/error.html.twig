@@ -1,0 +1,8 @@
+{% extends "widget.html.twig" %}
+{% block title %}Erreur Widget{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:'Open Sans',Arial,sans-serif;">
+    <p style="color:#888;font-size:14px;text-align:center;">{{ message|default('Une erreur est survenue lors du chargement du widget.') }}</p>
+</div>
+{% endblock %}
+

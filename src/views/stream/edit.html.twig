@@ -362,6 +362,10 @@
 													<span><strong>0</strong> donateurs</span>
 												</div>
 											</div>
+											<a href="{{ donationUrl }}" target="_blank" rel="noopener noreferrer" id="cardPreviewCta"
+											   style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; text-decoration:none; padding:8px 20px; border-radius:999px; width:fit-content; color:{{ cardWidget.tag_color }}; background-color:{{ cardWidget.tag_background_color }};">
+												❤️ Je participe
+											</a>
 										</div>
 									</div>
 								</div>
@@ -378,7 +382,7 @@
 									<label for="cardIframeCode" class="form-label fw-semibold">Code iframe à intégrer sur votre site :</label>
 									<div class="input-group">
 										<input type="text" class="form-control font-monospace" id="cardIframeCode" readonly
-											   value='<iframe src="{{ widgetCardUrl }}" width="720" height="340" frameborder="0" style="border:none;overflow:hidden;" scrolling="no" allowtransparency="true"></iframe>'>
+											   value='<iframe src="{{ widgetCardUrl }}" width="720" height="400" frameborder="0" style="border:none;overflow:hidden;" scrolling="no" allowtransparency="true"></iframe>'>
 										<button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('cardIframeCode').value);this.textContent='✅ Copié !';setTimeout(()=>this.textContent='📋 Copier',2000)">📋 Copier</button>
 									</div>
 								</div>
