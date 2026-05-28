@@ -554,6 +554,11 @@ class WidgetController
             $donors = $cacheData['donors'] ?? 0;
         }
 
+        $formTypeUrlSegment = ($stream->form_type === 'CrowdFunding') ? 'collectes' : 'formulaires';
+        $donationUrl = ($_SERVER['HA_URL'] ?? 'https://www.helloasso.com')
+            . '/associations/' . $stream->organization_slug
+            . '/' . $formTypeUrlSegment . '/' . $stream->form_slug;
+
         return $this->view->render($response, 'widget/card.html.twig', [
             'cardWidget' => $cardWidget,
             'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
@@ -563,6 +568,7 @@ class WidgetController
             'goal' => $stream->goal ?: 1,
             'stream' => 1,
             'isTestMode' => (bool) $stream->is_test_mode,
+            'donationUrl' => $donationUrl,
         ]);
     }
 
