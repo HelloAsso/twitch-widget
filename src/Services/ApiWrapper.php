@@ -164,19 +164,21 @@ class ApiWrapper
 
     /**
      * Rafraîchit un token d'accès pour une organisation donnée en utilisant le refresh token, et met à jour la base de données.
+     * Le token est identifié par son ID pour un update atomique (pas de re-select).
      *
-     * @param string $refreshToken
-     * @param string $organizationSlug
+     * @param AccessToken $currentToken Le token actuel (avec id, refresh_token)
      * @return AccessToken
      */
-    public function refreshToken(string $refreshToken, string $organizationSlug): ?AccessToken
+    public function refreshToken(AccessToken $currentToken): AccessToken
     {
+        $organizationSlug = $currentToken->organization_slug ?? 'global';
+
         $this->throttleAuthCall();
 
         $response = $this->httpRequest('POST', $this->apiAuthUrl, [
             'form_params' => [
                 'grant_type' => 'refresh_token',
-                'refresh_token' => $refreshToken,
+                'refresh_token' => $currentToken->refresh_token,
             ],
             'headers' => [
                 'content-type' => 'application/x-www-form-urlencoded',
@@ -190,20 +192,17 @@ class ApiWrapper
             throw new Exception("Erreur : Les tokens ne sont pas présents dans la réponse.");
         }
 
-        $accessTokenExpiresAt = (new DateTime())->add(new DateInterval('PT28M'));
-        $refreshTokenExpiresAt = (new DateTime())->add(new DateInterval('P28D'));
+        $currentToken->access_token = $responseData['access_token'];
+        $currentToken->refresh_token = $responseData['refresh_token'];
+        $currentToken->access_token_expires_at = (new DateTime())->add(new DateInterval('PT28M'));
+        $currentToken->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P28D'));
 
-        $obj = new AccessToken();
-        $obj->access_token = $responseData['access_token'];
-        $obj->refresh_token = $responseData['refresh_token'];
-        $obj->organization_slug = $organizationSlug;
-        $obj->access_token_expires_at = $accessTokenExpiresAt;
-        $obj->refresh_token_expires_at = $refreshTokenExpiresAt;
-        return $this->accessTokenRepository->update($obj);
+        return $this->accessTokenRepository->updateById($currentToken);
     }
   
     /**
      * Récupère le token d'accès global, et le régénère si nécessaire.
+     * Utilise un verrou DB pour éviter les régénérations concurrentes.
      *
      * @return AccessToken
      */
@@ -211,24 +210,46 @@ class ApiWrapper
     {
         $tokenData = $this->accessTokenRepository->selectBySlug(null);
 
-        if ($tokenData == null || $this->isExpired($tokenData->access_token_expires_at ?? false)) {
-            $this->apiLogger->info('Global access token absent ou expiré, génération d\'un nouveau.');
-            $tokenData = $this->generateGlobalAccessToken();
+        if ($tokenData != null && !$this->isExpired($tokenData->access_token_expires_at ?? false)) {
+            return $tokenData;
         }
 
-        return $tokenData;
+        // Token absent ou expiré → verrouiller pour sérialiser
+        $pdo = $this->accessTokenRepository->getPdo();
+        $pdo->beginTransaction();
+
+        try {
+            $lockedToken = $this->accessTokenRepository->selectBySlugForUpdate(null);
+
+            // Un autre process a peut-être déjà régénéré le token
+            if ($lockedToken != null && !$this->isExpired($lockedToken->access_token_expires_at ?? false)) {
+                $pdo->commit();
+                return $lockedToken;
+            }
+
+            $this->apiLogger->info('Global access token absent ou expiré, génération d\'un nouveau.');
+            $tokenData = $this->generateGlobalAccessToken();
+            $pdo->commit();
+            return $tokenData;
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /**
      * Récupère le token d'accès pour une organisation donnée.
-     * Gère les accès concurrents : si le refresh échoue (token déjà utilisé par un autre process),
-     * on re-lit la DB pour récupérer le token fraîchement rafraîchi par l'autre process.
+     * Utilise un verrou DB (SELECT ... FOR UPDATE) pour éviter que plusieurs processus
+     * ne rafraîchissent le même token simultanément, ce qui invaliderait les refresh tokens.
      *
      * @param string $organizationSlug
      * @return AccessToken
      */
     public function getOrganizationAccessToken(string $organizationSlug): AccessToken
     {
+        // Lecture rapide sans verrou — si le token est valide, pas besoin de transaction
         $tokenData = $this->accessTokenRepository->selectBySlug($organizationSlug);
 
         if ($tokenData === null) {
@@ -246,25 +267,44 @@ class ApiWrapper
             return $tokenData;
         }
 
-        // Access token expiré — re-lire la DB au cas où un autre process vient de le rafraîchir
-        $freshToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
-        if ($freshToken && !$this->isExpired($freshToken->access_token_expires_at ?? false)) {
-            $this->apiLogger->debug('Token déjà rafraîchi par un autre process pour ' . $organizationSlug);
-            return $freshToken;
-        }
+        // Access token expiré → verrouiller la ligne en DB pour sérialiser les refresh concurrents
+        $pdo = $this->accessTokenRepository->getPdo();
+        $pdo->beginTransaction();
 
-        // Toujours expiré → on rafraîchit
         try {
+            // SELECT ... FOR UPDATE : bloque les autres processus sur cette ligne
+            $lockedToken = $this->accessTokenRepository->selectBySlugForUpdate($organizationSlug);
+
+            if ($lockedToken === null) {
+                $pdo->rollBack();
+                throw new Exception('Aucun token trouvé pour l\'organisation: ' . $organizationSlug);
+            }
+
+            // Après le verrou, un autre process a peut-être déjà rafraîchi le token
+            if (!$this->isExpired($lockedToken->access_token_expires_at ?? false)) {
+                $pdo->commit();
+                $this->apiLogger->debug('Token déjà rafraîchi par un autre process pour ' . $organizationSlug);
+                return $lockedToken;
+            }
+
+            // Toujours expiré → on rafraîchit (on est le seul à pouvoir le faire grâce au verrou)
             $this->apiLogger->info('Rafraîchissement du token pour organization_slug: ' . $organizationSlug);
-            $tokenData = $this->refreshToken(($freshToken ?? $tokenData)->refresh_token, $organizationSlug);
+            $refreshedToken = $this->refreshToken($lockedToken);
+            $pdo->commit();
+
             $this->apiLogger->info('Token rafraîchi pour ' . $organizationSlug . '. Nouvelle expiration : ' .
-                ($tokenData->access_token_expires_at instanceof \DateTime
-                    ? $tokenData->access_token_expires_at->format('Y-m-d H:i:s')
-                    : $tokenData->access_token_expires_at));
-            return $tokenData;
+                ($refreshedToken->access_token_expires_at instanceof \DateTime
+                    ? $refreshedToken->access_token_expires_at->format('Y-m-d H:i:s')
+                    : $refreshedToken->access_token_expires_at));
+            return $refreshedToken;
         } catch (Exception $e) {
-            // Le refresh a échoué — peut-être qu'un autre process a déjà utilisé le refresh token.
-            // On re-lit la DB une dernière fois.
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            // Le refresh a échoué — peut-être qu'un autre process a déjà utilisé le refresh token
+            // avant notre verrou. On attend un court instant et on re-lit la DB.
+            usleep(500_000); // 500ms
             $retryToken = $this->accessTokenRepository->selectBySlug($organizationSlug);
             if ($retryToken && !$this->isExpired($retryToken->access_token_expires_at ?? false)) {
                 $this->apiLogger->info('Token récupéré après échec refresh (rafraîchi par un autre process) pour ' . $organizationSlug);

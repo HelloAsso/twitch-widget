@@ -53,7 +53,7 @@ try {
             sleep(2);
         }
         try {
-            $apiWrapper->refreshToken($token->refresh_token, $token->organization_slug);
+            $apiWrapper->refreshToken($token);
             echo "Token rafraîchi pour " . ($token->organization_slug ?? 'global') . "\n";
             $logger->info('Token rafraîchi avec succès pour ' . ($token->organization_slug ?? 'global'));
         } catch (Exception $e) {

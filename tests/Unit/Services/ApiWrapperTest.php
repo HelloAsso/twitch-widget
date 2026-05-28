@@ -19,6 +19,7 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
+use PDO;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -32,11 +33,20 @@ class ApiWrapperTest extends TestCase
     private AuthorizationCodeRepository&MockObject $authorizationCodeRepository;
     private Logger $logger;
     private ApiWrapper $apiWrapper;
+    private PDO&MockObject $pdoMock;
 
     protected function setUp(): void
     {
         $this->accessTokenRepository = $this->createMock(AccessTokenRepository::class);
         $this->authorizationCodeRepository = $this->createMock(AuthorizationCodeRepository::class);
+
+        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock->method('beginTransaction')->willReturn(true);
+        $this->pdoMock->method('commit')->willReturn(true);
+        $this->pdoMock->method('rollBack')->willReturn(true);
+        $this->pdoMock->method('inTransaction')->willReturn(false);
+
+        $this->accessTokenRepository->method('getPdo')->willReturn($this->pdoMock);
 
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
@@ -105,6 +115,11 @@ class ApiWrapperTest extends TestCase
             ->willReturn(null);
 
         $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
+            ->with(null)
+            ->willReturn(null);
+
+        $this->accessTokenRepository
             ->expects($this->once())
             ->method('insert')
             ->willReturn($newToken);
@@ -126,7 +141,9 @@ class ApiWrapperTest extends TestCase
     public function testGetGlobalAccessTokenRegeneratesWhenExpired(): void
     {
         $expiredToken = new AccessToken();
+        $expiredToken->id = 1;
         $expiredToken->access_token = 'expired_token';
+        $expiredToken->refresh_token = 'old_refresh';
         $expiredToken->access_token_expires_at = (new DateTime())->sub(new DateInterval('PT10M'));
         $expiredToken->refresh_token_expires_at = (new DateTime())->sub(new DateInterval('P1D'));
 
@@ -138,6 +155,10 @@ class ApiWrapperTest extends TestCase
 
         $this->accessTokenRepository
             ->method('selectBySlug')
+            ->willReturn($expiredToken);
+
+        $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
             ->willReturn($expiredToken);
 
         $this->accessTokenRepository
@@ -164,6 +185,10 @@ class ApiWrapperTest extends TestCase
             ->method('selectBySlug')
             ->willReturn(null);
 
+        $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
+            ->willReturn(null);
+
         $this->injectMockHttpClient([
             new Response(200, [], json_encode(['error' => 'invalid_client'])),
         ]);
@@ -178,6 +203,10 @@ class ApiWrapperTest extends TestCase
     {
         $this->accessTokenRepository
             ->method('selectBySlug')
+            ->willReturn(null);
+
+        $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
             ->willReturn(null);
 
         $request = new GuzzleRequest('POST', 'https://api.helloasso.com/oauth2/token');
@@ -196,6 +225,10 @@ class ApiWrapperTest extends TestCase
             ->method('selectBySlug')
             ->willReturn(null);
 
+        $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
+            ->willReturn(null);
+
         $this->injectMockHttpClient([
             new Response(200, [], 'not_valid_json{{{'),
         ]);
@@ -212,6 +245,7 @@ class ApiWrapperTest extends TestCase
     public function testRefreshTokenSuccess(): void
     {
         $updatedToken = new AccessToken();
+        $updatedToken->id = 1;
         $updatedToken->access_token = 'new_access_token';
         $updatedToken->refresh_token = 'new_refresh_token';
         $updatedToken->organization_slug = 'test-org';
@@ -222,15 +256,11 @@ class ApiWrapperTest extends TestCase
         $existingToken = new AccessToken();
         $existingToken->id = 1;
         $existingToken->organization_slug = 'test-org';
-
-        $this->accessTokenRepository
-            ->method('selectBySlug')
-            ->with('test-org')
-            ->willReturn($existingToken);
+        $existingToken->refresh_token = 'old_refresh_token';
 
         $this->accessTokenRepository
             ->expects($this->once())
-            ->method('update')
+            ->method('updateById')
             ->willReturn($updatedToken);
 
         $this->injectMockHttpClient([
@@ -240,7 +270,7 @@ class ApiWrapperTest extends TestCase
             ])),
         ]);
 
-        $result = $this->apiWrapper->refreshToken('old_refresh_token', 'test-org');
+        $result = $this->apiWrapper->refreshToken($existingToken);
 
         $this->assertNotNull($result);
         $this->assertEquals('new_access_token', $result->access_token);
@@ -249,6 +279,11 @@ class ApiWrapperTest extends TestCase
 
     public function testRefreshTokenThrowsOnInvalidApiResponse(): void
     {
+        $token = new AccessToken();
+        $token->id = 1;
+        $token->refresh_token = 'invalid_refresh';
+        $token->organization_slug = 'test-org';
+
         $this->injectMockHttpClient([
             new Response(200, [], json_encode(['error' => 'invalid_grant'])),
         ]);
@@ -256,11 +291,16 @@ class ApiWrapperTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionMessageMatches('/Les tokens ne sont pas présents/');
 
-        $this->apiWrapper->refreshToken('invalid_refresh', 'test-org');
+        $this->apiWrapper->refreshToken($token);
     }
 
     public function testRefreshTokenThrowsOnApiError(): void
     {
+        $token = new AccessToken();
+        $token->id = 1;
+        $token->refresh_token = 'expired_token';
+        $token->organization_slug = 'test-org';
+
         $request = new GuzzleRequest('POST', 'https://api.helloasso.com/oauth2/token');
         $this->injectMockHttpClient([
             new RequestException('Unauthorized', $request, new Response(401)),
@@ -268,7 +308,7 @@ class ApiWrapperTest extends TestCase
 
         $this->expectException(Exception::class);
 
-        $this->apiWrapper->refreshToken('expired_token', 'test-org');
+        $this->apiWrapper->refreshToken($token);
     }
 
     // =====================================================================
@@ -299,6 +339,7 @@ class ApiWrapperTest extends TestCase
     public function testGetOrganizationAccessTokenRefreshesWhenAccessTokenExpired(): void
     {
         $expiredToken = new AccessToken();
+        $expiredToken->id = 1;
         $expiredToken->organization_slug = 'my-org';
         $expiredToken->access_token = 'expired_access';
         $expiredToken->refresh_token = 'valid_refresh';
@@ -306,6 +347,7 @@ class ApiWrapperTest extends TestCase
         $expiredToken->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P20D'));
 
         $refreshedToken = new AccessToken();
+        $refreshedToken->id = 1;
         $refreshedToken->organization_slug = 'my-org';
         $refreshedToken->access_token = 'new_access_token';
         $refreshedToken->refresh_token = 'new_refresh_token';
@@ -318,8 +360,13 @@ class ApiWrapperTest extends TestCase
             ->willReturn($expiredToken);
 
         $this->accessTokenRepository
+            ->method('selectBySlugForUpdate')
+            ->with('my-org')
+            ->willReturn($expiredToken);
+
+        $this->accessTokenRepository
             ->expects($this->once())
-            ->method('update')
+            ->method('updateById')
             ->willReturn($refreshedToken);
 
         $this->injectMockHttpClient([
