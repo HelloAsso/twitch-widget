@@ -69,7 +69,7 @@ jobs:
 
     - name: Tar
       run : |
-        tar czvf artifact.tar.gz migrations public src vendor .env cron.php
+        tar czv --ignore-failed-read -f artifact.tar.gz migrations public src vendor .env cron.php 2>/dev/null || tar czv -f artifact.tar.gz migrations public src vendor .env cron.php
 
     - name: Upload
       run : |
