@@ -373,11 +373,17 @@ class ApiWrapper
     {
         $tokenData = $this->getOrganizationAccessToken($organizationSlug);
 
-        $response = $this->httpRequest('GET', "{$this->apiUrl}/organizations/{$organizationSlug}/forms", [
-            'query' => [
-                'formTypes' => implode(',', $formTypes),
-                'pageSize' => 50,
-            ],
+        // Construire la query string manuellement car Guzzle sérialise les arrays
+        // avec des indices PHP (formTypes[0]=...) que l'API HelloAsso ne supporte pas.
+        // L'API attend : formTypes=Donation&formTypes=CrowdFunding
+        $queryParts = [];
+        foreach ($formTypes as $type) {
+            $queryParts[] = 'formTypes=' . urlencode($type);
+        }
+        $queryParts[] = 'pageSize=50';
+        $queryString = implode('&', $queryParts);
+
+        $response = $this->httpRequest('GET', "{$this->apiUrl}/organizations/{$organizationSlug}/forms?{$queryString}", [
             'headers' => [
                 'Authorization' => 'Bearer ' . $tokenData->access_token,
                 'accept' => 'application/json',
