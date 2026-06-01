@@ -23,13 +23,20 @@ class ApiController
         $formSlug = $data['form_slug'] ?? null;
         $organizationSlug = $data['organization_slug'] ?? null;
         $title = $data['title'] ?? null;
+        $formType = $data['form_type'] ?? 'Donation';
+
+        // Valider le form_type
+        $allowedFormTypes = ['Donation', 'CrowdFunding'];
+        if (!in_array($formType, $allowedFormTypes)) {
+            $formType = 'Donation';
+        }
 
         if (!$ownerEmail || !$formSlug || !$organizationSlug || !$title) {
             $response->getBody()->write(json_encode(['error' => 'all fields are mandatory']));
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
-        $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title);
+        $stream = $this->streamRepository->insert($formSlug, $organizationSlug, $title, null, $formType);
         $user = $this->userRepository->findOrCreate($ownerEmail);
         $this->userRepository->insertRight($user, $stream, null);
         $this->userRepository->insertResetToken($user);

@@ -109,19 +109,20 @@ class StreamRepository
         return $stream ?: null;
     }
 
-    public function insert(string $form_slug, string $organization_slug, string $title, ?int $parent = null): Stream
+    public function insert(string $form_slug, string $organization_slug, string $title, ?int $parent = null, string $form_type = 'Donation'): Stream
     {
         $guid = bin2hex(random_bytes(16));
 
         $this->pdo->beginTransaction();
 
         try {
-            $query = 'INSERT INTO ' . $this->prefix . 'charity_stream (guid, form_slug, organization_slug, title, charity_event_id) 
-                VALUES (:guid, :form_slug, :organization_slug, :title, :charity_event_id)';
+            $query = 'INSERT INTO ' . $this->prefix . 'charity_stream (guid, form_slug, form_type, organization_slug, title, charity_event_id)
+                VALUES (:guid, :form_slug, :form_type, :organization_slug, :title, :charity_event_id)';
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([
                 ':guid' => $guid,
                 ':form_slug' => $form_slug,
+                ':form_type' => $form_type,
                 ':organization_slug' => $organization_slug,
                 ':title' => $title,
                 ':charity_event_id' => $parent
@@ -158,6 +159,7 @@ class StreamRepository
             $stream->id = $id;
             $stream->guid = $guid;
             $stream->form_slug = $form_slug;
+            $stream->form_type = $form_type;
             $stream->organization_slug = $organization_slug;
             $stream->title = $title;
             return $stream;

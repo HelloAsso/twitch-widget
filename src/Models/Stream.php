@@ -10,6 +10,7 @@ class Stream
     public $title;
     public $goal;
     public $form_slug;
+    public $form_type = 'Donation';
     public $organization_slug;
     public $creation_date;
     public $last_update;

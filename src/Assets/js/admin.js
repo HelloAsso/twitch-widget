@@ -100,6 +100,12 @@ if (cardWidgetForm) {
         }
         if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue} €</strong>`;
         if (pct) pct.textContent = '50%';
+
+        const cta = document.getElementById('cardPreviewCta');
+        if (cta) {
+            cta.style.color = tagColor;
+            cta.style.backgroundColor = tagBgColor;
+        }
     }
 
     bindPreviewInputs(
