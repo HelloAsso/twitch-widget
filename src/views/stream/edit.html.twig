@@ -166,14 +166,35 @@
 
 			<div class="accordion mt-4 mb-5" id="widgetsAccordion">
 
+				{# ── Widget carte de don ────────────────────────────────── #}
+				{% if cardWidget %}
+				<div class="accordion-item">
+					<h2 class="accordion-header" id="headingCardWidget">
+						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCardWidget" aria-expanded="false" aria-controls="collapseCardWidget">
+							🃏 Widget carte de don
+						</button>
+					</h2>
+					<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
+						<div class="accordion-body">
+							<form id="cardWidgetForm" method="POST" enctype="multipart/form-data">
+								<div class="row">
+									<div class="col-md-6">
+										<div class="mb-3">
+											<label for="card_image" class="form-label">Image de fond</label>
+											{% if cardWidget.image %}
+												<div class="form-text">
+													Déjà chargée :
+													<a href="{{ cardWidgetPictureUrl }}" target="_blank">{{ cardWidget.image }}</a>
+												</div>
+											{% endif %}
 				{# ── Widget barre de don ────────────────────────────────── #}
 				<div class="accordion-item">
 					<h2 class="accordion-header" id="headingDonationBar">
-						<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="true" aria-controls="collapseDonationBar">
+						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="false" aria-controls="collapseDonationBar">
 							🎯 Widget barre de don
 						</button>
 					</h2>
-					<div id="collapseDonationBar" class="accordion-collapse collapse show" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
+					<div id="collapseDonationBar" class="accordion-collapse collapse" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
 						<div class="accordion-body">
 							<form id="donationBarForm" method="POST">
 								<div class="row">
@@ -298,27 +319,6 @@
 					</div>
 				</div>
 
-				{# ── Widget carte de don ────────────────────────────────── #}
-				{% if cardWidget %}
-				<div class="accordion-item">
-					<h2 class="accordion-header" id="headingCardWidget">
-						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCardWidget" aria-expanded="false" aria-controls="collapseCardWidget">
-							🃏 Widget carte de don
-						</button>
-					</h2>
-					<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
-						<div class="accordion-body">
-							<form id="cardWidgetForm" method="POST" enctype="multipart/form-data">
-								<div class="row">
-									<div class="col-md-6">
-										<div class="mb-3">
-											<label for="card_image" class="form-label">Image de fond</label>
-											{% if cardWidget.image %}
-												<div class="form-text">
-													Déjà chargée :
-													<a href="{{ cardWidgetPictureUrl }}" target="_blank">{{ cardWidget.image }}</a>
-												</div>
-											{% endif %}
 											<input type="file" class="form-control" id="card_image" name="card_image" accept="image/*"/>
 										</div>
 										<div class="mb-3">
