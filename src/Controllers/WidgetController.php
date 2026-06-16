@@ -377,7 +377,9 @@ class WidgetController
 
         try {
             $data = $this->fetchEventDonationData($eventGuid);
-            return $this->jsonResponse($response, ['amount' => $data['cacheData']['amount']]);
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $data['cacheData']['amount']);
+            return $this->jsonResponse($response, ['amount' => $data['cacheData']['amount'], 'goal' => $goal]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer le montant', 500);
         }
@@ -560,7 +562,9 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamDonationData($charityStreamId);
-            return $this->jsonResponse($response, $data['result']);
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
+            $goal = $this->resolveActiveGoal($goals, $data['result']['amount']);
+            return $this->jsonResponse($response, array_merge($data['result'], ['goal' => $goal]));
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401

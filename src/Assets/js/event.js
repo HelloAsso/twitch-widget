@@ -1,9 +1,9 @@
 import { CountUp } from 'countup.js';
-import updateDonationBar from './utilities.js';
+import updateDonationBar, { triggerGoalAnimation } from './utilities.js';
 
 let counterback;
 let counterfront;
-let isFetching = false; // Flag pour éviter les appels concurrents
+let isFetching = false;
 
 if (typeof CountUp !== 'undefined' && CountUp) {
     const options = {
@@ -18,6 +18,7 @@ if (typeof CountUp !== 'undefined' && CountUp) {
 if (counterback && counterfront) {
     updateDonationBar(counterback, counterfront);
 }
+
 fetchEventData();
 setInterval(fetchEventData, 10000);
 
@@ -35,14 +36,19 @@ async function fetchEventData() {
         if (response.ok) {
             const json = await response.json();
             window.currentAmount = json.amount;
-            updateDonationBar(counterback, counterfront);
+
+            if (json.goal && json.goal !== window.goalAmount) {
+                triggerGoalAnimation(json.goal, counterback, counterfront);
+            } else {
+                updateDonationBar(counterback, counterfront);
+            }
         } else {
             console.error('Erreur lors de la récupération des données de donation:', response.status);
         }
     } catch (error) {
         console.error('Erreur réseau lors de la récupération des données:', error);
     } finally {
-        isFetching = false; // Réinitialiser le flag
+        isFetching = false;
     }
 }
 

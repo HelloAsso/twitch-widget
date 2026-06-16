@@ -45,6 +45,34 @@
     clip-path: inset(0 100% 0 0 round 999px);
     -webkit-clip-path: inset(0 100% 0 0 round 999px);
     transition: clip-path 1s linear;
+    overflow: hidden;
+}
+
+@keyframes bar-glow {
+    0%, 100% { filter: brightness(1); }
+    50%       { filter: brightness(1.35) drop-shadow(0 0 8px rgba(255,255,255,0.45)); }
+}
+
+@keyframes bar-shimmer {
+    0%   { transform: translateX(-160%); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateX(300%); opacity: 0; }
+}
+
+.front--celebrating {
+    animation: bar-glow 0.8s ease-in-out 3;
+}
+
+.front--celebrating::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 0;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent);
+    animation: bar-shimmer 0.8s ease-in-out 3;
+    pointer-events: none;
 }
 
 /* Alert */

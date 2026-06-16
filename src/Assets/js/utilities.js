@@ -1,12 +1,42 @@
+let isAnimating = false;
+
 function updateDonationBar(counterback, counterfront) {
     const currentAmountUnit = window.currentAmount / 100;
     const percentage = Math.min(100, (currentAmountUnit / window.goalAmount) * 100);
     if (counterback) counterback.update(currentAmountUnit);
     if (counterfront) counterfront.update(currentAmountUnit);
-    document.querySelector('div.front').style["-webkit-clip-path"] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
+    document.querySelector('div.front').style['-webkit-clip-path'] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
+    document.querySelector('div.front').style['clip-path'] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
 }
 
+function triggerGoalAnimation(newGoal, counterback, counterfront) {
+    if (isAnimating) return;
+    isAnimating = true;
 
-export {
-    updateDonationBar as default
+    const front = document.querySelector('div.front');
+
+    // Phase 1 : remplir à 100 %
+    front.style['-webkit-clip-path'] = 'inset(0 0% 0 0 round 999px)';
+    front.style['clip-path'] = 'inset(0 0% 0 0 round 999px)';
+
+    // Phase 2 : shimmer (démarre après la transition CSS de 1 s)
+    setTimeout(() => {
+        front.classList.add('front--celebrating');
+
+        // Phase 3 : reset sur le nouveau goal (3 × 0.8 s = 2.4 s de shimmer)
+        setTimeout(() => {
+            front.classList.remove('front--celebrating');
+            window.goalAmount = newGoal;
+
+            ['back-goal-total', 'front-goal-total'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = `${newGoal} €`;
+            });
+
+            updateDonationBar(counterback, counterfront);
+            isAnimating = false;
+        }, 2500);
+    }, 1200);
 }
+
+export { updateDonationBar as default, triggerGoalAnimation };
