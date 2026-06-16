@@ -630,7 +630,9 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamCardData($charityStreamId);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
+            $goal = $this->resolveActiveGoal($goals, $data['amount']);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal]);
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401
@@ -693,7 +695,9 @@ class WidgetController
 
         try {
             $data = $this->fetchEventCardData($eventId);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventId);
+            $goal = $this->resolveActiveGoal($goals, $data['amount']);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }

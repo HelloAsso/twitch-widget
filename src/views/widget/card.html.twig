@@ -144,9 +144,67 @@
 	.card-widget__pulse {
 		animation: pulse 0.6s ease;
 	}
+
+	/* ── Fireworks overlay ───────────────────────── */
+	#fireworks-overlay {
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+		overflow: hidden;
+		z-index: 100;
+	}
+
+	@keyframes fw-particle {
+		0%   { transform: translate(0,0) scale(1); opacity: 1; }
+		85%  { opacity: 1; }
+		100% { transform: translate(var(--tx), var(--ty)) scale(0.2); opacity: 0; }
+	}
+
+	.fw-particle {
+		position: absolute;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		animation: fw-particle var(--dur) ease-out forwards;
+	}
+
+	@keyframes goal-banner {
+		0%   { transform: translateY(-18px) scale(0.85); opacity: 0; }
+		55%  { transform: translateY(3px) scale(1.04); opacity: 1; }
+		80%  { transform: translateY(0) scale(1); opacity: 1; }
+		100% { transform: translateY(0) scale(1); opacity: 0; }
+	}
+
+	.goal-banner {
+		position: fixed;
+		top: 18px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0,0,0,0.82);
+		color: #fff;
+		font-family: 'Open Sans', sans-serif;
+		font-size: 15px;
+		font-weight: 700;
+		padding: 10px 22px;
+		border-radius: 999px;
+		white-space: nowrap;
+		animation: goal-banner 3.2s ease forwards;
+		z-index: 101;
+	}
+
+	@keyframes goal-flash {
+		0%,100% { opacity: 1; }
+		30%      { opacity: 0.2; }
+		60%      { opacity: 1; }
+	}
+
+	.card-widget__goal--flash {
+		animation: goal-flash 0.7s ease;
+	}
 </style>
 {% endblock %}
 {% block content %}
+	<div id="fireworks-overlay"></div>
 	<div class="card-widget" style="background-color: {{ cardWidget.background_color }}; color: {{ cardWidget.text_color }}">
 		{% if cardWidgetPictureUrl %}
 		<div class="card-widget__image" style="background-image: url('{{ cardWidgetPictureUrl }}')"></div>
@@ -174,7 +232,7 @@
 						<div class="card-widget__bar-fill" id="card-bar-fill"
 							 style="background-color: {{ cardWidget.bar_color }}; width: {{ percentage }}%"></div>
 					</div>
-					<div class="card-widget__goal">Objectif : <strong>{{ goal }} €</strong></div>
+					<div class="card-widget__goal" id="card-goal-text">Objectif : <strong>{{ goal }} €</strong></div>
 				</div>
 				<div class="card-widget__stats">
 					<span><strong id="card-percentage">{{ percentage }}%</strong> collectés</span>

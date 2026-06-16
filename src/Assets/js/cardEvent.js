@@ -1,4 +1,5 @@
 import { CountUp } from 'countup.js';
+import { triggerGoalCelebration } from './cardUtilities.js';
 
 const FETCH_INTERVAL_MS = 10_000;
 const CENTS_DIVISOR = 100;
@@ -63,9 +64,15 @@ async function fetchEventData() {
             return;
         }
 
-        const { amount, donors } = await response.json();
+        const { amount, donors, goal } = await response.json();
         window.currentAmount = amount;
         window.donorCount = donors ?? window.donorCount;
+
+        if (goal && goal !== window.goalAmount) {
+            triggerGoalCelebration(goal);
+            window.goalAmount = goal;
+        }
+
         updateCardWidget();
     } catch (error) {
         console.error('Network error:', error);
