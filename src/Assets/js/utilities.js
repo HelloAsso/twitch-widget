@@ -9,7 +9,7 @@ function updateDonationBar(counterback, counterfront) {
     document.querySelector('div.front').style['clip-path'] = 'inset(0 ' + (100 - percentage) + '% 0 0 round 999px)';
 }
 
-function triggerGoalAnimation(newGoal, counterback, counterfront) {
+function triggerGoalAnimation(newGoal, counterback, counterfront, isLastGoal = false) {
     if (isAnimating) return;
     isAnimating = true;
 
@@ -19,22 +19,26 @@ function triggerGoalAnimation(newGoal, counterback, counterfront) {
     front.style['-webkit-clip-path'] = 'inset(0 0% 0 0 round 999px)';
     front.style['clip-path'] = 'inset(0 0% 0 0 round 999px)';
 
-    // Phase 2 : shimmer (démarre après la transition CSS de 1 s)
+    // Phase 2 : shimmer
     setTimeout(() => {
         front.classList.add('front--celebrating');
 
-        // Phase 3 : reset sur le nouveau goal (3 × 0.8 s = 2.4 s de shimmer)
+        // Phase 3 : mise à jour ou maintien à 100 %
         setTimeout(() => {
             front.classList.remove('front--celebrating');
-            window.goalAmount = newGoal;
 
-            ['back-goal-total', 'front-goal-total'].forEach((id) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = `${newGoal} €`;
-            });
-
-            updateDonationBar(counterback, counterfront);
-            isAnimating = false;
+            if (isLastGoal) {
+                // Rester à 100 % — tous les objectifs atteints
+                isAnimating = false;
+            } else {
+                window.goalAmount = newGoal;
+                ['back-goal-total', 'front-goal-total'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = `${newGoal} €`;
+                });
+                updateDonationBar(counterback, counterfront);
+                isAnimating = false;
+            }
         }, 2500);
     }, 1200);
 }

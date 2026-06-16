@@ -18,14 +18,13 @@ function updateCardWidget() {
 
 const COLORS = ['#ff4d4d', '#ffa500', '#ffe600', '#4dff91', '#4dc8ff', '#c44dff', '#ff4dbb', '#fff'];
 
-function triggerGoalCelebration(newGoal) {
+function triggerGoalCelebration(newGoal, isLastGoal = false) {
     const overlay = document.getElementById('fireworks-overlay');
     if (!overlay) return;
 
     const W = window.innerWidth;
     const H = window.innerHeight;
 
-    // 5 bursts at random positions
     for (let b = 0; b < 5; b++) {
         const cx = Math.random() * W;
         const cy = Math.random() * H * 0.7 + H * 0.05;
@@ -51,18 +50,22 @@ function triggerGoalCelebration(newGoal) {
     // Banner
     const banner = document.createElement('div');
     banner.className = 'goal-banner';
-    banner.textContent = `🎯 Objectif atteint ! Prochain objectif : ${newGoal} €`;
+    banner.textContent = isLastGoal
+        ? '🏆 Tous les objectifs atteints !'
+        : `🎯 Objectif atteint ! Prochain objectif : ${newGoal} €`;
     overlay.appendChild(banner);
     setTimeout(() => banner.remove(), 6100);
 
-    // Flash the goal text
-    const goalEl = document.getElementById('card-goal-text');
-    if (goalEl) {
-        goalEl.innerHTML = `Objectif : <strong>${newGoal} €</strong>`;
-        goalEl.classList.remove('card-widget__goal--flash');
-        void goalEl.offsetWidth;
-        goalEl.classList.add('card-widget__goal--flash');
-        goalEl.addEventListener('animationend', () => goalEl.classList.remove('card-widget__goal--flash'), { once: true });
+    // Mise à jour du texte de l'objectif (seulement si ce n'est pas le dernier)
+    if (!isLastGoal) {
+        const goalEl = document.getElementById('card-goal-text');
+        if (goalEl) {
+            goalEl.innerHTML = `Objectif : <strong>${newGoal} €</strong>`;
+            goalEl.classList.remove('card-widget__goal--flash');
+            void goalEl.offsetWidth;
+            goalEl.classList.add('card-widget__goal--flash');
+            goalEl.addEventListener('animationend', () => goalEl.classList.remove('card-widget__goal--flash'), { once: true });
+        }
     }
 }
 

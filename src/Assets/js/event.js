@@ -35,10 +35,15 @@ async function fetchEventData() {
 
         if (response.ok) {
             const json = await response.json();
+
+            const justCrossedGoal =
+                json.goal !== window.goalAmount ||
+                (json.allGoalsReached && window.currentAmount / 100 < window.goalAmount);
+
             window.currentAmount = json.amount;
 
-            if (json.goal && json.goal !== window.goalAmount) {
-                triggerGoalAnimation(json.goal, counterback, counterfront);
+            if (justCrossedGoal) {
+                triggerGoalAnimation(json.goal, counterback, counterfront, json.allGoalsReached);
             } else {
                 updateDonationBar(counterback, counterfront);
             }
