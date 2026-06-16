@@ -4,6 +4,7 @@ function initGoalsManager() {
     const manager = document.getElementById('goalsManager');
     if (!manager) return;
 
+    const form = manager.closest('form');
     const chipsEl = manager.querySelector('.goals-chips');
     const addInput = manager.querySelector('.goals-add-input');
     const addBtn = manager.querySelector('.goals-add-btn');
@@ -38,6 +39,7 @@ function initGoalsManager() {
                 syncHidden(updated);
                 renderChips(updated);
                 window.previewGoal = updated[0] || 1000;
+                form.submit();
             });
             chipsEl.appendChild(chip);
         });
@@ -53,6 +55,7 @@ function initGoalsManager() {
             syncHidden(goals);
             renderChips(goals);
             window.previewGoal = goals[0] || 1000;
+            form.submit();
         }
         addInput.value = '';
     }

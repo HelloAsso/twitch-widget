@@ -131,6 +131,7 @@
 				</div>
 				<div class="card-body">
 					<form method="POST">
+						<input type="hidden" name="save_goals" value="1">
 						<div id="goalsManager">
 							<div class="goals-chips d-flex flex-wrap gap-2 mb-3" style="min-height:38px;"></div>
 							<div class="input-group mb-3" style="max-width:320px;">
@@ -143,7 +144,6 @@
 								{% endfor %}
 							</div>
 						</div>
-						<button type="submit" class="btn btn-primary" name="save_goals">💾 Enregistrer les objectifs</button>
 					</form>
 				</div>
 			</div>
