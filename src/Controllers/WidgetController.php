@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -23,8 +24,23 @@ class WidgetController
         private EventRepository $eventRepository,
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
+        private GoalRepository $goalRepository,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
+    }
+
+    private function resolveActiveGoal(array $goals, int $amountInCents): int
+    {
+        if (empty($goals)) {
+            return 1;
+        }
+        $amountInEuros = $amountInCents / 100;
+        foreach ($goals as $goal) {
+            if ($goal > $amountInEuros) {
+                return $goal;
+            }
+        }
+        return end($goals);
     }
 
     // ── Helpers ───────────────────────────────────────────────────
@@ -332,10 +348,13 @@ class WidgetController
                 $currentAmount = $cacheData['amount'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/donation.html.twig', [
                 'donationGoalWidget' => $donationGoalWidget,
                 'currentAmount' => $currentAmount,
-                'goal' => $event->goal,
+                'goal' => $goal,
                 'event' => 1,
                 'isTestMode' => (bool) $event->is_test_mode,
             ]);
@@ -512,10 +531,13 @@ class WidgetController
                 $currentAmount = $cacheData['amount'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($streamGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/donation.html.twig', [
                 'donationGoalWidget' => $donationGoalWidget,
                 'currentAmount' => $currentAmount,
-                'goal' => $stream->goal,
+                'goal' => $goal,
                 'stream' => 1,
                 'isTestMode' => (bool) $stream->is_test_mode,
             ]);
@@ -580,13 +602,16 @@ class WidgetController
                 . '/associations/' . $stream->organization_slug
                 . '/' . $formTypeUrlSegment . '/' . $stream->form_slug;
 
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($streamGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/card.html.twig', [
                 'cardWidget' => $cardWidget,
                 'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
                 'currentAmount' => $currentAmount,
                 'donorCount' => $donors,
-                'percentage' => $this->calculatePercentage($currentAmount, $stream->goal),
-                'goal' => $stream->goal ?: 1,
+                'percentage' => $this->calculatePercentage($currentAmount, $goal),
+                'goal' => $goal,
                 'stream' => 1,
                 'isTestMode' => (bool) $stream->is_test_mode,
                 'donationUrl' => $donationUrl,
@@ -641,13 +666,16 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/card.html.twig', [
                 'cardWidget' => $cardWidget,
                 'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
                 'currentAmount' => $currentAmount,
                 'donorCount' => $donors,
-                'percentage' => $this->calculatePercentage($currentAmount, $event->goal),
-                'goal' => $event->goal ?: 1,
+                'percentage' => $this->calculatePercentage($currentAmount, $goal),
+                'goal' => $goal,
                 'event' => 1,
                 'isTestMode' => (bool) $event->is_test_mode,
             ]);

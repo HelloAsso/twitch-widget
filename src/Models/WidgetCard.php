@@ -11,7 +11,6 @@ class WidgetCard
     public string $tag = '';
     public string $title = '';
     public string $description = '';
-    public int $goal = 1000;
     public string $background_color = '#ffffff';
     public string $bar_color = '#2563eb';
     public string $bar_background_color = '#e5e7eb';

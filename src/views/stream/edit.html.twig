@@ -108,16 +108,10 @@
 				<div class="card-body">
 					<form method="POST">
 						<div class="row">
-							<div class="col-md-6">
+							<div class="col-md-9">
 								<div class="mb-3">
 									<label for="stream_title" class="form-label fw-semibold">Titre</label>
 									<input type="text" class="form-control" id="stream_title" name="stream_title" value="{{ charityStream.title }}" required>
-								</div>
-							</div>
-							<div class="col-md-3">
-								<div class="mb-3">
-									<label for="stream_goal" class="form-label fw-semibold">Objectif (€)</label>
-									<input type="number" class="form-control" id="stream_goal" name="stream_goal" value="{{ charityStream.goal }}" min="0">
 								</div>
 							</div>
 							<div class="col-md-3 d-flex align-items-end">
@@ -126,6 +120,30 @@
 								</div>
 							</div>
 						</div>
+					</form>
+				</div>
+			</div>
+
+			{# ── Objectifs de collecte ───────────────────────────────── #}
+			<div class="card mb-4">
+				<div class="card-header">
+					<h5 class="mb-0">🎯 Objectifs de collecte</h5>
+				</div>
+				<div class="card-body">
+					<form method="POST">
+						<div id="goalsManager">
+							<div class="goals-chips d-flex flex-wrap gap-2 mb-3" style="min-height:38px;"></div>
+							<div class="input-group mb-3" style="max-width:320px;">
+								<input type="number" class="form-control goals-add-input" placeholder="Montant en € (ex: 500)" min="1" step="1">
+								<button type="button" class="btn btn-outline-primary goals-add-btn">＋ Ajouter</button>
+							</div>
+							<div class="goals-hidden">
+								{% for g in streamGoals %}
+								<input type="hidden" name="goal_amounts[]" value="{{ g }}">
+								{% endfor %}
+							</div>
+						</div>
+						<button type="submit" class="btn btn-primary" name="save_goals">💾 Enregistrer les objectifs</button>
 					</form>
 				</div>
 			</div>
@@ -180,14 +198,14 @@
 								</div>
 								<div class="progress">
 									<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
-										<p id="back-goal-current">{{ charityStream.goal / 2 }} €</p>
+										<p id="back-goal-current">{{ (streamGoals[0] ?? 1000) / 2 }} €</p>
 										<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-										<p id="back-goal-total">{{ charityStream.goal }} €</p>
+										<p id="back-goal-total">{{ streamGoals[0] ?? 1000 }} €</p>
 									</div>
 									<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
-										<p id="front-goal-current">{{ charityStream.goal / 2 }} €</p>
+										<p id="front-goal-current">{{ (streamGoals[0] ?? 1000) / 2 }} €</p>
 										<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-										<p id="front-goal-total">{{ charityStream.goal }} €</p>
+										<p id="front-goal-total">{{ streamGoals[0] ?? 1000 }} €</p>
 									</div>
 								</div>
 								<div class="d-flex align-items-center justify-content-between mt-3">
@@ -350,12 +368,12 @@
 											<div id="cardPreviewTitle" style="font-size:24px; font-weight:800; line-height:1.15;">{{ cardWidget.title }}</div>
 											<div id="cardPreviewDesc" style="font-size:13px; line-height:1.6; opacity:0.8;">{{ cardWidget.description }}</div>
 											<div>
-												<div id="cardPreviewAmount" style="font-size:28px; font-weight:800;">{{ (charityStream.goal / 2) }} €</div>
+												<div id="cardPreviewAmount" style="font-size:28px; font-weight:800;">{{ (streamGoals[0] ?? 1000) / 2 }} €</div>
 												<div style="display:flex; align-items:center; gap:12px;">
 													<div style="flex:1; height:12px; border-radius:999px; overflow:hidden; background-color:{{ cardWidget.bar_background_color }};">
 														<div id="cardPreviewBarFill" style="height:100%; border-radius:999px; width:50%; background-color:{{ cardWidget.bar_color }};"></div>
 													</div>
-													<div id="cardPreviewGoal" style="font-size:13px; white-space:nowrap;">Objectif : <strong>{{ charityStream.goal }} €</strong></div>
+													<div id="cardPreviewGoal" style="font-size:13px; white-space:nowrap;">Objectif : <strong>{{ streamGoals[0] ?? 1000 }} €</strong></div>
 												</div>
 												<div style="display:flex; gap:24px; margin-top:6px; font-size:13px; opacity:0.75;">
 													<span><strong id="cardPreviewPct">50%</strong> collectés</span>

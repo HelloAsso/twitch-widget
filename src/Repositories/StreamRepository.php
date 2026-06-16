@@ -189,10 +189,6 @@ class StreamRepository
             $fields[] = 'title = ?';
             $params[] = $data['title'];
         }
-        if (array_key_exists('goal', $data)) {
-            $fields[] = 'goal = ?';
-            $params[] = $data['goal'];
-        }
         if (array_key_exists('is_test_mode', $data)) {
             $fields[] = 'is_test_mode = ?';
             $params[] = (int) $data['is_test_mode'];
@@ -215,6 +211,11 @@ class StreamRepository
         $this->pdo->beginTransaction();
 
         try {
+            $query = 'DELETE FROM ' . $this->prefix . 'goals
+                WHERE charity_stream_guid = ?';
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([$stream->guid]);
+
             $query = 'DELETE FROM ' . $this->prefix . 'widget_donation_goal_bar
                 WHERE charity_stream_guid = ?';
             $stmt = $this->pdo->prepare($query);

@@ -8,7 +8,6 @@ class Stream
     public $charity_event_id;
     public $guid;
     public $title;
-    public $goal;
     public $form_slug;
     public $form_type = 'Donation';
     public $organization_slug;
