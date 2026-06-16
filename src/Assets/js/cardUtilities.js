@@ -53,7 +53,7 @@ function triggerGoalCelebration(newGoal) {
     banner.className = 'goal-banner';
     banner.textContent = `🎯 Objectif atteint ! Prochain objectif : ${newGoal} €`;
     overlay.appendChild(banner);
-    setTimeout(() => banner.remove(), 3500);
+    setTimeout(() => banner.remove(), 6100);
 
     // Flash the goal text
     const goalEl = document.getElementById('card-goal-text');
