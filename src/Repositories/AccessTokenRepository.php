@@ -12,6 +12,11 @@ class AccessTokenRepository
         private string $prefix
     ) {}
 
+    public function getPdo(): PDO
+    {
+        return $this->pdo;
+    }
+
     function selectBySlug($organization_slug): ?AccessToken
     {
         if (is_null($organization_slug)) {
@@ -22,6 +27,31 @@ class AccessTokenRepository
         } else {
             $query = "SELECT * FROM `{$this->prefix}access_token_partner_organization`
                     WHERE organization_slug = :organization_slug";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([
+                ':organization_slug' => $organization_slug
+            ]);
+        }
+
+        $stmt->setFetchMode(PDO::FETCH_CLASS, AccessToken::class);
+        $token = $stmt->fetch();
+
+        return $token ?: null;
+    }
+
+    /**
+     * Sélectionne un token par slug avec un verrou FOR UPDATE (doit être appelé dans une transaction).
+     */
+    public function selectBySlugForUpdate($organization_slug): ?AccessToken
+    {
+        if (is_null($organization_slug)) {
+            $query = "SELECT * FROM `{$this->prefix}access_token_partner_organization`
+                    WHERE organization_slug IS NULL FOR UPDATE";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+        } else {
+            $query = "SELECT * FROM `{$this->prefix}access_token_partner_organization`
+                    WHERE organization_slug = :organization_slug FOR UPDATE";
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([
                 ':organization_slug' => $organization_slug
@@ -87,6 +117,30 @@ class AccessTokenRepository
         ]);
 
         $accessToken->id = $obj->id;
+
+        return $accessToken;
+    }
+
+    /**
+     * Met à jour un token par son ID sans re-lire la DB (update atomique).
+     */
+    public function updateById(AccessToken $accessToken): AccessToken
+    {
+        $stmt = $this->pdo->prepare("UPDATE `{$this->prefix}access_token_partner_organization` SET
+            access_token = :access_token,
+            refresh_token = :refresh_token,
+            organization_slug = :organization_slug,
+            access_token_expires_at = :access_token_expires_at,
+            refresh_token_expires_at = :refresh_token_expires_at
+            WHERE id = :id");
+        $stmt->execute([
+            'access_token' => $accessToken->access_token,
+            'refresh_token' => $accessToken->refresh_token,
+            'organization_slug' => $accessToken->organization_slug,
+            'access_token_expires_at' => $accessToken->access_token_expires_at->format('Y-m-d H:i:s'),
+            'refresh_token_expires_at' => $accessToken->refresh_token_expires_at->format('Y-m-d H:i:s'),
+            'id' => $accessToken->id,
+        ]);
 
         return $accessToken;
     }

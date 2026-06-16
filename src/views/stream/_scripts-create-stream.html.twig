@@ -46,6 +46,17 @@
 		if (toastEl) { new bootstrap.Toast(toastEl).show(); }
 	});
 
+	/* ── Mise à jour du préfixe formulaire mode manuel ── */
+	function updateManualFormPrefix() {
+		var formType = document.getElementById('form_type').value;
+		var prefix = document.getElementById('manual_form_prefix');
+		if (formType === 'CrowdFunding') {
+			prefix.textContent = '…/collectes/';
+		} else {
+			prefix.textContent = '…/formulaires/don/';
+		}
+	}
+
 	/* ── Sélection du mode (cartes cliquables) ── */
 	function selectStreamMode(mode) {
 		var isAsso = (mode === 'asso');
@@ -114,20 +125,40 @@
 
 		var formSelect = document.getElementById('asso_form_slug');
 		formSelect.innerHTML = '<option value="">— Sélectionner un formulaire —</option>';
+
+		var formTypeLabels = {
+			'Donation': '🎁 Don',
+			'CrowdFunding': '🚀 Crowdfunding'
+		};
+
 		forms.forEach(function(form) {
 			var slug  = form.slug || form.formSlug || '';
 			var label = form.privateTitle || form.title || slug;
+			var formType = form.formType || 'Donation';
+			var typeLabel = formTypeLabels[formType] || formType;
 			var opt = document.createElement('option');
 			opt.value = slug;
-			opt.textContent = label;
+			opt.textContent = '[' + typeLabel + '] ' + label;
 			opt.dataset.title = label;
+			opt.dataset.formType = formType;
 			formSelect.appendChild(opt);
 		});
 
 		formSelect.addEventListener('change', function() {
 			var titleInput = document.getElementById('asso_title');
+			var formTypeInput = document.getElementById('asso_form_type');
+			var formTypeHint = document.getElementById('asso_form_type_hint');
 			var selectedOpt = this.options[this.selectedIndex];
 			titleInput.value = selectedOpt && selectedOpt.dataset.title ? selectedOpt.dataset.title : '';
+			var selectedFormType = selectedOpt && selectedOpt.dataset.formType ? selectedOpt.dataset.formType : 'Donation';
+			formTypeInput.value = selectedFormType;
+			if (selectedFormType === 'CrowdFunding') {
+				formTypeHint.textContent = 'Type : Crowdfunding';
+			} else if (selectedFormType === 'Donation') {
+				formTypeHint.textContent = 'Type : Formulaire de don';
+			} else {
+				formTypeHint.textContent = '';
+			}
 		});
 
 		setStepActive(2);

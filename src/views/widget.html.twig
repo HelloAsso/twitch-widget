@@ -11,8 +11,32 @@
       {% endif %}
     {% block scripts %}{% endblock %}
     {% block styles %}{% endblock %}
+    {% if isTestMode is defined and isTestMode %}
+    <style>
+      .test-mode-overlay {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        z-index: 99999;
+        background: rgba(255, 165, 0, 0.85);
+        color: #fff;
+        font-family: 'Open Sans', Arial, sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 6px;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      }
+    </style>
+    {% endif %}
   </head>
   <body>
+    {% if isTestMode is defined and isTestMode %}
+    <div class="test-mode-overlay">⚠️ mode test</div>
+    {% endif %}
     {% block content %}{% endblock %}
   </body>
 </html>

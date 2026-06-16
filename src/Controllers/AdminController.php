@@ -42,17 +42,21 @@ class AdminController
         $validSlugs = $this->accessTokenRepository->getValidOrganizationSlugs();
         $invalidSlugs = [];
         foreach ($streams as $stream) {
-            if ($stream->organization_slug && !in_array($stream->organization_slug, $validSlugs)) {
-                $invalidSlugs[] = $stream->organization_slug;
+            $slug = $stream->organization_slug;
+            if ($slug && !in_array(strtolower($slug), array_map('strtolower', $validSlugs))) {
+                $invalidSlugs[] = $slug;
             }
         }
         return array_unique($invalidSlugs);
     }
 
-    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = []): Response
+    private function redirectToRoute(Request $request, Response $response, string $routeName, array $params = [], array $queryParams = []): Response
     {
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
         $url = $routeParser->urlFor($routeName, $params);
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
         return $response->withHeader('Location', $url)->withStatus(302);
     }
 
@@ -73,6 +77,7 @@ class AdminController
             "events" => $events,
             "messages" => $this->messages->getMessages(),
             "currentUser" => $user,
+            "activeTab" => $request->getQueryParams()['tab'] ?? 'events',
             "selectedEventId" => $request->getQueryParams()['eventId'] ?? null,
             "openCreateStream" => isset($request->getQueryParams()['createStream']),
             "openCreateEvent" => isset($request->getQueryParams()['createEvent']),
@@ -96,13 +101,13 @@ class AdminController
 
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->messages->addMessage('error', 'Email invalide');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $existing = $this->userRepository->select($email);
         if ($existing) {
             $this->messages->addMessage('error', 'Un utilisateur avec cet email existe déjà');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $user = $this->userRepository->insert($email);
@@ -131,11 +136,36 @@ class AdminController
                 'error' => $e->getMessage(),
             ]);
             $this->messages->addMessage('error', 'Utilisateur créé mais l\'email de bienvenue n\'a pas pu être envoyé.');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
         }
 
         $this->messages->addMessage('success', 'Utilisateur créé : ' . $email . ' — un email de bienvenue a été envoyé.');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
+    }
+
+    /**
+     * Supprime un utilisateur (réservé aux admins).
+     * Un admin ne peut pas se supprimer lui-même.
+     */
+    public function deleteUser(Request $request, Response $response, array $args): Response
+    {
+        $currentUser = $request->getAttribute('user');
+        $userId = (int) $args['id'];
+
+        if ($currentUser->id == $userId) {
+            $this->messages->addMessage('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
+        }
+
+        $user = $this->userRepository->selectById($userId);
+        if (!$user) {
+            $this->messages->addMessage('error', 'Utilisateur introuvable.');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
+        }
+
+        $this->userRepository->deleteById($userId);
+        $this->messages->addMessage('success', 'Utilisateur ' . $user->email . ' supprimé.');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
     }
 
     /**
@@ -183,7 +213,7 @@ class AdminController
         $this->userRepository->insertRight($owner, null, $event);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
     }
 
     public function deleteEvent(Request $request, Response $response, array $args): Response
@@ -193,13 +223,13 @@ class AdminController
         $event = $this->eventRepository->selectByUserAndGuid($user, $args['id']);
         if (!$event) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès cet évènement');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
         }
 
         $this->eventRepository->delete($event);
         $this->messages->addMessage('success', 'Évènement supprimé');
 
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
     }
 
     public function editEvent(Request $request, Response $response, array $args): Response
@@ -244,6 +274,23 @@ class AdminController
             $this->eventRepository->update($event, $updateData);
         }
 
+        // Toggle mode test
+        if (isset($body['toggle_test_mode'])) {
+            $newMode = $event->is_test_mode ? 0 : 1;
+            $updateData = ['is_test_mode' => $newMode];
+            if ($newMode === 0) {
+                $updateData['test_amount'] = 0;
+            }
+            $this->eventRepository->update($event, $updateData);
+            $this->messages->addMessage('success', $newMode ? 'Mode test activé' : 'Mode test désactivé (montant réinitialisé)');
+        }
+
+        // Reset montant test
+        if (isset($body['reset_test_amount'])) {
+            $this->eventRepository->update($event, ['test_amount' => 0]);
+            $this->messages->addMessage('success', 'Montant test réinitialisé à 0');
+        }
+
         $this->handleWidgetFormSave($request, null, $event->guid);
 
         return $this->redirectToRoute($request, $response, 'app_event_edit', ["id" => $event->guid]);
@@ -269,7 +316,7 @@ class AdminController
             $event = $this->eventRepository->selectByUserAndId($user, $parentEvent);
         }
 
-        $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null);
+        $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null, $data['form_type'] ?? 'Donation');
         $this->userRepository->insertRight($owner, $stream, null);
 
         if ($event !== null && $parentStyle) {
@@ -288,7 +335,7 @@ class AdminController
         }
 
         $this->messages->addMessage('success', 'Stream ajouté');
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
     }
 
     public function deleteStream(Request $request, Response $response, array $args): Response
@@ -298,13 +345,13 @@ class AdminController
         $stream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         if (!$stream) {
             $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
-            return $this->redirectToRoute($request, $response, 'app_admin_index');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
         }
 
         $this->streamRepository->delete($stream);
         $this->messages->addMessage('success', 'Stream supprimé');
 
-        return $this->redirectToRoute($request, $response, 'app_admin_index');
+        return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
     }
 
     public function editStream(Request $request, Response $response, array $args): Response
@@ -329,7 +376,8 @@ class AdminController
             $availableEvents = $this->eventRepository->selectListByUser($user);
         }
 
-        $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/formulaires/' . $charityStream->form_slug;
+        $formTypeUrlSegment = ($charityStream->form_type === 'CrowdFunding') ? 'collectes' : 'formulaires';
+        $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/' . $formTypeUrlSegment . '/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
         $data = [
@@ -388,6 +436,23 @@ class AdminController
         if (isset($body['unlink_event'])) {
             $this->streamRepository->updateEventLink($charityStream, null);
             $this->messages->addMessage('success', 'Stream délié de son événement');
+        }
+
+        // Toggle mode test
+        if (isset($body['toggle_test_mode'])) {
+            $newMode = $charityStream->is_test_mode ? 0 : 1;
+            $updateData = ['is_test_mode' => $newMode];
+            if ($newMode === 0) {
+                $updateData['test_amount'] = 0;
+            }
+            $this->streamRepository->update($charityStream, $updateData);
+            $this->messages->addMessage('success', $newMode ? 'Mode test activé' : 'Mode test désactivé (montant réinitialisé)');
+        }
+
+        // Reset montant test
+        if (isset($body['reset_test_amount'])) {
+            $this->streamRepository->update($charityStream, ['test_amount' => 0]);
+            $this->messages->addMessage('success', 'Montant test réinitialisé à 0');
         }
 
         if (isset($body['save_alert_box'])) {
@@ -488,8 +553,8 @@ class AdminController
             // Stocker / mettre à jour les tokens
             $this->apiWrapper->storeOrUpdateToken($tokenData);
 
-            // Récupérer les formulaires de don
-            $forms = $this->apiWrapper->getDonationForms($organizationSlug);
+            // Récupérer les formulaires de don et de crowdfunding
+            $forms = $this->apiWrapper->getOrganizationForms($organizationSlug, ['Donation', 'CrowdFunding']);
         } catch (Exception $e) {
             $response->getBody()->write($this->buildCallbackPage(null, [], $e->getMessage()));
             return $response;

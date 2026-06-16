@@ -170,6 +170,7 @@ $container->set(Messages::class, function () {
 
 $app = AppFactory::createFromContainer($container);
 $app->addRoutingMiddleware();
+$app->addBodyParsingMiddleware();
 
 if (!session_id())
     @session_start();
@@ -209,6 +210,7 @@ $app->get('/validate_auth_page', [LoginController::class, 'validateAuthPage'])->
 
 $app->get('/admin', [AdminController::class, 'index'])->add(new AuthMiddleware())->setName('app_admin_index');
 $app->post('/admin/user', [AdminController::class, 'newUser'])->add(new AuthAdminMiddleware())->setName('app_user_new');
+$app->post('/admin/user/{id}/delete', [AdminController::class, 'deleteUser'])->add(new AuthAdminMiddleware())->setName('app_user_delete');
 $app->post('/admin/event', [AdminController::class, 'newEvent'])->add(new AuthMiddleware())->setName('app_event_new');
 $app->post('/admin/event/{id}/delete', [AdminController::class, 'deleteEvent'])->add(new AuthMiddleware())->setName('app_event_delete');
 $app->get('/admin/event/{id}/edit', [AdminController::class, 'editEvent'])->add(new AuthMiddleware())->setName('app_event_edit');
@@ -232,5 +234,8 @@ $app->get('/widget-stream-card/{id}', [WidgetController::class, 'widgetStreamCar
 $app->get('/widget-stream-card/{id}/fetch', [WidgetController::class, 'widgetStreamCardFetch'])->setName('app_stream_widget_card_fetch');
 $app->get('/widget-event-card/{id}', [WidgetController::class, 'widgetEventCard'])->setName('app_event_widget_card');
 $app->get('/widget-event-card/{id}/fetch', [WidgetController::class, 'widgetEventCardFetch'])->setName('app_event_widget_card_fetch');
+
+$app->post('/widget-stream/{id}/simulate', [WidgetController::class, 'simulateStreamDonation'])->add(new AuthMiddleware())->setName('app_stream_simulate_donation');
+$app->post('/widget-event/{id}/simulate', [WidgetController::class, 'simulateEventDonation'])->add(new AuthMiddleware())->setName('app_event_simulate_donation');
 
 $app->run();

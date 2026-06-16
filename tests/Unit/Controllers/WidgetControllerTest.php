@@ -97,30 +97,63 @@ class WidgetControllerTest extends TestCase
         $this->assertArrayHasKey('alertBoxWidgetSoundUrl', $capturedData);
     }
 
-    public function testWidgetAlertThrowsWhenNoIdProvided(): void
+    public function testWidgetAlertRendersErrorWhenNoIdProvided(): void
     {
-        $this->expectException(Exception::class);
+        $capturedTemplate = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate) {
+                    $capturedTemplate = $template;
+                    $response->getBody()->write('<html>error</html>');
+                    return $response;
+                }
+            );
+
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-alert/');
         $this->controller->widgetAlert($request, new Response(), ['id' => '']);
+
+        $this->assertEquals('widget/error.html.twig', $capturedTemplate);
     }
 
-    public function testWidgetAlertThrowsWhenWidgetNotFound(): void
+    public function testWidgetAlertRendersErrorWhenWidgetNotFound(): void
     {
         $this->widgetRepository->method('selectAlertWidgetByGuid')->willReturn(null);
 
-        $this->expectException(Exception::class);
+        $capturedTemplate = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate) {
+                    $capturedTemplate = $template;
+                    $response->getBody()->write('<html>error</html>');
+                    return $response;
+                }
+            );
+
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-alert/unknown');
         $this->controller->widgetAlert($request, new Response(), ['id' => 'unknown-guid']);
+
+        $this->assertEquals('widget/error.html.twig', $capturedTemplate);
     }
 
-    public function testWidgetAlertThrowsWhenStreamNotFound(): void
+    public function testWidgetAlertRendersErrorWhenStreamNotFound(): void
     {
         $this->widgetRepository->method('selectAlertWidgetByGuid')->willReturn($this->buildAlertWidget('g'));
         $this->streamRepository->method('selectByGuid')->willReturn(null);
 
-        $this->expectException(Exception::class);
+        $capturedTemplate = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate) {
+                    $capturedTemplate = $template;
+                    $response->getBody()->write('<html>error</html>');
+                    return $response;
+                }
+            );
+
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-alert/g');
         $this->controller->widgetAlert($request, new Response(), ['id' => 'g']);
+
+        $this->assertEquals('widget/error.html.twig', $capturedTemplate);
     }
 
     // =====================================================================
@@ -228,20 +261,42 @@ class WidgetControllerTest extends TestCase
         $this->assertArrayHasKey('donationGoalWidget', $capturedData);
     }
 
-    public function testWidgetDonationThrowsWhenNoIdProvided(): void
+    public function testWidgetDonationRendersErrorWhenNoIdProvided(): void
     {
-        $this->expectException(Exception::class);
+        $capturedTemplate = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate) {
+                    $capturedTemplate = $template;
+                    $response->getBody()->write('<html>error</html>');
+                    return $response;
+                }
+            );
+
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-donation/');
         $this->controller->widgetDonation($request, new Response(), ['id' => '']);
+
+        $this->assertEquals('widget/error.html.twig', $capturedTemplate);
     }
 
-    public function testWidgetDonationThrowsWhenWidgetNotFound(): void
+    public function testWidgetDonationRendersErrorWhenWidgetNotFound(): void
     {
         $this->widgetRepository->method('selectDonationWidgetByGuid')->willReturn(null);
 
-        $this->expectException(Exception::class);
+        $capturedTemplate = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate) {
+                    $capturedTemplate = $template;
+                    $response->getBody()->write('<html>error</html>');
+                    return $response;
+                }
+            );
+
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-donation/x');
         $this->controller->widgetDonation($request, new Response(), ['id' => 'x']);
+
+        $this->assertEquals('widget/error.html.twig', $capturedTemplate);
     }
 
     // =====================================================================

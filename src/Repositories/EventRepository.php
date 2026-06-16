@@ -154,6 +154,14 @@ class EventRepository
             $fields[] = 'goal = ?';
             $params[] = $data['goal'];
         }
+        if (array_key_exists('is_test_mode', $data)) {
+            $fields[] = 'is_test_mode = ?';
+            $params[] = (int) $data['is_test_mode'];
+        }
+        if (array_key_exists('test_amount', $data)) {
+            $fields[] = 'test_amount = ?';
+            $params[] = (int) $data['test_amount'];
+        }
 
         if (empty($fields)) return;
 
