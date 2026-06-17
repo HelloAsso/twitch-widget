@@ -2,7 +2,7 @@ name: Build & deploy sandbox
 
 on:
   push:
-    branches: [ "develop", "goal-list-2" ]
+    branches: [ "develop" ]
   workflow_dispatch:
 
 permissions:
