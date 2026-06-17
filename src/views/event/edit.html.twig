@@ -10,13 +10,16 @@
 		<div class="card mb-4 {{ event.is_test_mode ? 'border-warning' : '' }}">
 			<div class="card-header d-flex justify-content-between align-items-center {{ event.is_test_mode ? 'bg-warning bg-opacity-25' : '' }}">
 				<h5 class="mb-0">🧪 Mode test</h5>
-				<form method="POST" class="d-inline">
-					{% if event.is_test_mode %}
-						<button type="submit" class="btn btn-sm btn-outline-danger" name="toggle_test_mode" value="1">❌ Désactiver le mode test</button>
-					{% else %}
-						<button type="submit" class="btn btn-sm btn-outline-warning" name="toggle_test_mode" value="1">🧪 Activer le mode test</button>
-					{% endif %}
-				</form>
+				<div class="d-flex flex-column align-items-end gap-1">
+					<form method="POST" class="d-inline">
+						{% if event.is_test_mode %}
+							<button type="submit" class="btn btn-sm btn-outline-danger" name="toggle_test_mode" value="1">❌ Désactiver le mode test</button>
+						{% else %}
+							<button type="submit" class="btn btn-sm btn-outline-warning" name="toggle_test_mode" value="1">🧪 Activer le mode test</button>
+						{% endif %}
+					</form>
+					<small class="text-muted">Après activation / désactivation, rechargez les widgets dans le navigateur.</small>
+				</div>
 			</div>
 			{% if event.is_test_mode %}
 			<div class="card-body">
