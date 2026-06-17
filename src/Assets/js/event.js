@@ -11,8 +11,8 @@ if (typeof CountUp !== 'undefined' && CountUp) {
         decimal: ',',
         suffix: ' €',
     };
-    counterback = new CountUp('back-goal-current', window.currentAmount, options);
-    counterfront = new CountUp('front-goal-current', window.currentAmount, options);
+    counterback = new CountUp('back-goal-current', window.currentAmount / 100, options);
+    counterfront = new CountUp('front-goal-current', window.currentAmount / 100, options);
 }
 
 if (counterback && counterfront) {

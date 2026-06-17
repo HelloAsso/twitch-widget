@@ -28,7 +28,7 @@ function triggerGoalAnimation(newGoal, counterback, counterfront, isLastGoal = f
             front.classList.remove('front--celebrating');
 
             if (isLastGoal) {
-                // Rester à 100 % — tous les objectifs atteints
+                updateDonationBar(counterback, counterfront);
                 isAnimating = false;
             } else {
                 window.goalAmount = newGoal;
