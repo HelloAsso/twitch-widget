@@ -29,7 +29,6 @@ class WidgetRepository
                 text_content,
                 bar_color,
                 background_color,
-                goal,
                 cache_data,
                 creation_date,
                 last_update
@@ -68,7 +67,7 @@ class WidgetRepository
     {
         $stmt = $this->pdo->prepare('
             UPDATE ' . $this->prefix . 'widget_donation_goal_bar
-            SET text_color_main = ?, text_color_alt = ?, text_content = ?, bar_color = ?, background_color = ?, goal = ?
+            SET text_color_main = ?, text_color_alt = ?, text_content = ?, bar_color = ?, background_color = ?
             WHERE charity_stream_guid = ?
             OR charity_event_guid = ?
         ');
@@ -78,7 +77,6 @@ class WidgetRepository
             $data['text_content'],
             $data['bar_color'],
             $data['background_color'],
-            $data['goal'],
             $streamGuid,
             $eventGuid
         ]);
@@ -229,7 +227,6 @@ class WidgetRepository
                     tag,
                     title,
                     description,
-                    goal,
                     background_color,
                     bar_color,
                     bar_background_color,
@@ -268,7 +265,7 @@ class WidgetRepository
         try {
             $stmt = $this->pdo->prepare('
                 UPDATE ' . $this->prefix . 'widget_card
-                SET tag = ?, title = ?, description = ?, goal = ?,
+                SET tag = ?, title = ?, description = ?,
                     background_color = ?, bar_color = ?, bar_background_color = ?,
                     text_color = ?, tag_color = ?, tag_background_color = ?
                 WHERE charity_stream_guid = ?
@@ -278,7 +275,6 @@ class WidgetRepository
                 $data['card_tag'] ?? '',
                 $data['card_title'] ?? '',
                 $data['card_description'] ?? '',
-                $data['card_goal'] ?? 1000,
                 $data['card_background_color'] ?? '#ffffff',
                 $data['card_bar_color'] ?? '#2563eb',
                 $data['card_bar_background_color'] ?? '#e5e7eb',

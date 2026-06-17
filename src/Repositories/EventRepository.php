@@ -19,7 +19,7 @@ class EventRepository
         $stmt = $this->pdo->query('
             SELECT c.*, u.email as admin
             FROM ' . $this->prefix . 'charity_event c
-            INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_event = c.id
+            INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_event = c.id AND r.is_owner = 1
             INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
             ORDER BY c.creation_date DESC
         ');
@@ -150,10 +150,6 @@ class EventRepository
             $fields[] = 'title = ?';
             $params[] = $data['title'];
         }
-        if (array_key_exists('goal', $data)) {
-            $fields[] = 'goal = ?';
-            $params[] = $data['goal'];
-        }
         if (array_key_exists('is_test_mode', $data)) {
             $fields[] = 'is_test_mode = ?';
             $params[] = (int) $data['is_test_mode'];
@@ -186,6 +182,11 @@ class EventRepository
                 WHERE id_charity_event = ?';
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([$event->id]);
+
+            $query = 'DELETE FROM ' . $this->prefix . 'goals
+                WHERE charity_event_guid = ?';
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([$event->guid]);
 
             $query = 'DELETE FROM ' . $this->prefix . 'widget_donation_goal_bar
                 WHERE charity_event_guid = ?';

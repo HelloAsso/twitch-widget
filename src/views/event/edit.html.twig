@@ -2,24 +2,25 @@
 {% extends "layout.html.twig" %}
 {% block content %}
 	<div class="container mb-5">
-		<h1 class="my-4 text-center">Édition de l'évènement</h1>
+		{# ── En-tête ─────────────────────────────────────────────── #}
+		<div class="d-flex justify-content-between align-items-center my-4">
+			<a href="/admin" class="btn btn-secondary">Retour</a>
+			<h1 class="mb-0">Édition de l'évènement</h1>
+			<form method="POST" class="d-flex align-items-center gap-2">
+				<input type="hidden" name="toggle_test_mode" value="1">
+				<span class="text-muted small">🧪 Mode test</span>
+				<div class="form-check form-switch mb-0">
+					<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
+						{% if event.is_test_mode %}checked{% endif %}
+						onchange="this.form.submit()">
+				</div>
+			</form>
+		</div>
 
-		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
-
-		{# ── Mode test ─────────────────────────────────────────────── #}
-		<div class="card mb-4 {{ event.is_test_mode ? 'border-warning' : '' }}">
-			<div class="card-header d-flex justify-content-between align-items-center {{ event.is_test_mode ? 'bg-warning bg-opacity-25' : '' }}">
-				<h5 class="mb-0">🧪 Mode test</h5>
-				<form method="POST" class="d-inline">
-					{% if event.is_test_mode %}
-						<button type="submit" class="btn btn-sm btn-outline-danger" name="toggle_test_mode" value="1">❌ Désactiver le mode test</button>
-					{% else %}
-						<button type="submit" class="btn btn-sm btn-outline-warning" name="toggle_test_mode" value="1">🧪 Activer le mode test</button>
-					{% endif %}
-				</form>
-			</div>
-			{% if event.is_test_mode %}
-			<div class="card-body">
+		{# ── Section mode test (visible uniquement si actif) ──────── #}
+		{% if event.is_test_mode %}
+		<div class="card mb-4 border-warning">
+			<div class="card-body bg-warning bg-opacity-10">
 				<div class="row align-items-end">
 					<div class="col-md-4">
 						<p class="mb-1 fw-semibold">Montant test actuel : <span id="testAmountDisplay">{{ (event.test_amount / 100) | number_format(2, ',', ' ') }} €</span></p>
@@ -48,9 +49,10 @@
 					</div>
 				</div>
 				<div id="simulateAlert" class="mt-2" style="display:none;"></div>
+				<small class="text-muted d-block mt-2">⚠️ Rechargez les widgets dans le navigateur pour qu'ils prennent en compte le mode test.</small>
 			</div>
-			{% endif %}
 		</div>
+		{% endif %}
 
 		{# ── Informations de l'événement ──────────────────────────── #}
 		<div class="card mb-4">
@@ -59,28 +61,81 @@
 			</div>
 			<div class="card-body">
 				<form method="POST">
-a					<div class="row">
-						<div class="col-md-6">
-							<div class="mb-3">
-								<label for="event_title" class="form-label fw-semibold">Titre</label>
-								<input type="text" class="form-control" id="event_title" name="event_title" value="{{ event.title }}" required>
-							</div>
+				<div class="row">
+					<div class="col-md-9">
+						<div class="mb-3">
+							<label for="event_title" class="form-label fw-semibold">Titre</label>
+							<input type="text" class="form-control" id="event_title" name="event_title" value="{{ event.title }}" required>
 						</div>
-						<div class="col-md-3">
-							<div class="mb-3">
-								<label for="event_goal" class="form-label fw-semibold">Objectif (€)</label>
-								<input type="number" class="form-control" id="event_goal" name="event_goal" value="{{ event.goal }}" min="0">
-							</div>
+					</div>
+					<div class="col-md-3 d-flex align-items-end">
+						<div class="mb-3">
+							<button type="submit" class="btn btn-primary" name="save_event_info">💾 Enregistrer</button>
 						</div>
-						<div class="col-md-3 d-flex align-items-end">
-							<div class="mb-3">
-								<button type="submit" class="btn btn-primary" name="save_event_info">💾 Enregistrer</button>
-							</div>
+					</div>
+				</div>
+			</form>
+			</div>
+		</div>
+
+		{# ── Objectifs de collecte ───────────────────────────────── #}
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">🎯 Objectifs de collecte</h5>
+			</div>
+			<div class="card-body">
+				<form method="POST">
+					<input type="hidden" name="save_goals" value="1">
+					<div id="goalsManager">
+						<div class="goals-chips d-flex flex-wrap gap-2 mb-3" style="min-height:38px;"></div>
+						<div class="input-group mb-3" style="max-width:320px;">
+							<input type="number" class="form-control goals-add-input" placeholder="Montant en € (ex: 500)" min="1" step="1">
+							<button type="button" class="btn btn-outline-primary goals-add-btn">＋ Ajouter</button>
+						</div>
+						<div class="goals-hidden">
+							{% for g in eventGoals %}
+							<input type="hidden" name="goal_amounts[]" value="{{ g }}">
+							{% endfor %}
 						</div>
 					</div>
 				</form>
+				<div class="alert alert-info d-flex gap-2 mb-0 mt-3 py-2 px-3" style="font-size:0.85rem;">
+					<span style="flex-shrink:0;">ℹ️</span>
+					<div>
+						Les objectifs s'affichent <strong>dans l'ordre croissant</strong> sur les widgets. Une fois un objectif atteint, la barre de don se réinitialise vers le suivant avec une animation. Si tous les objectifs sont dépassés, la barre reste à 100 %.
+					</div>
+				</div>
 			</div>
 		</div>
+
+		{# ── Administrateurs ─────────────────────────────────────── #}
+		{% if isEventOwner %}
+		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="mb-0">👥 Administrateurs</h5>
+			</div>
+			<div class="card-body">
+				<div class="d-flex flex-wrap gap-2 mb-3">
+					{% for admin in eventAdmins %}
+					<span class="badge rounded-pill {{ admin.is_owner ? 'bg-warning text-dark' : 'bg-secondary' }} d-flex align-items-center gap-1 px-3 py-2" style="font-size:0.95rem;">
+						{{ admin.email | e }}
+						{% if admin.is_owner %}
+							<span class="ms-1" title="Propriétaire">★</span>
+						{% elseif admin.id != currentUserId %}
+						<form method="POST" class="d-inline ms-1">
+							<button type="submit" name="remove_admin" value="{{ admin.id }}" class="btn-close btn-close-white" aria-label="Retirer" style="font-size:0.6rem;" onclick="return confirm('Retirer {{ admin.email | e }} ?')"></button>
+						</form>
+						{% endif %}
+					</span>
+					{% endfor %}
+				</div>
+				<form method="POST" class="d-flex gap-2" style="max-width:420px;">
+					<input type="email" class="form-control" name="admin_email" placeholder="Email du nouvel admin" required>
+					<button type="submit" class="btn btn-outline-primary text-nowrap" name="add_admin">＋ Ajouter</button>
+				</form>
+			</div>
+		</div>
+		{% endif %}
 
 		{# ── Streams liés à cet événement ────────────────────────── #}
 		<div class="card mb-4">
@@ -121,65 +176,6 @@ a					<div class="row">
 
 		<div class="accordion mt-4" id="widgetsAccordion">
 
-			{# ── Widget barre de don ────────────────────────────────── #}
-			<div class="accordion-item">
-				<h2 class="accordion-header" id="headingDonationBar">
-					<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="true" aria-controls="collapseDonationBar">
-						🎯 Widget barre de don
-					</button>
-				</h2>
-				<div id="collapseDonationBar" class="accordion-collapse collapse show" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
-					<div class="accordion-body">
-						<form id="donationBarForm" method="POST">
-							<div class="row">
-								<div class="col-md-6">
-									<div class="mb-3">
-										<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
-										<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
-									</div>
-									<div class="mb-3">
-										<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
-										<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
-									</div>
-									<div class="mb-3">
-										<label for="text_content" class="form-label">Texte</label>
-										<input type="text" class="form-control" id="text_content" name="text_content" value="{{ donationGoalWidget.text_content }}">
-									</div>
-								</div>
-								<div class="col-md-6">
-									<div class="mb-3">
-										<label for="bar_color" class="form-label">Couleur de la barre</label>
-										<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="background_color" class="form-label">Couleur du fond</label>
-										<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
-									</div>
-								</div>
-							</div>
-							<div class="progress">
-								<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
-									<p id="back-goal-current">{{ event.goal / 2 }} €</p>
-									<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-									<p id="back-goal-total">{{ event.goal }} €</p>
-								</div>
-								<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
-									<p id="front-goal-current">{{ event.goal / 2 }} €</p>
-									<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-									<p id="front-goal-total">{{ event.goal }} €</p>
-								</div>
-							</div>
-							<div class="d-flex align-items-center justify-content-between mt-3">
-								<h6 class="mb-0">
-									URL : <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
-								</h6>
-								<button type="submit" class="btn btn-primary" name="save_donation_goal">💾 Enregistrer</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			</div>
-
 			{# ── Widget carte de don ────────────────────────────────── #}
 			{% if cardWidget %}
 			<div class="accordion-item">
@@ -201,6 +197,7 @@ a					<div class="row">
 												<a href="{{ cardWidgetPictureUrl }}" target="_blank">{{ cardWidget.image }}</a>
 											</div>
 										{% endif %}
+
 										<input type="file" class="form-control" id="card_image" name="card_image" accept="image/*"/>
 									</div>
 									<div class="mb-3">
@@ -256,12 +253,12 @@ a					<div class="row">
 										<div id="cardPreviewTitle" style="font-size:24px; font-weight:800; line-height:1.15;">{{ cardWidget.title }}</div>
 										<div id="cardPreviewDesc" style="font-size:13px; line-height:1.6; opacity:0.8;">{{ cardWidget.description }}</div>
 										<div>
-											<div id="cardPreviewAmount" style="font-size:28px; font-weight:800;">{{ (event.goal / 2) }} €</div>
+											<div id="cardPreviewAmount" style="font-size:28px; font-weight:800;">{{ (eventGoals[0] ?? 1000) / 2 }} €</div>
 											<div style="display:flex; align-items:center; gap:12px;">
 												<div style="flex:1; height:12px; border-radius:999px; overflow:hidden; background-color:{{ cardWidget.bar_background_color }};">
 													<div id="cardPreviewBarFill" style="height:100%; border-radius:999px; width:50%; background-color:{{ cardWidget.bar_color }};"></div>
 												</div>
-												<div id="cardPreviewGoal" style="font-size:13px; white-space:nowrap;">Objectif : <strong>{{ event.goal }} €</strong></div>
+												<div id="cardPreviewGoal" style="font-size:13px; white-space:nowrap;">Objectif : <strong>{{ eventGoals[0] ?? 1000 }} €</strong></div>
 											</div>
 											<div style="display:flex; gap:24px; margin-top:6px; font-size:13px; opacity:0.75;">
 												<span><strong id="cardPreviewPct">50%</strong> collectés</span>
@@ -293,6 +290,65 @@ a					<div class="row">
 				</div>
 			</div>
 			{% endif %}
+
+			{# ── Widget barre de don ────────────────────────────────── #}
+			<div class="accordion-item">
+				<h2 class="accordion-header" id="headingDonationBar">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="false" aria-controls="collapseDonationBar">
+						🎯 Widget barre de don
+					</button>
+				</h2>
+				<div id="collapseDonationBar" class="accordion-collapse collapse" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
+					<div class="accordion-body">
+						<form id="donationBarForm" method="POST">
+							<div class="row">
+								<div class="col-md-6">
+									<div class="mb-3">
+										<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
+										<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
+									</div>
+									<div class="mb-3">
+										<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
+										<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+									</div>
+									<div class="mb-3">
+										<label for="text_content" class="form-label">Texte</label>
+										<input type="text" class="form-control" id="text_content" name="text_content" value="{{ donationGoalWidget.text_content }}">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="mb-3">
+										<label for="bar_color" class="form-label">Couleur de la barre</label>
+										<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
+									</div>
+									<div class="mb-3">
+										<label for="background_color" class="form-label">Couleur du fond</label>
+										<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
+									</div>
+								</div>
+							</div>
+							<div class="progress">
+								<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
+									<p id="back-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
+									<p id="back-title">{{ donationGoalWidget.text_content }}</p>
+									<p id="back-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
+								</div>
+								<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
+									<p id="front-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
+									<p id="front-title">{{ donationGoalWidget.text_content }}</p>
+									<p id="front-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
+								</div>
+							</div>
+							<div class="d-flex align-items-center justify-content-between mt-3">
+								<h6 class="mb-0">
+									URL : <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
+								</h6>
+								<button type="submit" class="btn btn-primary" name="save_donation_goal">💾 Enregistrer</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
 
 		</div>{# /accordion #}
 	</div>

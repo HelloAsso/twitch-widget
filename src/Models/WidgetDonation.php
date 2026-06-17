@@ -12,7 +12,6 @@ class WidgetDonation
     public $text_content;
     public $bar_color;
     public $background_color;
-    public $goal;
     public $cache_data;
     public $cache_updated_at;
     public $creation_date;

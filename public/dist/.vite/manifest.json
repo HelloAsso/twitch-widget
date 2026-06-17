@@ -24,7 +24,7 @@
     "src": "src/Assets/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-MiSapeh1.css"
+      "assets/app-B5Hc9Cjf.css"
     ]
   },
   "src/Assets/js/cardEvent.js": {
@@ -33,7 +33,8 @@
     "src": "src/Assets/js/cardEvent.js",
     "isEntry": true,
     "imports": [
-      "_countUp.min.bkv6uBOp.min.js"
+      "_countUp.min.bkv6uBOp.min.js",
+      "src/Assets/js/cardUtilities.js"
     ]
   },
   "src/Assets/js/cardStream.js": {
@@ -42,7 +43,8 @@
     "src": "src/Assets/js/cardStream.js",
     "isEntry": true,
     "imports": [
-      "_countUp.min.bkv6uBOp.min.js"
+      "_countUp.min.bkv6uBOp.min.js",
+      "src/Assets/js/cardUtilities.js"
     ]
   },
   "src/Assets/js/cardUtilities.js": {

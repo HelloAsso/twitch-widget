@@ -6,6 +6,7 @@ use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -27,6 +28,7 @@ class AdminController
         private StreamRepository $streamRepository,
         private UserRepository $userRepository,
         private WidgetRepository $widgetRepository,
+        private GoalRepository $goalRepository,
         private Messages $messages,
         private ApiWrapper $apiWrapper,
         private AccessTokenRepository $accessTokenRepository,
@@ -210,7 +212,7 @@ class AdminController
 
         $owner = $this->userRepository->findOrCreate($ownerEmail);
         $event = $this->eventRepository->insert($data['title']);
-        $this->userRepository->insertRight($owner, null, $event);
+        $this->userRepository->insertRight($owner, null, $event, true);
 
         $this->messages->addMessage('success', 'Évènement ajouté');
         return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'events']);
@@ -240,6 +242,7 @@ class AdminController
         $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $event->guid);
         $streams = $this->streamRepository->selectListByEvent($event);
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $isEventOwner = $user->role === 'ADMIN' || $this->userRepository->isEventOwner($user, $event);
 
         $data = [
             "logged" => true,
@@ -251,6 +254,10 @@ class AdminController
             "cardWidgetPictureUrl" => ($cardWidget && $cardWidget->image) ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
             "widgetDonationGoalUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_event_widget_donation', ["id" => $event->guid]),
             "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_event_widget_card', ["id" => $event->guid]),
+            "eventGoals" => $this->goalRepository->selectAmountsByEventGuid($event->guid),
+            "eventAdmins" => $this->userRepository->selectEventAdmins($event),
+            "isEventOwner" => $isEventOwner,
+            "currentUserId" => $user->id,
         ];
 
         return $this->view->render($response, 'event/edit.html.twig', $data);
@@ -267,9 +274,6 @@ class AdminController
             $updateData = [];
             if (isset($body['event_title'])) {
                 $updateData['title'] = $body['event_title'];
-            }
-            if (isset($body['event_goal'])) {
-                $updateData['goal'] = (int) $body['event_goal'];
             }
             $this->eventRepository->update($event, $updateData);
         }
@@ -289,6 +293,45 @@ class AdminController
         if (isset($body['reset_test_amount'])) {
             $this->eventRepository->update($event, ['test_amount' => 0]);
             $this->messages->addMessage('success', 'Montant test réinitialisé à 0');
+        }
+
+        // Objectifs de collecte
+        if (isset($body['save_goals'])) {
+            $amounts = array_values(array_filter(
+                array_map('intval', $body['goal_amounts'] ?? []),
+                fn($v) => $v > 0
+            ));
+            sort($amounts);
+            if (!empty($amounts)) {
+                $this->goalRepository->replaceForEvent($event->guid, $amounts);
+                $this->messages->addMessage('success', 'Objectifs mis à jour');
+            }
+        }
+
+        // Gestion des admins (owner ou ADMIN global uniquement)
+        $isEventOwner = $user->role === 'ADMIN' || $this->userRepository->isEventOwner($user, $event);
+
+        if ($isEventOwner && isset($body['add_admin'])) {
+            $email = trim($body['admin_email'] ?? '');
+            if ($email) {
+                $newAdmin = $this->userRepository->findOrCreate($email);
+                $existing = $this->userRepository->selectEventAdmins($event);
+                $alreadyIn = array_filter($existing, fn($a) => (int) $a['id'] === $newAdmin->id);
+                if (empty($alreadyIn)) {
+                    $this->userRepository->insertRight($newAdmin, null, $event, false);
+                    $this->messages->addMessage('success', "Admin {$email} ajouté");
+                } else {
+                    $this->messages->addMessage('info', "{$email} est déjà admin de cet évènement");
+                }
+            }
+        }
+
+        if ($isEventOwner && isset($body['remove_admin'])) {
+            $removeId = (int) ($body['remove_admin'] ?? 0);
+            if ($removeId && $removeId !== $user->id) {
+                $this->userRepository->deleteEventRight($removeId, $event);
+                $this->messages->addMessage('success', 'Admin retiré');
+            }
         }
 
         $this->handleWidgetFormSave($request, null, $event->guid);
@@ -328,7 +371,6 @@ class AdminController
                     'text_content' => $donationGoalWidget->text_content,
                     'bar_color' => $donationGoalWidget->bar_color,
                     'background_color' => $donationGoalWidget->background_color,
-                    'goal' => $donationGoalWidget->goal,
                 ];
                 $this->widgetRepository->updateDonationWidget($stream->guid, null, $widgetData);
             }
@@ -396,6 +438,7 @@ class AdminController
             "widgetAlertBoxUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_alert', ["id" => $guid]),
             "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_card', ["id" => $guid]),
             "messages" => $this->messages->getMessages(),
+            "streamGoals" => $this->goalRepository->selectAmountsByStreamGuid($guid),
         ];
 
         return $this->view->render($response, 'stream/edit.html.twig', $data);
@@ -413,9 +456,6 @@ class AdminController
             $updateData = [];
             if (isset($body['stream_title'])) {
                 $updateData['title'] = $body['stream_title'];
-            }
-            if (isset($body['stream_goal'])) {
-                $updateData['goal'] = (int) $body['stream_goal'];
             }
             $this->streamRepository->update($charityStream, $updateData);
         }
@@ -465,6 +505,18 @@ class AdminController
                 : null;
 
             $this->widgetRepository->updateAlertWidget($guid, $body, $image, $sound);
+        }
+
+        if (isset($body['save_goals'])) {
+            $amounts = array_values(array_filter(
+                array_map('intval', $body['goal_amounts'] ?? []),
+                fn($v) => $v > 0
+            ));
+            sort($amounts);
+            if (!empty($amounts)) {
+                $this->goalRepository->replaceForStream($guid, $amounts);
+                $this->messages->addMessage('success', 'Objectifs mis à jour');
+            }
         }
 
         $this->handleWidgetFormSave($request, $guid, null);

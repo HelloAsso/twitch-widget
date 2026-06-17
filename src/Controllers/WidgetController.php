@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -23,8 +24,23 @@ class WidgetController
         private EventRepository $eventRepository,
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
+        private GoalRepository $goalRepository,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
+    }
+
+    private function resolveActiveGoal(array $goals, int $amountInCents): int
+    {
+        if (empty($goals)) {
+            return 1;
+        }
+        $amountInEuros = $amountInCents / 100;
+        foreach ($goals as $goal) {
+            if ($goal > $amountInEuros) {
+                return $goal;
+            }
+        }
+        return end($goals);
     }
 
     // ── Helpers ───────────────────────────────────────────────────
@@ -332,10 +348,13 @@ class WidgetController
                 $currentAmount = $cacheData['amount'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/donation.html.twig', [
                 'donationGoalWidget' => $donationGoalWidget,
                 'currentAmount' => $currentAmount,
-                'goal' => $event->goal,
+                'goal' => $goal,
                 'event' => 1,
                 'isTestMode' => (bool) $event->is_test_mode,
             ]);
@@ -358,7 +377,10 @@ class WidgetController
 
         try {
             $data = $this->fetchEventDonationData($eventGuid);
-            return $this->jsonResponse($response, ['amount' => $data['cacheData']['amount']]);
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $data['cacheData']['amount']);
+            $allGoalsReached = !empty($goals) && ($data['cacheData']['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $data['cacheData']['amount'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer le montant', 500);
         }
@@ -512,10 +534,13 @@ class WidgetController
                 $currentAmount = $cacheData['amount'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($streamGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/donation.html.twig', [
                 'donationGoalWidget' => $donationGoalWidget,
                 'currentAmount' => $currentAmount,
-                'goal' => $stream->goal,
+                'goal' => $goal,
                 'stream' => 1,
                 'isTestMode' => (bool) $stream->is_test_mode,
             ]);
@@ -538,7 +563,10 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamDonationData($charityStreamId);
-            return $this->jsonResponse($response, $data['result']);
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
+            $goal = $this->resolveActiveGoal($goals, $data['result']['amount']);
+            $allGoalsReached = !empty($goals) && ($data['result']['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, array_merge($data['result'], ['goal' => $goal, 'allGoalsReached' => $allGoalsReached]));
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401
@@ -580,13 +608,16 @@ class WidgetController
                 . '/associations/' . $stream->organization_slug
                 . '/' . $formTypeUrlSegment . '/' . $stream->form_slug;
 
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($streamGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/card.html.twig', [
                 'cardWidget' => $cardWidget,
                 'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
                 'currentAmount' => $currentAmount,
                 'donorCount' => $donors,
-                'percentage' => $this->calculatePercentage($currentAmount, $stream->goal),
-                'goal' => $stream->goal ?: 1,
+                'percentage' => $this->calculatePercentage($currentAmount, $goal),
+                'goal' => $goal,
                 'stream' => 1,
                 'isTestMode' => (bool) $stream->is_test_mode,
                 'donationUrl' => $donationUrl,
@@ -605,7 +636,10 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamCardData($charityStreamId);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
+            $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
+            $goal = $this->resolveActiveGoal($goals, $data['amount']);
+            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401
@@ -641,13 +675,16 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
+            $goal = $this->resolveActiveGoal($goals, $currentAmount);
+
             return $this->view->render($response, 'widget/card.html.twig', [
                 'cardWidget' => $cardWidget,
                 'cardWidgetPictureUrl' => $cardWidget->image ? $this->fileManager->getPictureUrl($cardWidget->image) : null,
                 'currentAmount' => $currentAmount,
                 'donorCount' => $donors,
-                'percentage' => $this->calculatePercentage($currentAmount, $event->goal),
-                'goal' => $event->goal ?: 1,
+                'percentage' => $this->calculatePercentage($currentAmount, $goal),
+                'goal' => $goal,
                 'event' => 1,
                 'isTestMode' => (bool) $event->is_test_mode,
             ]);
@@ -665,7 +702,10 @@ class WidgetController
 
         try {
             $data = $this->fetchEventCardData($eventId);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors']]);
+            $goals = $this->goalRepository->selectAmountsByEventGuid($eventId);
+            $goal = $this->resolveActiveGoal($goals, $data['amount']);
+            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }

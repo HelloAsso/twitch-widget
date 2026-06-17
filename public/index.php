@@ -15,6 +15,7 @@ use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -88,6 +89,10 @@ $container->set(UserRepository::class, function ($c) {
 
 $container->set(WidgetRepository::class, function ($c) {
     return new WidgetRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
+$container->set(GoalRepository::class, function ($c) {
+    return new GoalRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
 $container->set(ApiWrapper::class, function ($c) {
