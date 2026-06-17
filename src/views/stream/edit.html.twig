@@ -10,10 +10,10 @@
 				<a href="/admin" class="btn btn-secondary">Retour</a>
 				<h1 class="mb-0">Édition du stream</h1>
 				<form method="POST" class="d-flex align-items-center gap-2">
+					<input type="hidden" name="toggle_test_mode" value="1">
 					<span class="text-muted small">🧪 Mode test</span>
 					<div class="form-check form-switch mb-0">
 						<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
-							name="toggle_test_mode" value="1"
 							{% if charityStream.is_test_mode %}checked{% endif %}
 							onchange="this.form.submit()">
 					</div>
