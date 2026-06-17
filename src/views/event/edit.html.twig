@@ -2,27 +2,25 @@
 {% extends "layout.html.twig" %}
 {% block content %}
 	<div class="container mb-5">
-		<h1 class="my-4 text-center">Édition de l'évènement</h1>
-
-		<a href="/admin" class="btn btn-secondary mb-4">Retour</a>
-
-		{# ── Mode test ─────────────────────────────────────────────── #}
-		<div class="card mb-4 {{ event.is_test_mode ? 'border-warning' : '' }}">
-			<div class="card-header d-flex justify-content-between align-items-center {{ event.is_test_mode ? 'bg-warning bg-opacity-25' : '' }}">
-				<h5 class="mb-0">🧪 Mode test</h5>
-				<div class="d-flex flex-column align-items-end gap-1">
-					<form method="POST" class="d-inline">
-						{% if event.is_test_mode %}
-							<button type="submit" class="btn btn-sm btn-outline-danger" name="toggle_test_mode" value="1">❌ Désactiver le mode test</button>
-						{% else %}
-							<button type="submit" class="btn btn-sm btn-outline-warning" name="toggle_test_mode" value="1">🧪 Activer le mode test</button>
-						{% endif %}
-					</form>
-					<small class="text-muted">Après activation / désactivation, rechargez les widgets dans le navigateur.</small>
+		{# ── En-tête ─────────────────────────────────────────────── #}
+		<div class="d-flex justify-content-between align-items-center my-4">
+			<a href="/admin" class="btn btn-secondary">Retour</a>
+			<h1 class="mb-0">Édition de l'évènement</h1>
+			<form method="POST" class="d-flex align-items-center gap-2">
+				<span class="text-muted small">🧪 Mode test</span>
+				<div class="form-check form-switch mb-0">
+					<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
+						name="toggle_test_mode" value="1"
+						{% if event.is_test_mode %}checked{% endif %}
+						onchange="this.form.submit()">
 				</div>
-			</div>
-			{% if event.is_test_mode %}
-			<div class="card-body">
+			</form>
+		</div>
+
+		{# ── Section mode test (visible uniquement si actif) ──────── #}
+		{% if event.is_test_mode %}
+		<div class="card mb-4 border-warning">
+			<div class="card-body bg-warning bg-opacity-10">
 				<div class="row align-items-end">
 					<div class="col-md-4">
 						<p class="mb-1 fw-semibold">Montant test actuel : <span id="testAmountDisplay">{{ (event.test_amount / 100) | number_format(2, ',', ' ') }} €</span></p>
@@ -51,9 +49,10 @@
 					</div>
 				</div>
 				<div id="simulateAlert" class="mt-2" style="display:none;"></div>
+				<small class="text-muted d-block mt-2">⚠️ Rechargez les widgets dans le navigateur pour qu'ils prennent en compte le mode test.</small>
 			</div>
-			{% endif %}
 		</div>
+		{% endif %}
 
 		{# ── Informations de l'événement ──────────────────────────── #}
 		<div class="card mb-4">
