@@ -12,6 +12,7 @@ use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -36,6 +37,7 @@ class AdminControllerTest extends TestCase
     private StreamRepository&MockObject $streamRepository;
     private UserRepository&MockObject $userRepository;
     private WidgetRepository&MockObject $widgetRepository;
+    private GoalRepository&MockObject $goalRepository;
     private Messages&MockObject $messages;
     private ApiWrapper&MockObject $apiWrapper;
     private AccessTokenRepository&MockObject $accessTokenRepository;
@@ -51,6 +53,7 @@ class AdminControllerTest extends TestCase
         $this->streamRepository = $this->createMock(StreamRepository::class);
         $this->userRepository = $this->createMock(UserRepository::class);
         $this->widgetRepository = $this->createMock(WidgetRepository::class);
+        $this->goalRepository = $this->createMock(GoalRepository::class);
         $this->messages = $this->createMock(Messages::class);
         $this->apiWrapper = $this->createMock(ApiWrapper::class);
         $this->accessTokenRepository = $this->createMock(AccessTokenRepository::class);
@@ -64,6 +67,7 @@ class AdminControllerTest extends TestCase
             $this->streamRepository,
             $this->userRepository,
             $this->widgetRepository,
+            $this->goalRepository,
             $this->messages,
             $this->apiWrapper,
             $this->accessTokenRepository,

@@ -63,14 +63,48 @@ class UserRepository
         $user->reset_token_expires_at = null;
     }
 
-    public function insertRight(User $user, ?Stream $stream, ?Event $event): void
+    public function insertRight(User $user, ?Stream $stream, ?Event $event, bool $isOwner = false): void
     {
-        $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'user_right (id_user, id_charity_event, id_charity_stream) VALUES (:id_user, :id_charity_event, :id_charity_stream)');
+        $stmt = $this->pdo->prepare('INSERT INTO ' . $this->prefix . 'user_right (id_user, id_charity_event, id_charity_stream, is_owner) VALUES (:id_user, :id_charity_event, :id_charity_stream, :is_owner)');
         $stmt->execute([
             ':id_user' => $user->id,
             ':id_charity_event' => $event?->id,
             ':id_charity_stream' => $stream?->id,
+            ':is_owner' => (int) $isOwner,
         ]);
+    }
+
+    public function selectEventAdmins(Event $event): array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT u.id, u.email, ur.is_owner
+            FROM ' . $this->prefix . 'user_right ur
+            INNER JOIN ' . $this->prefix . 'users u ON u.id = ur.id_user
+            WHERE ur.id_charity_event = ?
+            ORDER BY ur.is_owner DESC, u.email ASC
+        ');
+        $stmt->execute([$event->id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function isEventOwner(User $user, Event $event): bool
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT 1 FROM ' . $this->prefix . 'user_right
+            WHERE id_user = ? AND id_charity_event = ? AND is_owner = 1
+            LIMIT 1
+        ');
+        $stmt->execute([$user->id, $event->id]);
+        return (bool) $stmt->fetch();
+    }
+
+    public function deleteEventRight(int $userId, Event $event): void
+    {
+        $stmt = $this->pdo->prepare('
+            DELETE FROM ' . $this->prefix . 'user_right
+            WHERE id_user = ? AND id_charity_event = ?
+        ');
+        $stmt->execute([$userId, $event->id]);
     }
 
     public function select(string $email): ?User

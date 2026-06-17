@@ -11,6 +11,7 @@ use App\Models\WidgetAlert;
 use App\Models\WidgetDonation;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
+use App\Repositories\GoalRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -33,6 +34,7 @@ class WidgetControllerTest extends TestCase
     private EventRepository&MockObject $eventRepository;
     private StreamRepository&MockObject $streamRepository;
     private WidgetRepository&MockObject $widgetRepository;
+    private GoalRepository&MockObject $goalRepository;
     private WidgetController $controller;
 
     protected function setUp(): void
@@ -43,6 +45,10 @@ class WidgetControllerTest extends TestCase
         $this->eventRepository = $this->createMock(EventRepository::class);
         $this->streamRepository = $this->createMock(StreamRepository::class);
         $this->widgetRepository = $this->createMock(WidgetRepository::class);
+        $this->goalRepository = $this->createMock(GoalRepository::class);
+
+        $this->goalRepository->method('selectAmountsByStreamGuid')->willReturn([1000]);
+        $this->goalRepository->method('selectAmountsByEventGuid')->willReturn([1000]);
 
         $this->controller = new WidgetController(
             $this->view,
@@ -51,6 +57,7 @@ class WidgetControllerTest extends TestCase
             $this->eventRepository,
             $this->streamRepository,
             $this->widgetRepository,
+            $this->goalRepository,
         );
     }
 
@@ -449,7 +456,6 @@ class WidgetControllerTest extends TestCase
         $widget->id = 1;
         $widget->charity_stream_guid = $streamGuid;
         $widget->charity_event_guid = $eventGuid;
-        $widget->goal = 5000;
         $widget->text_content = 'Objectif : {goal}€';
         $widget->bar_color = '#00ff00';
         $widget->background_color = '#000000';
