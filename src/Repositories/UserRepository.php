@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Event;
+use App\Models\HasRight;
 use App\Models\Stream;
 use App\Models\User;
 use DateTime;
@@ -74,37 +75,40 @@ class UserRepository
         ]);
     }
 
-    public function selectEventAdmins(Event $event): array
+    public function selectAdmins(HasRight $entity): array
     {
-        $stmt = $this->pdo->prepare('
+        $col = $entity->getRightColumn();
+        $stmt = $this->pdo->prepare("
             SELECT u.id, u.email, ur.is_owner
-            FROM ' . $this->prefix . 'user_right ur
-            INNER JOIN ' . $this->prefix . 'users u ON u.id = ur.id_user
-            WHERE ur.id_charity_event = ?
+            FROM {$this->prefix}user_right ur
+            INNER JOIN {$this->prefix}users u ON u.id = ur.id_user
+            WHERE ur.{$col} = ?
             ORDER BY ur.is_owner DESC, u.email ASC
-        ');
-        $stmt->execute([$event->id]);
+        ");
+        $stmt->execute([$entity->getRightId()]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function isEventOwner(User $user, Event $event): bool
+    public function isOwner(User $user, HasRight $entity): bool
     {
-        $stmt = $this->pdo->prepare('
-            SELECT 1 FROM ' . $this->prefix . 'user_right
-            WHERE id_user = ? AND id_charity_event = ? AND is_owner = 1
+        $col = $entity->getRightColumn();
+        $stmt = $this->pdo->prepare("
+            SELECT 1 FROM {$this->prefix}user_right
+            WHERE id_user = ? AND {$col} = ? AND is_owner = 1
             LIMIT 1
-        ');
-        $stmt->execute([$user->id, $event->id]);
+        ");
+        $stmt->execute([$user->id, $entity->getRightId()]);
         return (bool) $stmt->fetch();
     }
 
-    public function deleteEventRight(int $userId, Event $event): void
+    public function deleteRight(int $userId, HasRight $entity): void
     {
-        $stmt = $this->pdo->prepare('
-            DELETE FROM ' . $this->prefix . 'user_right
-            WHERE id_user = ? AND id_charity_event = ?
-        ');
-        $stmt->execute([$userId, $event->id]);
+        $col = $entity->getRightColumn();
+        $stmt = $this->pdo->prepare("
+            DELETE FROM {$this->prefix}user_right
+            WHERE id_user = ? AND {$col} = ?
+        ");
+        $stmt->execute([$userId, $entity->getRightId()]);
     }
 
     public function select(string $email): ?User

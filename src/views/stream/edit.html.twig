@@ -126,6 +126,35 @@
 				</div>
 			</div>
 
+			{# ── Administrateurs ─────────────────────────────────────── #}
+			{% if isStreamOwner %}
+			<div class="card mb-4">
+				<div class="card-header">
+					<h5 class="mb-0">👥 Administrateurs</h5>
+				</div>
+				<div class="card-body">
+					<div class="d-flex flex-wrap gap-2 mb-3">
+						{% for admin in streamAdmins %}
+						<span class="badge rounded-pill {{ admin.is_owner ? 'bg-warning text-dark' : 'bg-secondary' }} d-flex align-items-center gap-1 px-3 py-2" style="font-size:0.95rem;">
+							{{ admin.email | e }}
+							{% if admin.is_owner %}
+								<span class="ms-1" title="Propriétaire">★</span>
+							{% elseif admin.id != currentUserId %}
+							<form method="POST" class="d-inline ms-1">
+								<button type="submit" name="remove_admin" value="{{ admin.id }}" class="btn-close btn-close-white" aria-label="Retirer" style="font-size:0.6rem;" onclick="return confirm('Retirer {{ admin.email | e }} ?')"></button>
+							</form>
+							{% endif %}
+						</span>
+						{% endfor %}
+					</div>
+					<form method="POST" class="d-flex gap-2" style="max-width:420px;">
+						<input type="email" class="form-control" name="admin_email" placeholder="Email du nouvel admin" required>
+						<button type="submit" class="btn btn-outline-primary text-nowrap" name="add_admin">＋ Ajouter</button>
+					</form>
+				</div>
+			</div>
+			{% endif %}
+
 			{# ── Objectifs de collecte ───────────────────────────────── #}
 			<div class="card mb-4">
 				<div class="card-header">
