@@ -170,6 +170,30 @@ class AdminController
         return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'users']);
     }
 
+    private function sendAdminInvitationEmail(User $user, Request $request): void
+    {
+        $routeParser = RouteContext::fromRequest($request)->getRouteParser();
+        $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
+
+        try {
+            $result = $this->mailchimp->messages->send([
+                "message" => [
+                    "from_email" => "contact@helloasso.io",
+                    "from_name" => "HelloAsso",
+                    "subject" => "Bienvenue sur HelloAsso Stream !",
+                    "html" => $this->buildWelcomeEmail($resetUrl),
+                    "to" => [["email" => $user->email, "type" => "to"]],
+                ],
+            ]);
+
+            if ($result instanceof \Exception) {
+                throw $result;
+            }
+        } catch (\Exception $e) {
+            $this->messages->addMessage('error', 'Admin ajouté mais l\'email d\'invitation n\'a pas pu être envoyé.');
+        }
+    }
+
     /**
      * Génère le contenu HTML de l'email de bienvenue envoyé aux nouveaux utilisateurs.
      */
@@ -314,14 +338,19 @@ class AdminController
         if ($isEventOwner && isset($body['add_admin'])) {
             $email = trim($body['admin_email'] ?? '');
             if ($email) {
-                $newAdmin = $this->userRepository->findOrCreate($email);
                 $existing = $this->userRepository->selectEventAdmins($event);
-                $alreadyIn = array_filter($existing, fn($a) => (int) $a['id'] === $newAdmin->id);
-                if (empty($alreadyIn)) {
+                $alreadyIn = array_filter($existing, fn($a) => $a['email'] === $email);
+                if (!empty($alreadyIn)) {
+                    $this->messages->addMessage('info', "{$email} est déjà admin de cet évènement");
+                } else {
+                    $existingUser = $this->userRepository->select($email);
+                    $newAdmin = $existingUser ?? $this->userRepository->insert($email);
+                    if (!$existingUser) {
+                        $newAdmin = $this->userRepository->insertResetToken($newAdmin);
+                        $this->sendAdminInvitationEmail($newAdmin, $request);
+                    }
                     $this->userRepository->insertRight($newAdmin, null, $event, false);
                     $this->messages->addMessage('success', "Admin {$email} ajouté");
-                } else {
-                    $this->messages->addMessage('info', "{$email} est déjà admin de cet évènement");
                 }
             }
         }
@@ -360,7 +389,7 @@ class AdminController
         }
 
         $stream = $this->streamRepository->insert($data['form_slug'], $data['organization_slug'], $data['title'], $event->id ?? null, $data['form_type'] ?? 'Donation');
-        $this->userRepository->insertRight($owner, $stream, null);
+        $this->userRepository->insertRight($owner, $stream, null, true);
 
         if ($event !== null && $parentStyle) {
             $donationGoalWidget = $this->widgetRepository->selectDonationWidgetByGuid(null, $event->guid);
@@ -422,6 +451,8 @@ class AdminController
         $donationUrl = $_SERVER['HA_URL'] . '/associations/' . $charityStream->organization_slug . '/' . $formTypeUrlSegment . '/' . $charityStream->form_slug;
         $routeParser = RouteContext::fromRequest($request)->getRouteParser();
 
+        $isStreamOwner = $user->role === 'ADMIN' || $this->userRepository->isStreamOwner($user, $charityStream);
+
         $data = [
             "logged" => true,
             "charityStream" => $charityStream,
@@ -439,6 +470,9 @@ class AdminController
             "widgetCardUrl" => $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_stream_widget_card', ["id" => $guid]),
             "messages" => $this->messages->getMessages(),
             "streamGoals" => $this->goalRepository->selectAmountsByStreamGuid($guid),
+            "streamAdmins" => $this->userRepository->selectStreamAdmins($charityStream),
+            "isStreamOwner" => $isStreamOwner,
+            "currentUserId" => $user->id,
         ];
 
         return $this->view->render($response, 'stream/edit.html.twig', $data);
@@ -516,6 +550,37 @@ class AdminController
             if (!empty($amounts)) {
                 $this->goalRepository->replaceForStream($guid, $amounts);
                 $this->messages->addMessage('success', 'Objectifs mis à jour');
+            }
+        }
+
+        // Gestion des admins (owner ou ADMIN global uniquement)
+        $isStreamOwner = $user->role === 'ADMIN' || $this->userRepository->isStreamOwner($user, $charityStream);
+
+        if ($isStreamOwner && isset($body['add_admin'])) {
+            $email = trim($body['admin_email'] ?? '');
+            if ($email) {
+                $existing = $this->userRepository->selectStreamAdmins($charityStream);
+                $alreadyIn = array_filter($existing, fn($a) => $a['email'] === $email);
+                if (!empty($alreadyIn)) {
+                    $this->messages->addMessage('info', "{$email} est déjà admin de ce stream");
+                } else {
+                    $existingUser = $this->userRepository->select($email);
+                    $newAdmin = $existingUser ?? $this->userRepository->insert($email);
+                    if (!$existingUser) {
+                        $newAdmin = $this->userRepository->insertResetToken($newAdmin);
+                        $this->sendAdminInvitationEmail($newAdmin, $request);
+                    }
+                    $this->userRepository->insertRight($newAdmin, $charityStream, null, false);
+                    $this->messages->addMessage('success', "Admin {$email} ajouté");
+                }
+            }
+        }
+
+        if ($isStreamOwner && isset($body['remove_admin'])) {
+            $removeId = (int) ($body['remove_admin'] ?? 0);
+            if ($removeId && $removeId !== $user->id) {
+                $this->userRepository->deleteStreamRight($removeId, $charityStream);
+                $this->messages->addMessage('success', 'Admin retiré');
             }
         }
 

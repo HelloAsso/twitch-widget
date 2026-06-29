@@ -107,6 +107,39 @@ class UserRepository
         $stmt->execute([$userId, $event->id]);
     }
 
+    public function selectStreamAdmins(Stream $stream): array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT u.id, u.email, ur.is_owner
+            FROM ' . $this->prefix . 'user_right ur
+            INNER JOIN ' . $this->prefix . 'users u ON u.id = ur.id_user
+            WHERE ur.id_charity_stream = ?
+            ORDER BY ur.is_owner DESC, u.email ASC
+        ');
+        $stmt->execute([$stream->id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function isStreamOwner(User $user, Stream $stream): bool
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT 1 FROM ' . $this->prefix . 'user_right
+            WHERE id_user = ? AND id_charity_stream = ? AND is_owner = 1
+            LIMIT 1
+        ');
+        $stmt->execute([$user->id, $stream->id]);
+        return (bool) $stmt->fetch();
+    }
+
+    public function deleteStreamRight(int $userId, Stream $stream): void
+    {
+        $stmt = $this->pdo->prepare('
+            DELETE FROM ' . $this->prefix . 'user_right
+            WHERE id_user = ? AND id_charity_stream = ?
+        ');
+        $stmt->execute([$userId, $stream->id]);
+    }
+
     public function select(string $email): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM ' . $this->prefix . 'users WHERE email = ?');

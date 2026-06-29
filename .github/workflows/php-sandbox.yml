@@ -2,7 +2,7 @@ name: Build & deploy sandbox
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "develop", "add-admin-management-on-stream" ]
   workflow_dispatch:
 
 permissions:
