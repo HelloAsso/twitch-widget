@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-class Stream
+class Stream implements HasRight
 {
     public $id;
     public $charity_event_id;
@@ -16,4 +16,7 @@ class Stream
     public $admin;
     public $is_test_mode = 0;
     public $test_amount = 0;
+
+    public function getRightColumn(): string { return 'id_charity_stream'; }
+    public function getRightId(): int { return (int) $this->id; }
 }
