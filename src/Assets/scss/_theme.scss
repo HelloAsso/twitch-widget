@@ -1,0 +1,39 @@
+// ── HelloAsso Widgets — variables de thème Bootstrap ──────────────
+// Surcharges appliquées AVANT l'import de Bootstrap.
+// Le back-office est rendu en data-bs-theme="dark" ; les pages widgets
+// (overlays OBS) restent en thème clair et ne sont pas impactées par
+// les variables *-dark ci-dessous.
+
+// Palette
+$primary:   #7c6cf0;
+$secondary: #4c547a;
+$success:   #22c58b;
+$info:      #38bdf8;
+$warning:   #f5b84a;
+$danger:    #f25d7d;
+
+// Typo & arrondis
+$headings-font-weight: 700;
+$btn-font-weight: 600;
+$border-radius:     .625rem;
+$border-radius-sm:  .5rem;
+$border-radius-lg:  1rem;
+$border-radius-xl:  1.25rem;
+$border-radius-xxl: 1.5rem;
+
+// Focus ring
+$focus-ring-color: rgba($primary, .3);
+
+// Mode sombre (back-office uniquement)
+$body-bg-dark: #0c0f1e;
+$body-color-dark: #e9ebf7;
+$body-emphasis-color-dark: #ffffff;
+$body-secondary-color-dark: #9ba3c7;
+$body-tertiary-color-dark: #7c84ab;
+$body-secondary-bg-dark: #151a31;
+$body-tertiary-bg-dark: #1b2140;
+$border-color-dark: #272e50;
+$border-color-translucent-dark: rgba(255, 255, 255, .08);
+$headings-color-dark: #f4f5fb;
+$link-color-dark: #a99efb;
+$link-hover-color-dark: #c6befd;

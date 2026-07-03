@@ -1,2 +1,8 @@
+// Variables de thème (avant Bootstrap)
+@import "theme";
+// Framework
 @import "bootstrap/scss/bootstrap";
+// Styles des widgets/overlays OBS (ne pas scoper)
 @import "main";
+// Design system du back-office (scopé .app-body)
+@import "app";

@@ -1,20 +1,26 @@
-{% block title %}HelloAsso Widgets - Édition de l'événement{% endblock %}
+{% block title %}Édition de l'événement — HelloAsso Widgets{% endblock %}
 {% extends "layout.html.twig" %}
+{% block nav %}{% include '_navbar.html.twig' %}{% endblock %}
 {% block content %}
 	<div class="container mb-5">
 		{# ── En-tête ─────────────────────────────────────────────── #}
-		<div class="d-flex justify-content-between align-items-center my-4">
-			<a href="/admin" class="btn btn-secondary">Retour</a>
-			<h1 class="mb-0">Édition de l'évènement</h1>
-			<form method="POST" class="d-flex align-items-center gap-2">
-				<input type="hidden" name="toggle_test_mode" value="1">
-				<span class="text-muted small">🧪 Mode test</span>
-				<div class="form-check form-switch mb-0">
-					<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
-						{% if event.is_test_mode %}checked{% endif %}
-						onchange="this.form.submit()">
-				</div>
-			</form>
+		<div class="page-head">
+			<div>
+				<a href="/admin" class="back-link">← Retour au tableau de bord</a>
+				<h1 class="page-head__title">📅 {{ event.title }}</h1>
+				<p class="page-head__sub">Édition de l'évènement et de ses widgets</p>
+			</div>
+			<div class="page-head__actions">
+				<form method="POST" class="chip">
+					<input type="hidden" name="toggle_test_mode" value="1">
+					<span class="text-muted small">🧪 Mode test</span>
+					<div class="form-check form-switch mb-0">
+						<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
+							{% if event.is_test_mode %}checked{% endif %}
+							onchange="this.form.submit()">
+					</div>
+				</form>
+			</div>
 		</div>
 
 		{# ── Section mode test (visible uniquement si actif) ──────── #}
@@ -25,7 +31,7 @@
 					<div class="col-md-4">
 						<p class="mb-1 fw-semibold">Montant test actuel : <span id="testAmountDisplay">{{ (event.test_amount / 100) | number_format(2, ',', ' ') }} €</span></p>
 						<form method="POST" class="d-inline">
-							<button type="submit" class="btn btn-sm btn-outline-secondary" name="reset_test_amount" value="1">🔄 Remettre à zéro</button>
+							<button type="submit" class="btn btn-sm btn-ghost" name="reset_test_amount" value="1">🔄 Remettre à zéro</button>
 						</form>
 					</div>
 					<div class="col-md-8">
@@ -57,31 +63,33 @@
 		{# ── Informations de l'événement ──────────────────────────── #}
 		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">📋 Informations de l'événement</h5>
+				<div class="card-title-group">
+					<span class="section-ico">📋</span>
+					<h5>Informations de l'événement</h5>
+				</div>
 			</div>
 			<div class="card-body">
 				<form method="POST">
-				<div class="row">
-					<div class="col-md-9">
-						<div class="mb-3">
-							<label for="event_title" class="form-label fw-semibold">Titre</label>
+					<div class="row g-3 align-items-end">
+						<div class="col-md-9">
+							<label for="event_title" class="form-label">Titre</label>
 							<input type="text" class="form-control" id="event_title" name="event_title" value="{{ event.title }}" required>
 						</div>
-					</div>
-					<div class="col-md-3 d-flex align-items-end">
-						<div class="mb-3">
-							<button type="submit" class="btn btn-primary" name="save_event_info">💾 Enregistrer</button>
+						<div class="col-md-3">
+							<button type="submit" class="btn btn-primary w-100" name="save_event_info">💾 Enregistrer</button>
 						</div>
 					</div>
-				</div>
-			</form>
+				</form>
 			</div>
 		</div>
 
 		{# ── Objectifs de collecte ───────────────────────────────── #}
 		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">🎯 Objectifs de collecte</h5>
+				<div class="card-title-group">
+					<span class="section-ico">🎯</span>
+					<h5>Objectifs de collecte</h5>
+				</div>
 			</div>
 			<div class="card-body">
 				<form method="POST">
@@ -102,7 +110,7 @@
 				<div class="alert alert-info d-flex gap-2 mb-0 mt-3 py-2 px-3" style="font-size:0.85rem;">
 					<span style="flex-shrink:0;">ℹ️</span>
 					<div>
-						Les objectifs s'affichent <strong>dans l'ordre croissant</strong> sur les widgets. Une fois un objectif atteint, la barre de don se réinitialise vers le suivant avec une animation. Si tous les objectifs sont dépassés, la barre reste à 100 %.
+						Les objectifs s'affichent <strong>dans l'ordre croissant</strong> sur les widgets. Une fois un objectif atteint, la barre de don se réinitialise vers le suivant avec une animation. Si tous les objectifs sont dépassés, la barre reste à 100 %.
 					</div>
 				</div>
 			</div>
@@ -112,12 +120,15 @@
 		{% if isEventOwner %}
 		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">👥 Administrateurs</h5>
+				<div class="card-title-group">
+					<span class="section-ico">👥</span>
+					<h5>Administrateurs</h5>
+				</div>
 			</div>
 			<div class="card-body">
 				<div class="d-flex flex-wrap gap-2 mb-3">
 					{% for admin in eventAdmins %}
-					<span class="badge rounded-pill {{ admin.is_owner ? 'bg-warning text-dark' : 'bg-secondary' }} d-flex align-items-center gap-1 px-3 py-2" style="font-size:0.95rem;">
+					<span class="badge rounded-pill {{ admin.is_owner ? 'bg-warning text-dark' : 'bg-secondary' }} d-flex align-items-center gap-1 px-3 py-2" style="font-size:0.9rem;">
 						{{ admin.email | e }}
 						{% if admin.is_owner %}
 							<span class="ms-1" title="Propriétaire">★</span>
@@ -131,7 +142,7 @@
 				</div>
 				<form method="POST" class="d-flex gap-2" style="max-width:420px;">
 					<input type="email" class="form-control" name="admin_email" placeholder="Email du nouvel admin" required>
-					<button type="submit" class="btn btn-outline-primary text-nowrap" name="add_admin">＋ Ajouter</button>
+					<button type="submit" class="btn btn-ghost text-nowrap" name="add_admin">＋ Ajouter</button>
 				</form>
 			</div>
 		</div>
@@ -139,13 +150,16 @@
 
 		{# ── Streams liés à cet événement ────────────────────────── #}
 		<div class="card mb-4">
-			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="mb-0">🎮 Streams rattachés</h5>
-				<a href="/admin?createStream=1&eventId={{ event.id }}" class="btn btn-sm btn-success">➕ Créer un stream</a>
+			<div class="card-header">
+				<div class="card-title-group">
+					<span class="section-ico">🎮</span>
+					<h5>Streams rattachés</h5>
+				</div>
+				<a href="/admin?createStream=1&eventId={{ event.id }}" class="btn btn-sm btn-primary">➕ Créer un stream</a>
 			</div>
-			<div class="card-body">
-				{% if streams is not empty %}
-					<table class="table table-hover align-middle mb-0">
+			{% if streams is not empty %}
+				<div class="table-responsive">
+					<table class="table table-hover align-middle">
 						<thead>
 							<tr>
 								<th>ID</th>
@@ -155,9 +169,9 @@
 						</thead>
 						<tbody>
 							{% for stream in streams %}
-								<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}" style="cursor:pointer;">
-									<td>{{ stream.id | e }}</td>
-									<td>
+								<tr class="cursor-pointer" onclick="window.location='/admin/stream/{{ stream.guid }}/edit'" title="GUID : {{ stream.guid }}">
+									<td class="cell-id">{{ stream.id | e }}</td>
+									<td class="cell-strong">
 										{{ stream.title | e }}
 										{% if stream.organization_slug in invalidTokenSlugs %}
 											<span class="badge text-bg-warning ms-1" data-bs-toggle="tooltip" data-bs-title="Refresh token expiré ou absent — reconnectez l'association.">⚠️ Token invalide</span>
@@ -168,13 +182,22 @@
 							{% endfor %}
 						</tbody>
 					</table>
-				{% else %}
+				</div>
+			{% else %}
+				<div class="card-body">
 					<p class="text-muted mb-0">Aucun stream rattaché à cet événement.</p>
-				{% endif %}
+				</div>
+			{% endif %}
+		</div>
+
+		<div class="page-head mt-5 mb-3">
+			<div>
+				<h2 class="page-head__title" style="font-size:1.25rem;">🧩 Widgets</h2>
+				<p class="page-head__sub">Personnalisez les widgets agrégés de l'évènement.</p>
 			</div>
 		</div>
 
-		<div class="accordion mt-4" id="widgetsAccordion">
+		<div class="accordion mb-5" id="widgetsAccordion">
 
 			{# ── Widget carte de don ────────────────────────────────── #}
 			{% if cardWidget %}
@@ -214,36 +237,38 @@
 									</div>
 								</div>
 								<div class="col-md-6">
-									<h6>Couleurs</h6>
-									<div class="mb-3">
-										<label for="card_background_color" class="form-label">Fond de la carte</label>
-										<input type="color" class="form-control form-control-color" id="card_background_color" name="card_background_color" value="{{ cardWidget.background_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="card_text_color" class="form-label">Texte</label>
-										<input type="color" class="form-control form-control-color" id="card_text_color" name="card_text_color" value="{{ cardWidget.text_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="card_bar_color" class="form-label">Barre de progression</label>
-										<input type="color" class="form-control form-control-color" id="card_bar_color" name="card_bar_color" value="{{ cardWidget.bar_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="card_bar_background_color" class="form-label">Fond de la barre</label>
-										<input type="color" class="form-control form-control-color" id="card_bar_background_color" name="card_bar_background_color" value="{{ cardWidget.bar_background_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="card_tag_color" class="form-label">Texte du tag</label>
-										<input type="color" class="form-control form-control-color" id="card_tag_color" name="card_tag_color" value="{{ cardWidget.tag_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="card_tag_background_color" class="form-label">Fond du tag</label>
-										<input type="color" class="form-control form-control-color" id="card_tag_background_color" name="card_tag_background_color" value="{{ cardWidget.tag_background_color }}">
+									<h6 class="mb-3">Couleurs</h6>
+									<div class="row g-3">
+										<div class="col-6 mb-1">
+											<label for="card_background_color" class="form-label">Fond de la carte</label>
+											<input type="color" class="form-control form-control-color" id="card_background_color" name="card_background_color" value="{{ cardWidget.background_color }}">
+										</div>
+										<div class="col-6 mb-1">
+											<label for="card_text_color" class="form-label">Texte</label>
+											<input type="color" class="form-control form-control-color" id="card_text_color" name="card_text_color" value="{{ cardWidget.text_color }}">
+										</div>
+										<div class="col-6 mb-1">
+											<label for="card_bar_color" class="form-label">Barre de progression</label>
+											<input type="color" class="form-control form-control-color" id="card_bar_color" name="card_bar_color" value="{{ cardWidget.bar_color }}">
+										</div>
+										<div class="col-6 mb-1">
+											<label for="card_bar_background_color" class="form-label">Fond de la barre</label>
+											<input type="color" class="form-control form-control-color" id="card_bar_background_color" name="card_bar_background_color" value="{{ cardWidget.bar_background_color }}">
+										</div>
+										<div class="col-6 mb-1">
+											<label for="card_tag_color" class="form-label">Texte du tag</label>
+											<input type="color" class="form-control form-control-color" id="card_tag_color" name="card_tag_color" value="{{ cardWidget.tag_color }}">
+										</div>
+										<div class="col-6 mb-1">
+											<label for="card_tag_background_color" class="form-label">Fond du tag</label>
+											<input type="color" class="form-control form-control-color" id="card_tag_background_color" name="card_tag_background_color" value="{{ cardWidget.tag_background_color }}">
+										</div>
 									</div>
 								</div>
 							</div>
 
 							{# ── Prévisualisation ── #}
-							<div class="card-widget-preview mt-3 p-3" style="border: 1px dashed #555; border-radius: 12px;">
+							<div class="preview-zone mt-3">
 								<div id="cardPreview" style="display:flex; max-width:720px; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.10); background-color:{{ cardWidget.background_color }}; color:{{ cardWidget.text_color }};">
 									<div id="cardPreviewImage" style="flex:0 0 220px; min-height:280px; background-size:cover; background-position:center; {% if cardWidgetPictureUrl %}background-image:url('{{ cardWidgetPictureUrl }}');{% else %}background:#374151;{% endif %}"></div>
 									<div style="flex:1; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; gap:14px;">
@@ -269,7 +294,7 @@
 								</div>
 							</div>
 
-							<div class="d-flex align-items-center justify-content-between mt-3">
+							<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
 								<h6 class="mb-0">
 									URL : <a href="{{ widgetCardUrl }}" target="_blank">{{ widgetCardUrl }}</a>
 								</h6>
@@ -278,7 +303,7 @@
 
 							{# ── Export iframe ── #}
 							<div class="mt-3">
-								<label for="cardIframeCode" class="form-label fw-semibold">Code iframe à intégrer sur votre site :</label>
+								<label for="cardIframeCode" class="form-label">Code iframe à intégrer sur votre site :</label>
 								<div class="input-group">
 									<input type="text" class="form-control font-monospace" id="cardIframeCode" readonly
 										   value='<iframe src="{{ widgetCardUrl }}" width="720" height="340" frameborder="0" style="border:none;overflow:hidden;" scrolling="no" allowtransparency="true"></iframe>'>
@@ -303,13 +328,15 @@
 						<form id="donationBarForm" method="POST">
 							<div class="row">
 								<div class="col-md-6">
-									<div class="mb-3">
-										<label for="text_color_main" class="form-label">Couleur du texte primaire</label>
-										<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
-									</div>
-									<div class="mb-3">
-										<label for="text_color_alt" class="form-label">Couleur du texte secondaire</label>
-										<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+									<div class="row g-3 mb-3">
+										<div class="col-6">
+											<label for="text_color_main" class="form-label">Texte primaire</label>
+											<input type="color" class="form-control form-control-color" id="text_color_main" name="text_color_main" value="{{ donationGoalWidget.text_color_main }}">
+										</div>
+										<div class="col-6">
+											<label for="text_color_alt" class="form-label">Texte secondaire</label>
+											<input type="color" class="form-control form-control-color" id="text_color_alt" name="text_color_alt" value="{{ donationGoalWidget.text_color_alt }}">
+										</div>
 									</div>
 									<div class="mb-3">
 										<label for="text_content" class="form-label">Texte</label>
@@ -317,29 +344,33 @@
 									</div>
 								</div>
 								<div class="col-md-6">
-									<div class="mb-3">
-										<label for="bar_color" class="form-label">Couleur de la barre</label>
-										<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
-									</div>
-									<div class="mb-3">
-										<label for="background_color" class="form-label">Couleur du fond</label>
-										<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
+									<div class="row g-3 mb-3">
+										<div class="col-6">
+											<label for="bar_color" class="form-label">Couleur de la barre</label>
+											<input type="color" class="form-control form-control-color" id="bar_color" name="bar_color" value="{{ donationGoalWidget.bar_color }}">
+										</div>
+										<div class="col-6">
+											<label for="background_color" class="form-label">Couleur du fond</label>
+											<input type="color" class="form-control form-control-color" id="background_color" name="background_color" value="{{ donationGoalWidget.background_color }}">
+										</div>
 									</div>
 								</div>
 							</div>
-							<div class="progress">
-								<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
-									<p id="back-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
-									<p id="back-title">{{ donationGoalWidget.text_content }}</p>
-									<p id="back-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
-								</div>
-								<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
-									<p id="front-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
-									<p id="front-title">{{ donationGoalWidget.text_content }}</p>
-									<p id="front-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
+							<div class="preview-zone mb-3">
+								<div class="progress">
+									<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">
+										<p id="back-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
+										<p id="back-title">{{ donationGoalWidget.text_content }}</p>
+										<p id="back-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
+									</div>
+									<div class="front" style="background:{{ donationGoalWidget.bar_color }};color:{{ donationGoalWidget.text_color_alt }}">
+										<p id="front-goal-current">{{ (eventGoals[0] ?? 1000) / 2 }} €</p>
+										<p id="front-title">{{ donationGoalWidget.text_content }}</p>
+										<p id="front-goal-total">{{ eventGoals[0] ?? 1000 }} €</p>
+									</div>
 								</div>
 							</div>
-							<div class="d-flex align-items-center justify-content-between mt-3">
+							<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
 								<h6 class="mb-0">
 									URL : <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
 								</h6>
@@ -352,14 +383,6 @@
 
 		</div>{# /accordion #}
 	</div>
-{% endblock %}
-{% block styles %}
-<style>
-	.cursor-pointer { cursor: pointer; }
-	.table-hover tbody tr.cursor-pointer:hover {
-		background-color: rgba(var(--bs-primary-rgb), .08) !important;
-	}
-</style>
 {% endblock %}
 {% block scripts %}
 	{% if viteEntries.admin.js %}

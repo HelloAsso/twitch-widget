@@ -1,53 +1,49 @@
-
 {% block title %}Créer un compte — HelloAsso Widgets{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
-	<div class="container" style="max-width: 480px;">
-		<h1 class="my-4 text-center">Créer un compte</h1>
-		<form action="/register" method="POST" id="registerForm" novalidate>
-			<div class="form-group mb-3">
-				<label for="email">Email</label>
-				<input type="email" class="form-control" id="email" name="email" placeholder="vous@exemple.com" required>
+	<div class="auth-wrap">
+		<div class="auth-card">
+			<div class="auth-brand">
+				<span class="brand-mark brand-mark--lg" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7.5-4.7-10-9.3C.4 8.6 2.3 5 5.7 5c2 0 3.4 1.1 4.3 2.4l2 2.8 2-2.8C15 6.1 16.3 5 18.3 5c3.4 0 5.3 3.6 3.7 6.7C19.5 16.3 12 21 12 21z"/></svg>
+				</span>
+				<span>HelloAsso&nbsp;<span class="text-gradient">Widgets</span></span>
 			</div>
-			<div class="form-group mb-3">
-				<label for="password">Mot de passe</label>
-				<input type="password" class="form-control" id="password" name="password" required
-					oninput="checkPasswordStrength()">
-				<div class="mt-2" id="passwordRules">
-					<small id="rule-length" class="text-danger d-block">✗ Au moins 8 caractères</small>
-					<small id="rule-upper" class="text-danger d-block">✗ Au moins une majuscule</small>
-					<small id="rule-lower" class="text-danger d-block">✗ Au moins une minuscule</small>
-					<small id="rule-digit" class="text-danger d-block">✗ Au moins un chiffre</small>
-					<small id="rule-special" class="text-danger d-block">✗ Au moins un caractère spécial</small>
+			<h1 class="auth-title">Créer un compte</h1>
+			<p class="auth-sub">Quelques secondes suffisent pour lancer vos premiers widgets.</p>
+			<form action="/register" method="POST" id="registerForm" novalidate>
+				<div class="mb-3">
+					<label for="email" class="form-label">Email</label>
+					<input type="email" class="form-control" id="email" name="email" placeholder="vous@exemple.com" required autofocus>
 				</div>
-			</div>
-			<div class="form-group mb-3">
-				<label for="passwordRepeat">Confirmer le mot de passe</label>
-				<input type="password" class="form-control" id="passwordRepeat" name="passwordRepeat" required
-					oninput="checkPasswordMatch()">
-				<small id="rule-match" class="text-danger d-block mt-1" style="display:none !important;"></small>
-			</div>
-			<button type="submit" class="btn btn-success w-100 mt-3" id="submitBtn" disabled>
-				Créer mon compte 🚀
-			</button>
-			<div class="text-center mt-3">
-				<a href="/">Déjà un compte ? Se connecter</a>
-			</div>
-		</form>
+				<div class="mb-3">
+					<label for="password" class="form-label">Mot de passe</label>
+					<input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required
+						oninput="checkPasswordStrength()">
+					<div class="mt-2" id="passwordRules">
+						<small id="rule-length" class="text-danger d-block">✗ Au moins 8 caractères</small>
+						<small id="rule-upper" class="text-danger d-block">✗ Au moins une majuscule</small>
+						<small id="rule-lower" class="text-danger d-block">✗ Au moins une minuscule</small>
+						<small id="rule-digit" class="text-danger d-block">✗ Au moins un chiffre</small>
+						<small id="rule-special" class="text-danger d-block">✗ Au moins un caractère spécial</small>
+					</div>
+				</div>
+				<div class="mb-4">
+					<label for="passwordRepeat" class="form-label">Confirmer le mot de passe</label>
+					<input type="password" class="form-control" id="passwordRepeat" name="passwordRepeat" placeholder="••••••••" required
+						oninput="checkPasswordMatch()">
+					<small id="rule-match" class="text-danger d-block mt-1" style="display:none !important;"></small>
+				</div>
+				<button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn" disabled>
+					Créer mon compte 🚀
+				</button>
+				<p class="auth-alt">Déjà un compte ? <a href="/">Se connecter</a></p>
+			</form>
+		</div>
 	</div>
 
 	{% if register_error %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Erreur</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					{{ register_error }}
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { tone: 'error', title: 'Erreur', body: register_error } %}
 	{% endif %}
 {% endblock %}
 
@@ -112,4 +108,3 @@
 	}
 </script>
 {% endblock %}
-

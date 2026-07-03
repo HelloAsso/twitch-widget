@@ -1,0 +1,19 @@
+{# ── Barre de navigation du back-office ──
+   Variables optionnelles : currentUser (email affiché si présent)
+#}
+<nav class="app-nav">
+	<div class="container app-nav__inner">
+		<a class="app-nav__brand" href="/admin">
+			<span class="brand-mark" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7.5-4.7-10-9.3C.4 8.6 2.3 5 5.7 5c2 0 3.4 1.1 4.3 2.4l2 2.8 2-2.8C15 6.1 16.3 5 18.3 5c3.4 0 5.3 3.6 3.7 6.7C19.5 16.3 12 21 12 21z"/></svg>
+			</span>
+			<span>HelloAsso&nbsp;<span class="text-gradient">Widgets</span></span>
+		</a>
+		<div class="d-flex align-items-center gap-3">
+			{% if currentUser is defined and currentUser.email is defined %}
+				<span class="app-nav__user" title="{{ currentUser.email }}">{{ currentUser.email }}</span>
+			{% endif %}
+			<a href="/logout" class="btn btn-sm btn-ghost">Déconnexion</a>
+		</div>
+	</div>
+</nav>
