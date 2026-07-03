@@ -13,6 +13,7 @@ use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -43,6 +44,7 @@ class AdminControllerTest extends TestCase
     private AccessTokenRepository&MockObject $accessTokenRepository;
     private AuthorizationCodeRepository&MockObject $authorizationCodeRepository;
     private ApiClient&MockObject $mailchimp;
+    private StreamDonationHistoryRepository&MockObject $donationHistoryRepository;
     private AdminController $controller;
 
     protected function setUp(): void
@@ -59,6 +61,7 @@ class AdminControllerTest extends TestCase
         $this->accessTokenRepository = $this->createMock(AccessTokenRepository::class);
         $this->authorizationCodeRepository = $this->createMock(AuthorizationCodeRepository::class);
         $this->mailchimp = $this->createMock(ApiClient::class);
+        $this->donationHistoryRepository = $this->createMock(StreamDonationHistoryRepository::class);
 
         $this->controller = new AdminController(
             $this->view,
@@ -73,6 +76,7 @@ class AdminControllerTest extends TestCase
             $this->accessTokenRepository,
             $this->authorizationCodeRepository,
             $this->mailchimp,
+            $this->donationHistoryRepository,
         );
     }
 

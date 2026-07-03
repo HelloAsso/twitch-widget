@@ -7,7 +7,10 @@
 		<div class="container">
 			{# ── En-tête ─────────────────────────────────────────────── #}
 			<div class="d-flex justify-content-between align-items-center my-4">
-				<a href="/admin" class="btn btn-secondary">Retour</a>
+				<div class="d-flex align-items-center gap-2">
+					<a href="/admin" class="btn btn-secondary">Retour</a>
+					<a href="/admin/stream/{{ charityStream.guid }}/live" class="btn btn-outline-danger">🔴 Voir le direct</a>
+				</div>
 				<h1 class="mb-0">Édition du stream</h1>
 				<form method="POST" class="d-flex align-items-center gap-2">
 					<input type="hidden" name="toggle_test_mode" value="1">

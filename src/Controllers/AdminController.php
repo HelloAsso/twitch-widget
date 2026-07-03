@@ -2,12 +2,14 @@
 
 namespace App\Controllers;
 
+use App\Models\Stream;
 use App\Models\User;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -22,6 +24,8 @@ use Slim\Views\Twig;
 
 class AdminController
 {
+    private int $cacheTtl;
+
     public function __construct(
         private Twig $view,
         private FileManager $fileManager,
@@ -35,7 +39,10 @@ class AdminController
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
         private ApiClient $mailchimp,
-    ) {}
+        private StreamDonationHistoryRepository $donationHistoryRepository,
+    ) {
+        $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
+    }
 
     /**
      * Retourne les slugs d'organisation dont le token est expiré parmi les streams donnés.
@@ -588,6 +595,187 @@ class AdminController
         $this->handleWidgetFormSave($request, $guid, null);
 
         return $this->redirectToRoute($request, $response, 'app_stream_edit', ["id" => $guid]);
+    }
+
+    // ── Vue "Live" : relecture des dons en temps réel ──────────────
+
+    private function jsonResponse(Response $response, array $data, int $status = 200): Response
+    {
+        $response->getBody()->write(json_encode($data));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
+    }
+
+    /**
+     * Le cache du live suit le même TTL que les widgets (WIDGET_CACHE_TTL, 30s par défaut).
+     */
+    private function isLiveCacheFresh(Stream $stream): bool
+    {
+        if ($stream->live_cache_updated_at === null) {
+            return false;
+        }
+
+        $updatedAt = new \DateTime($stream->live_cache_updated_at);
+        $age = (new \DateTime())->getTimestamp() - $updatedAt->getTimestamp();
+        return $age < $this->cacheTtl;
+    }
+
+    private function serializeDonationEntries(array $entries): array
+    {
+        return array_map(fn($entry) => [
+            'id' => (int) $entry->id,
+            'pseudo' => $entry->pseudo,
+            'message' => $entry->message,
+            'amount' => (int) $entry->amount,
+            'received_at' => $entry->received_at,
+        ], $entries);
+    }
+
+    public function liveView(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
+        if (!$charityStream) {
+            $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
+        }
+
+        $entries = [];
+        if ($charityStream->live_started_at !== null) {
+            $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, null, 30);
+        }
+
+        return $this->view->render($response, 'stream/live.html.twig', [
+            "logged" => true,
+            "charityStream" => $charityStream,
+            "entries" => $entries,
+            "messages" => $this->messages->getMessages(),
+        ]);
+    }
+
+    public function startLive(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
+        if (!$charityStream) {
+            $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
+        }
+
+        // Idempotent : un double submit ne doit pas réinitialiser la session en cours
+        if ($charityStream->live_started_at === null) {
+            // Avance le curseur à la fin du flux de commandes pour ne capter
+            // que les dons reçus après le démarrage du live
+            $continuationToken = null;
+            if (!$charityStream->is_test_mode) {
+                try {
+                    $result = $this->apiWrapper->getAllOrders(
+                        $charityStream->organization_slug,
+                        $charityStream->form_slug,
+                        0,
+                        null,
+                        $charityStream->form_type ?? 'Donation',
+                    );
+                    $continuationToken = $result['continuation_token'];
+                } catch (Exception $e) {
+                    error_log('[LiveStart] Erreur API pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
+                }
+            }
+
+            $this->streamRepository->update($charityStream, [
+                'live_started_at' => date('Y-m-d H:i:s.u'),
+                'live_continuation_token' => $continuationToken,
+                'live_cache_updated_at' => date('Y-m-d H:i:s.u'),
+            ]);
+            $this->messages->addMessage('success', 'Le live est démarré, les dons vont apparaître ici.');
+        }
+
+        return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
+    }
+
+    public function stopLive(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
+        if (!$charityStream) {
+            $this->messages->addMessage('error', 'Tu n\'as pas accès ce stream');
+            return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
+        }
+
+        $this->donationHistoryRepository->deleteByStreamGuid($charityStream->guid);
+        $this->streamRepository->update($charityStream, [
+            'live_started_at' => null,
+            'live_continuation_token' => null,
+            'live_cache_updated_at' => null,
+        ]);
+        $this->messages->addMessage('info', 'Le live est terminé, l\'historique des dons a été supprimé.');
+
+        return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
+    }
+
+    /**
+     * Endpoint JSON de polling : rafraîchit l'historique depuis l'API HelloAsso
+     * si le cache est périmé, puis retourne les dons plus récents que ?since_id=.
+     */
+    public function liveFetch(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
+        if (!$charityStream) {
+            return $this->jsonResponse($response, ['error' => 'Stream non trouvé ou non autorisé.'], 404);
+        }
+
+        if ($charityStream->live_started_at === null) {
+            return $this->jsonResponse($response, []);
+        }
+
+        // En mode test, les dons simulés sont insérés directement dans l'historique :
+        // pas d'appel API, on retourne juste les nouvelles lignes
+        if (!$charityStream->is_test_mode && !$this->isLiveCacheFresh($charityStream)) {
+            try {
+                $result = $this->apiWrapper->getAllOrders(
+                    $charityStream->organization_slug,
+                    $charityStream->form_slug,
+                    0,
+                    $charityStream->live_continuation_token,
+                    $charityStream->form_type ?? 'Donation',
+                );
+
+                if (!empty($result['donations'])) {
+                    $this->donationHistoryRepository->insertMany($charityStream->guid, $result['donations']);
+                }
+
+                $this->streamRepository->update($charityStream, [
+                    'live_continuation_token' => $result['continuation_token'],
+                    'live_cache_updated_at' => date('Y-m-d H:i:s.u'),
+                ]);
+            } catch (Exception $e) {
+                // On sert quand même ce qui est déjà en base, le prochain poll réessaiera
+                error_log('[LiveFetch] Erreur API pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
+            }
+        }
+
+        $sinceId = (int) ($request->getQueryParams()['since_id'] ?? 0);
+        $entries = $this->donationHistoryRepository->selectSince($charityStream->guid, $sinceId);
+
+        return $this->jsonResponse($response, $this->serializeDonationEntries($entries));
+    }
+
+    /**
+     * Endpoint JSON du scroll infini : page suivante de l'historique avant ?before_id=.
+     */
+    public function liveHistory(Request $request, Response $response, array $args): Response
+    {
+        $user = $request->getAttribute('user');
+        $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
+        if (!$charityStream) {
+            return $this->jsonResponse($response, ['error' => 'Stream non trouvé ou non autorisé.'], 404);
+        }
+
+        $queryParams = $request->getQueryParams();
+        $beforeId = isset($queryParams['before_id']) ? (int) $queryParams['before_id'] : null;
+        $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, $beforeId, 30);
+
+        return $this->jsonResponse($response, $this->serializeDonationEntries($entries));
     }
 
     /**

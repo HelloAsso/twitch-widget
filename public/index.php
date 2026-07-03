@@ -16,6 +16,7 @@ use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
@@ -81,6 +82,10 @@ $container->set(EventRepository::class, function ($c) {
 
 $container->set(StreamRepository::class, function ($c) {
     return new StreamRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
+$container->set(StreamDonationHistoryRepository::class, function ($c) {
+    return new StreamDonationHistoryRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
 $container->set(UserRepository::class, function ($c) {
@@ -226,6 +231,11 @@ $app->get('/admin/stream/auth-callback', [AdminController::class, 'streamAuthCal
 $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
+$app->get('/admin/stream/{id}/live', [AdminController::class, 'liveView'])->add(new AuthMiddleware())->setName('app_stream_live');
+$app->post('/admin/stream/{id}/live/start', [AdminController::class, 'startLive'])->add(new AuthMiddleware())->setName('app_stream_live_start');
+$app->post('/admin/stream/{id}/live/stop', [AdminController::class, 'stopLive'])->add(new AuthMiddleware())->setName('app_stream_live_stop');
+$app->get('/admin/stream/{id}/live/fetch', [AdminController::class, 'liveFetch'])->add(new AuthMiddleware())->setName('app_stream_live_fetch');
+$app->get('/admin/stream/{id}/live/history', [AdminController::class, 'liveHistory'])->add(new AuthMiddleware())->setName('app_stream_live_history');
 
 $app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_api_stream_new');
 

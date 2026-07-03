@@ -12,6 +12,7 @@ use App\Models\WidgetDonation;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -35,6 +36,7 @@ class WidgetControllerTest extends TestCase
     private StreamRepository&MockObject $streamRepository;
     private WidgetRepository&MockObject $widgetRepository;
     private GoalRepository&MockObject $goalRepository;
+    private StreamDonationHistoryRepository&MockObject $donationHistoryRepository;
     private WidgetController $controller;
 
     protected function setUp(): void
@@ -46,6 +48,7 @@ class WidgetControllerTest extends TestCase
         $this->streamRepository = $this->createMock(StreamRepository::class);
         $this->widgetRepository = $this->createMock(WidgetRepository::class);
         $this->goalRepository = $this->createMock(GoalRepository::class);
+        $this->donationHistoryRepository = $this->createMock(StreamDonationHistoryRepository::class);
 
         $this->goalRepository->method('selectAmountsByStreamGuid')->willReturn([1000]);
         $this->goalRepository->method('selectAmountsByEventGuid')->willReturn([1000]);
@@ -58,6 +61,7 @@ class WidgetControllerTest extends TestCase
             $this->streamRepository,
             $this->widgetRepository,
             $this->goalRepository,
+            $this->donationHistoryRepository,
         );
     }
 
