@@ -17,6 +17,8 @@ class WidgetCard
     public string $text_color = '#1a1a1a';
     public string $tag_color = '#166534';
     public string $tag_background_color = '#dcfce7';
+    public int $start_amount = 0;
+    public int $start_donors = 0;
     public ?string $cache_data = null;
     public ?string $cache_updated_at = null;
     public ?string $creation_date = null;

@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\WidgetCard;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
@@ -60,6 +61,21 @@ class WidgetController
     {
         $safeGoal = $goal ?: 1;
         return min(100, (int) round(($amountInCents / 100) / $safeGoal * 100));
+    }
+
+    /**
+     * Ajoute le montant / nombre de donateurs de départ configurés sur la carte.
+     */
+    private function withCardStartOffset(?WidgetCard $card, int $amount, int $donors): array
+    {
+        if (!$card) {
+            return ['amount' => $amount, 'donors' => $donors];
+        }
+
+        return [
+            'amount' => $amount + max(0, (int) $card->start_amount),
+            'donors' => $donors + max(0, (int) $card->start_donors),
+        ];
     }
 
     private function requireIdArg(array $args, string $label): string
@@ -603,6 +619,10 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $offset = $this->withCardStartOffset($cardWidget, $currentAmount, $donors);
+            $currentAmount = $offset['amount'];
+            $donors = $offset['donors'];
+
             $formTypeUrlSegment = ($stream->form_type === 'CrowdFunding') ? 'collectes' : 'formulaires';
             $donationUrl = ($_SERVER['HA_URL'] ?? 'https://www.helloasso.com')
                 . '/associations/' . $stream->organization_slug
@@ -636,10 +656,12 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamCardData($charityStreamId);
+            $cardWidget = $this->widgetRepository->selectCardWidgetByGuid($charityStreamId, null);
+            $offset = $this->withCardStartOffset($cardWidget, $data['amount'], $data['donors']);
             $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
-            $goal = $this->resolveActiveGoal($goals, $data['amount']);
-            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
+            $goal = $this->resolveActiveGoal($goals, $offset['amount']);
+            $allGoalsReached = !empty($goals) && ($offset['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $offset['amount'], 'donors' => $offset['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401
@@ -675,6 +697,10 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $offset = $this->withCardStartOffset($cardWidget, $currentAmount, $donors);
+            $currentAmount = $offset['amount'];
+            $donors = $offset['donors'];
+
             $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
             $goal = $this->resolveActiveGoal($goals, $currentAmount);
 
@@ -702,10 +728,12 @@ class WidgetController
 
         try {
             $data = $this->fetchEventCardData($eventId);
+            $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $eventId);
+            $offset = $this->withCardStartOffset($cardWidget, $data['amount'], $data['donors']);
             $goals = $this->goalRepository->selectAmountsByEventGuid($eventId);
-            $goal = $this->resolveActiveGoal($goals, $data['amount']);
-            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
+            $goal = $this->resolveActiveGoal($goals, $offset['amount']);
+            $allGoalsReached = !empty($goals) && ($offset['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $offset['amount'], 'donors' => $offset['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }

@@ -8,6 +8,7 @@ use App\Controllers\WidgetController;
 use App\Models\Event;
 use App\Models\Stream;
 use App\Models\WidgetAlert;
+use App\Models\WidgetCard;
 use App\Models\WidgetDonation;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
@@ -414,6 +415,69 @@ class WidgetControllerTest extends TestCase
     }
 
     // =====================================================================
+    // Widget Card — start amount / donors
+    // =====================================================================
+
+    public function testWidgetEventCardAddsStartOffsetToAmountAndDonors(): void
+    {
+        $eventGuid = 'event-card-guid';
+        $event = $this->buildEvent($eventGuid);
+        $event->is_test_mode = 1;
+        $event->test_amount = 0;
+
+        $card = $this->buildCardWidget(null, $eventGuid);
+        $card->start_amount = 275000;
+        $card->start_donors = 35;
+
+        $this->widgetRepository->method('selectCardWidgetByGuid')->willReturn($card);
+        $this->eventRepository->method('selectByGuid')->willReturn($event);
+
+        $capturedTemplate = null;
+        $capturedData = null;
+        $this->view->method('render')
+            ->willReturnCallback(
+                function (ResponseInterface $response, string $template, array $data) use (&$capturedTemplate, &$capturedData) {
+                    $capturedTemplate = $template;
+                    $capturedData = $data;
+                    $response->getBody()->write('<html>card widget</html>');
+                    return $response;
+                }
+            );
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-event-card/{$eventGuid}");
+        $result = $this->controller->widgetEventCard($request, new Response(), ['id' => $eventGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $this->assertEquals('widget/card.html.twig', $capturedTemplate);
+        $this->assertEquals(275000, $capturedData['currentAmount']);
+        $this->assertEquals(35, $capturedData['donorCount']);
+        $this->assertEquals(100, $capturedData['percentage']);
+    }
+
+    public function testWidgetEventCardFetchAddsStartOffset(): void
+    {
+        $eventGuid = 'event-card-fetch-guid';
+        $event = $this->buildEvent($eventGuid);
+        $event->is_test_mode = 1;
+        $event->test_amount = 5000;
+
+        $card = $this->buildCardWidget(null, $eventGuid);
+        $card->start_amount = 275000;
+        $card->start_donors = 35;
+
+        $this->widgetRepository->method('selectCardWidgetByGuid')->willReturn($card);
+        $this->eventRepository->method('selectByGuid')->willReturn($event);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-event-card/{$eventGuid}/fetch");
+        $result = $this->controller->widgetEventCardFetch($request, new Response(), ['id' => $eventGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertEquals(280000, $body['amount']);
+        $this->assertEquals(35, $body['donors']);
+    }
+
+    // =====================================================================
     // Helpers
     // =====================================================================
 
@@ -461,6 +525,19 @@ class WidgetControllerTest extends TestCase
         $widget->background_color = '#000000';
         $widget->text_color_main = '#ffffff';
         $widget->text_color_alt = '#cccccc';
+        return $widget;
+    }
+
+    private function buildCardWidget(?string $streamGuid, ?string $eventGuid): WidgetCard
+    {
+        $widget = new WidgetCard();
+        $widget->id = 1;
+        $widget->charity_stream_guid = $streamGuid;
+        $widget->charity_event_guid = $eventGuid;
+        $widget->title = 'Campagne test';
+        $widget->description = 'Description';
+        $widget->start_amount = 0;
+        $widget->start_donors = 0;
         return $widget;
     }
 }

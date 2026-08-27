@@ -1,5 +1,15 @@
 {% block title %}Donation Goal Widget{% endblock %}
 {% extends "widget.html.twig" %}
+{% block styles %}
+<style>
+	html, body {
+		width: 100%;
+		max-width: 100%;
+		overflow-x: hidden;
+		margin: 0;
+	}
+</style>
+{% endblock %}
 {% block content %}
 	<div class="progress">
 		<div class="back" style="background:{{ donationGoalWidget.background_color }};color:{{ donationGoalWidget.text_color_main }}">

@@ -233,6 +233,8 @@ class WidgetRepository
                     text_color,
                     tag_color,
                     tag_background_color,
+                    start_amount,
+                    start_donors,
                     cache_data,
                     creation_date,
                     last_update
@@ -263,11 +265,15 @@ class WidgetRepository
         $this->pdo->beginTransaction();
 
         try {
+            $startAmountCents = (int) round(max(0, (float) ($data['card_start_amount'] ?? 0)) * 100);
+            $startDonors = max(0, (int) ($data['card_start_donors'] ?? 0));
+
             $stmt = $this->pdo->prepare('
                 UPDATE ' . $this->prefix . 'widget_card
                 SET tag = ?, title = ?, description = ?,
                     background_color = ?, bar_color = ?, bar_background_color = ?,
-                    text_color = ?, tag_color = ?, tag_background_color = ?
+                    text_color = ?, tag_color = ?, tag_background_color = ?,
+                    start_amount = ?, start_donors = ?
                 WHERE charity_stream_guid = ?
                 OR charity_event_guid = ?
             ');
@@ -281,6 +287,8 @@ class WidgetRepository
                 $data['card_text_color'] ?? '#1a1a1a',
                 $data['card_tag_color'] ?? '#166534',
                 $data['card_tag_background_color'] ?? '#dcfce7',
+                $startAmountCents,
+                $startDonors,
                 $streamGuid,
                 $eventGuid
             ]);
