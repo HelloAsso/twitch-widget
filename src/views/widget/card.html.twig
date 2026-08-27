@@ -296,17 +296,17 @@
 			{% endif %}
 
 			<div>
-				<div class="card-widget__amount" id="card-amount">{{ currentAmount / 100 }} €</div>
+				<div class="card-widget__amount" id="card-amount">{{ (currentAmount / 100)|number_format(0, ',', ' ') }} €</div>
 				<div class="card-widget__bar-wrapper">
 					<div class="card-widget__bar" style="background-color: {{ cardWidget.bar_background_color }}">
 						<div class="card-widget__bar-fill" id="card-bar-fill"
 							 style="background-color: {{ cardWidget.bar_color }}; width: {{ percentage }}%"></div>
 					</div>
-					<div class="card-widget__goal" id="card-goal-text">Objectif : <strong>{{ goal }} €</strong></div>
+					<div class="card-widget__goal" id="card-goal-text">Objectif : <strong>{{ goal|number_format(0, ',', ' ') }} €</strong></div>
 				</div>
 				<div class="card-widget__stats">
 					<span><strong id="card-percentage">{{ percentage }}%</strong> collectés</span>
-					<span><strong id="card-donors">{{ donorCount }}</strong> donateurs</span>
+					<span><strong id="card-donors">{{ donorCount|number_format(0, ',', ' ') }}</strong> donateurs</span>
 				</div>
 			</div>
 

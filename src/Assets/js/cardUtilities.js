@@ -1,5 +1,9 @@
 const CENTS_DIVISOR = 100;
 
+function formatGrouped(value) {
+    return Math.round(Number(value) || 0).toLocaleString('fr-FR');
+}
+
 function updateCardWidget() {
     const currentAmountUnit = window.currentAmount / CENTS_DIVISOR;
     const goal = window.goalAmount || 1;
@@ -10,10 +14,10 @@ function updateCardWidget() {
     const percentEl = document.getElementById('card-percentage');
     const donorsEl = document.getElementById('card-donors');
 
-    if (amountEl) amountEl.textContent = currentAmountUnit.toLocaleString('fr-FR') + ' €';
+    if (amountEl) amountEl.textContent = formatGrouped(currentAmountUnit) + ' €';
     if (barFill) barFill.style.width = `${percentage}%`;
     if (percentEl) percentEl.textContent = `${percentage}%`;
-    if (donorsEl) donorsEl.textContent = window.donorCount ?? 0;
+    if (donorsEl) donorsEl.textContent = formatGrouped(window.donorCount ?? 0);
 }
 
 const COLORS = ['#ff4d4d', '#ffa500', '#ffe600', '#4dff91', '#4dc8ff', '#c44dff', '#ff4dbb', '#fff'];
@@ -52,7 +56,7 @@ function triggerGoalCelebration(newGoal, isLastGoal = false) {
     banner.className = 'goal-banner';
     banner.textContent = isLastGoal
         ? '🏆 Tous les objectifs atteints !'
-        : `🎯 Objectif atteint ! Prochain objectif : ${newGoal} €`;
+        : `🎯 Objectif atteint ! Prochain objectif : ${formatGrouped(newGoal)} €`;
     overlay.appendChild(banner);
     setTimeout(() => banner.remove(), 6100);
 
@@ -60,7 +64,7 @@ function triggerGoalCelebration(newGoal, isLastGoal = false) {
     if (!isLastGoal) {
         const goalEl = document.getElementById('card-goal-text');
         if (goalEl) {
-            goalEl.innerHTML = `Objectif : <strong>${newGoal} €</strong>`;
+            goalEl.innerHTML = `Objectif : <strong>${formatGrouped(newGoal)} €</strong>`;
             goalEl.classList.remove('card-widget__goal--flash');
             void goalEl.offsetWidth;
             goalEl.classList.add('card-widget__goal--flash');
@@ -70,4 +74,4 @@ function triggerGoalCelebration(newGoal, isLastGoal = false) {
 }
 
 export default updateCardWidget;
-export { triggerGoalCelebration };
+export { triggerGoalCelebration, formatGrouped };

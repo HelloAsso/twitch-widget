@@ -179,16 +179,16 @@ if (cardWidgetForm) {
         const previewAmount = startAmount > 0 ? startAmount : halfGoal;
         const pctValue = goalValue > 0 ? Math.min(100, Math.round((previewAmount / goalValue) * 100)) : 0;
 
-        if (amount) amount.textContent = `${previewAmount} €`;
+        if (amount) amount.textContent = `${previewAmount.toLocaleString('fr-FR')} €`;
         if (barFill) {
             barFill.style.backgroundColor = barColor;
             barFill.style.width = `${pctValue}%`;
             barFill.parentElement.style.backgroundColor = barBgColor;
         }
-        if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue} €</strong>`;
+        if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue.toLocaleString('fr-FR')} €</strong>`;
         if (pct) pct.textContent = `${pctValue}%`;
         const donorsEl = document.getElementById('cardPreviewDonors');
-        if (donorsEl) donorsEl.textContent = String(startDonors);
+        if (donorsEl) donorsEl.textContent = startDonors.toLocaleString('fr-FR');
 
         const cta = document.getElementById('cardPreviewCta');
         if (cta) {
