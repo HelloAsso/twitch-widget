@@ -157,9 +157,16 @@ if (cardWidgetForm) {
             preview.style.color = textColor;
         }
         if (tag) {
+            const tagValue = (document.getElementById('card_tag')?.value || '').trim();
             tag.style.color = tagColor;
             tag.style.backgroundColor = tagBgColor;
-            tag.textContent = `✏️ ${document.getElementById('card_tag').value || ''}`;
+            if (tagValue) {
+                tag.style.display = 'inline-flex';
+                tag.textContent = `✏️ ${tagValue}`;
+            } else {
+                tag.style.display = 'none';
+                tag.textContent = '';
+            }
         }
         if (title) title.textContent = document.getElementById('card_title').value || '';
         if (desc) desc.textContent = document.getElementById('card_description').value || '';

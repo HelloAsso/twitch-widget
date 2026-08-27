@@ -277,7 +277,7 @@
 									<div id="cardPreview" style="display:flex; max-width:720px; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.10); background-color:{{ cardWidget.background_color }}; color:{{ cardWidget.text_color }};">
 										<div id="cardPreviewImage" style="flex:0 0 220px; min-height:280px; background-size:cover; background-position:center; {% if cardWidgetPictureUrl %}background-image:url('{{ cardWidgetPictureUrl }}');{% else %}background:#374151;{% endif %}"></div>
 										<div style="flex:1; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; gap:14px;">
-											<div id="cardPreviewTag" style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:5px 14px; border-radius:999px; width:fit-content; color:{{ cardWidget.tag_color }}; background-color:{{ cardWidget.tag_background_color }};">
+											<div id="cardPreviewTag" style="{% if cardWidget.tag|default('')|trim %}display:inline-flex;{% else %}display:none;{% endif %} align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:5px 14px; border-radius:999px; width:fit-content; color:{{ cardWidget.tag_color }}; background-color:{{ cardWidget.tag_background_color }};">
 												✏️ {{ cardWidget.tag }}
 											</div>
 											<div id="cardPreviewTitle" style="font-size:24px; font-weight:800; line-height:1.15;">{{ cardWidget.title }}</div>

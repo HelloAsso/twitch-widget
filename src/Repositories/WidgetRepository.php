@@ -278,7 +278,7 @@ class WidgetRepository
                 OR charity_event_guid = ?
             ');
             $stmt->execute([
-                $data['card_tag'] ?? '',
+                trim($data['card_tag'] ?? ''),
                 $data['card_title'] ?? '',
                 $data['card_description'] ?? '',
                 $data['card_background_color'] ?? '#ffffff',
