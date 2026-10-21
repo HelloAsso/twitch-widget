@@ -16,16 +16,18 @@ class EventRepository
 
     public function selectList(): array
     {
+        // LEFT JOIN : un évènement sans propriétaire reste listé, et plusieurs
+        // propriétaires ne le dupliquent pas (repliés dans la colonne admin).
         $stmt = $this->pdo->query('
             SELECT c.*, u.email as admin
             FROM ' . $this->prefix . 'charity_event c
-            INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_event = c.id AND r.is_owner = 1
-            INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
-            ORDER BY c.creation_date DESC
+            LEFT JOIN ' . $this->prefix . 'user_right r ON r.id_charity_event = c.id AND r.is_owner = 1
+            LEFT JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
+            ORDER BY c.creation_date DESC, c.id DESC, u.email ASC
         ');
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, Event::class);
-        return $stmt->fetchAll();
+        return AdminListMerger::mergeByEntity($stmt->fetchAll());
     }
 
     public function selectListByUser(User $user): array
