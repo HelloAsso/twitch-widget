@@ -179,6 +179,33 @@ class WidgetRepository
         return $age < $ttlSeconds;
     }
 
+    /**
+     * Vide les caches (montant, jetons de continuation) d'un stream et de l'event auquel il est lié.
+     * À appeler quand les paramètres de récupération des commandes changent (ex. date de début).
+     */
+    public function resetStreamCaches(Stream $stream): void
+    {
+        foreach (['widget_alert_box', 'widget_donation_goal_bar', 'widget_card'] as $table) {
+            $stmt = $this->pdo->prepare(
+                'UPDATE ' . $this->prefix . $table . ' SET cache_data = NULL, cache_updated_at = NULL WHERE charity_stream_guid = ?'
+            );
+            $stmt->execute([$stream->guid]);
+        }
+
+        if (!$stream->charity_event_id) {
+            return;
+        }
+
+        // Le cache d'un event agrège celui de ses streams : il doit être recalculé
+        foreach (['widget_donation_goal_bar', 'widget_card'] as $table) {
+            $stmt = $this->pdo->prepare(
+                'UPDATE ' . $this->prefix . $table . ' SET cache_data = NULL, cache_updated_at = NULL
+                 WHERE charity_event_guid = (SELECT guid FROM ' . $this->prefix . 'charity_event WHERE id = ?)'
+            );
+            $stmt->execute([$stream->charity_event_id]);
+        }
+    }
+
     // ── Alert widget cache ────────────────────────────────────────
 
     public function selectAlertWidgetCacheData(Stream $stream): ?array

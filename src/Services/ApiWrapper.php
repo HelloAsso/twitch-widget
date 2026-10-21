@@ -8,6 +8,8 @@ use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use DateInterval;
 use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -498,11 +500,14 @@ class ApiWrapper
      * @param [type] $continuationToken
      * @return array
      */
-    private function getDonationFormOrders(string $organizationSlug, string $donationSlug, string $accessToken, ?string $continuationToken = null, string $formType = 'Donation'): array
+    private function getDonationFormOrders(string $organizationSlug, string $donationSlug, string $accessToken, ?string $continuationToken = null, string $formType = 'Donation', ?DateTimeImmutable $from = null): array
     {
         $query = ['withDetails' => 'true', 'sortOrder' => 'asc', 'pageSize' => 100];
         if ($continuationToken) {
             $query['continuationToken'] = $continuationToken;
+        }
+        if ($from !== null) {
+            $query['from'] = $from->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
         }
 
         $formTypePath = $formType ?: 'Donation';
@@ -530,9 +535,10 @@ class ApiWrapper
      * @param [type] $formSlug
      * @param integer $currentAmount
      * @param [type] $continuationToken
+     * @param DateTimeImmutable|null $from Ne prend en compte que les commandes passées à partir de cette date (null = toutes)
      * @return array
      */
-    public function getAllOrders(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null, string $formType = 'Donation'): array
+    public function getAllOrders(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null, string $formType = 'Donation', ?DateTimeImmutable $from = null): array
     {
         $previousToken = '';
         $donations = [];
@@ -560,7 +566,8 @@ class ApiWrapper
                 $formSlug,
                 $organizationAccessToken->access_token,
                 $continuationToken,
-                $formType
+                $formType,
+                $from
             );
 
             if (!isset($formOrdersData['data'])) {
@@ -568,6 +575,10 @@ class ApiWrapper
             }
 
             foreach ($formOrdersData['data'] as $order) {
+                // Filtre déjà appliqué côté API (`from`), on le revérifie pour ne jamais compter une commande antérieure
+                if ($from !== null && isset($order['date']) && new DateTimeImmutable($order['date']) < $from) {
+                    continue;
+                }
 
                 $pseudo = "anonyme";
                 $message = "";

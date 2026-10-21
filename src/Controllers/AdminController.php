@@ -485,6 +485,24 @@ class AdminController
         return $this->view->render($response, 'stream/edit.html.twig', $data);
     }
 
+    /**
+     * Normalise la valeur d'un champ datetime-local (heure de Paris).
+     *
+     * @return string|null|false 'Y-m-d H:i:s', null si vide (= tous les paiements), false si invalide
+     */
+    private function parseStartDate(mixed $value): string|null|false
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $value)
+            ?: \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s', $value);
+
+        return $date ? $date->format('Y-m-d H:i:s') : false;
+    }
+
     public function editStreamPost(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
@@ -498,7 +516,24 @@ class AdminController
             if (isset($body['stream_title'])) {
                 $updateData['title'] = $body['stream_title'];
             }
+
+            $startDateChanged = false;
+            if (array_key_exists('start_date', $body)) {
+                $startDate = $this->parseStartDate($body['start_date']);
+                if ($startDate === false) {
+                    $this->messages->addMessage('error', 'Date de début invalide');
+                } elseif ($startDate !== $charityStream->start_date) {
+                    $updateData['start_date'] = $startDate;
+                    $startDateChanged = true;
+                }
+            }
+
             $this->streamRepository->update($charityStream, $updateData);
+
+            // Les montants en cache ont été calculés avec l'ancienne date : on repart de zéro
+            if ($startDateChanged) {
+                $this->widgetRepository->resetStreamCaches($charityStream);
+            }
         }
 
         if (isset($body['link_event'])) {

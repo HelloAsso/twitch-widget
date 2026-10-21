@@ -336,6 +336,51 @@ class WidgetControllerTest extends TestCase
         $this->assertEquals(1500, $body['amount']);
     }
 
+    public function testWidgetDonationFetchPassesStartDateToApi(): void
+    {
+        $streamGuid = 'start-date-guid';
+        $stream = $this->buildStream($streamGuid);
+        $stream->start_date = '2026-10-21 20:00:00';
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectStreamDonationWidgetCacheData')->willReturn(null);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllOrders')
+            ->with(
+                'test-org',
+                'test-form',
+                0,
+                '',
+                'Donation',
+                $this->callback(fn($from) => $from instanceof \DateTimeImmutable
+                    && $from->format('Y-m-d H:i:s T') === '2026-10-21 20:00:00 CEST')
+            )
+            ->willReturn(['amount' => 500, 'donations' => [], 'continuation_token' => 'tk']);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
+        $result = $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+    }
+
+    public function testWidgetDonationFetchWithoutStartDateTakesAllPayments(): void
+    {
+        $streamGuid = 'no-start-date-guid';
+        $stream = $this->buildStream($streamGuid);
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectStreamDonationWidgetCacheData')->willReturn(null);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllOrders')
+            ->with('test-org', 'test-form', 0, '', 'Donation', null)
+            ->willReturn(['amount' => 500, 'donations' => [], 'continuation_token' => 'tk']);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
+        $result = $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+    }
+
     public function testWidgetDonationFetchReturns400WhenIdMissing(): void
     {
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-donation//fetch');

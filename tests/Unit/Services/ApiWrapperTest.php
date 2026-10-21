@@ -10,11 +10,14 @@ use App\Repositories\AuthorizationCodeRepository;
 use App\Services\ApiWrapper;
 use DateInterval;
 use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Monolog\Handler\NullHandler;
@@ -398,6 +401,94 @@ class ApiWrapperTest extends TestCase
         $this->expectExceptionMessageMatches('/refresh_token is expired/');
 
         $this->apiWrapper->getOrganizationAccessToken('my-org');
+    }
+
+    // =====================================================================
+    // Récupération des commandes (filtre par date de début)
+    // =====================================================================
+
+    private function stubValidOrganizationToken(): void
+    {
+        $token = new AccessToken();
+        $token->organization_slug = 'my-org';
+        $token->access_token = 'org_access_token';
+        $token->refresh_token = 'org_refresh_token';
+        $token->access_token_expires_at = (new DateTime())->add(new DateInterval('PT20M'));
+        $token->refresh_token_expires_at = (new DateTime())->add(new DateInterval('P20D'));
+
+        $this->accessTokenRepository->method('selectBySlug')->willReturn($token);
+    }
+
+    /**
+     * Comme injectMockHttpClient, en conservant l'historique des requêtes envoyées.
+     */
+    private function injectMockHttpClientWithHistory(array $responses, array &$history): void
+    {
+        $handlerStack = HandlerStack::create(new MockHandler($responses));
+        $handlerStack->push(Middleware::history($history));
+
+        $clientProperty = (new ReflectionClass($this->apiWrapper))->getProperty('client');
+        $clientProperty->setValue($this->apiWrapper, new Client(['handler' => $handlerStack]));
+    }
+
+    private function buildOrdersResponse(array $orders): Response
+    {
+        $data = array_map(fn(array $order) => [
+            'date' => $order['date'],
+            'amount' => ['total' => $order['amount']],
+            'items' => [],
+        ], $orders);
+
+        return new Response(200, [], json_encode(['data' => $data, 'pagination' => ['continuationToken' => null]]));
+    }
+
+    public function testGetAllOrdersSendsNoFromFilterByDefault(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildOrdersResponse([['date' => '2026-10-01T10:00:00+02:00', 'amount' => 1000]]),
+        ], $history);
+
+        $result = $this->apiWrapper->getAllOrders('my-org', 'my-form');
+
+        parse_str($history[0]['request']->getUri()->getQuery(), $query);
+        $this->assertArrayNotHasKey('from', $query);
+        $this->assertSame(1000, $result['amount']);
+    }
+
+    public function testGetAllOrdersSendsFromFilterInUtc(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildOrdersResponse([['date' => '2026-10-21T21:00:00+02:00', 'amount' => 1000]]),
+        ], $history);
+
+        $from = new DateTimeImmutable('2026-10-21 20:00:00', new DateTimeZone('Europe/Paris'));
+        $this->apiWrapper->getAllOrders('my-org', 'my-form', 0, null, 'Donation', $from);
+
+        parse_str($history[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame('2026-10-21T18:00:00Z', $query['from']);
+    }
+
+    public function testGetAllOrdersIgnoresOrdersBeforeFromDate(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildOrdersResponse([
+                ['date' => '2026-10-21T19:59:59+02:00', 'amount' => 5000],
+                ['date' => '2026-10-21T20:00:00+02:00', 'amount' => 1000],
+                ['date' => '2026-10-22T09:00:00+02:00', 'amount' => 2000],
+            ]),
+        ], $history);
+
+        $from = new DateTimeImmutable('2026-10-21 20:00:00', new DateTimeZone('Europe/Paris'));
+        $result = $this->apiWrapper->getAllOrders('my-org', 'my-form', 0, null, 'Donation', $from);
+
+        $this->assertSame(3000, $result['amount']);
+        $this->assertCount(2, $result['donations']);
     }
 }
 

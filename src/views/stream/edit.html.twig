@@ -110,13 +110,20 @@
 				<div class="card-body">
 					<form method="POST">
 						<div class="row">
-							<div class="col-md-9">
+							<div class="col-md-5">
 								<div class="mb-3">
 									<label for="stream_title" class="form-label fw-semibold">Titre</label>
 									<input type="text" class="form-control" id="stream_title" name="stream_title" value="{{ charityStream.title }}" required>
 								</div>
 							</div>
-							<div class="col-md-3 d-flex align-items-end">
+							<div class="col-md-4">
+								<div class="mb-3">
+									<label for="start_date" class="form-label fw-semibold">Paiements pris en compte à partir du</label>
+									<input type="datetime-local" class="form-control" id="start_date" name="start_date" value="{{ charityStream.start_date ? charityStream.start_date|slice(0, 16)|replace({' ': 'T'}) : '' }}">
+									<div class="form-text">Heure de Paris. Laisser vide pour prendre en compte tous les paiements.</div>
+								</div>
+							</div>
+							<div class="col-md-3 d-flex align-items-start pt-4">
 								<div class="mb-3">
 									<button type="submit" class="btn btn-primary" name="save_stream_info">💾 Enregistrer</button>
 								</div>
