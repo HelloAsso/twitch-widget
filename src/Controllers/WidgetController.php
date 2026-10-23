@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -25,6 +26,7 @@ class WidgetController
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
         private GoalRepository $goalRepository,
+        private StreamDonationHistoryRepository $donationHistoryRepository,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
     }
@@ -739,6 +741,15 @@ class WidgetController
 
         $newAmount = (int) $charityStream->test_amount + $amount;
         $this->streamRepository->update($charityStream, ['test_amount' => $newAmount]);
+
+        // Si un live est en cours, le don simulé alimente aussi la vue "Live"
+        if ($charityStream->live_started_at !== null) {
+            $this->donationHistoryRepository->insertMany($charityStream->guid, [[
+                'pseudo' => $pseudo,
+                'message' => $message,
+                'amount' => $amount,
+            ]]);
+        }
 
         return $this->jsonResponse($response, [
             'amount' => $newAmount,

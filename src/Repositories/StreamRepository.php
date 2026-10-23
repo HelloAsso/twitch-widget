@@ -197,6 +197,18 @@ class StreamRepository
             $fields[] = 'test_amount = ?';
             $params[] = (int) $data['test_amount'];
         }
+        if (array_key_exists('live_started_at', $data)) {
+            $fields[] = 'live_started_at = ?';
+            $params[] = $data['live_started_at'];
+        }
+        if (array_key_exists('live_continuation_token', $data)) {
+            $fields[] = 'live_continuation_token = ?';
+            $params[] = $data['live_continuation_token'];
+        }
+        if (array_key_exists('live_cache_updated_at', $data)) {
+            $fields[] = 'live_cache_updated_at = ?';
+            $params[] = $data['live_cache_updated_at'];
+        }
 
         if (empty($fields)) return;
 
