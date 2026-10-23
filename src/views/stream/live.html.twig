@@ -32,7 +32,7 @@
 			{% if charityStream.live_started_at %}
 				<p class="text-muted small">
 					Live démarré le <span class="live-time" data-short data-ts="{{ charityStream.live_started_at | date('c') }}">{{ charityStream.live_started_at | date('d/m/Y à H:i') }}</span> —
-					les nouveaux dons apparaissent automatiquement toutes les 10 secondes.
+					les nouveaux dons apparaissent automatiquement, en général moins de 40 secondes après avoir été faits.
 				</p>
 			{% endif %}
 

@@ -179,7 +179,9 @@ async function fetchOlderDonations() {
         }
 
         const entries = await response.json();
-        if (!Array.isArray(entries)) {
+        // Si de nouveaux dons ont fait atteindre le cap pendant la requête, le bas du fil a été
+        // rogné : ajouter cette page laisserait un trou entre les dons affichés et ceux-ci
+        if (!Array.isArray(entries) || reachedEnd) {
             return;
         }
 
