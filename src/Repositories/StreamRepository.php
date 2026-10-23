@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Event;
 use App\Models\Stream;
 use App\Models\User;
+use DateTime;
 use Exception;
 use PDO;
 
@@ -218,6 +219,32 @@ class StreamRepository
         $stmt->execute($params);
     }
 
+    /**
+     * Réserve le rafraîchissement du live auprès de l'API HelloAsso : compare-and-set sur
+     * live_cache_updated_at, de sorte qu'un seul des polls concurrents obtient true (et
+     * peut donc consommer le curseur). Les autres servent l'historique déjà en base.
+     */
+    public function claimLiveRefresh(Stream $stream, int $ttlSeconds): bool
+    {
+        $now = new DateTime();
+        $threshold = (clone $now)->modify('-' . $ttlSeconds . ' seconds');
+
+        $stmt = $this->pdo->prepare('
+            UPDATE ' . $this->prefix . 'charity_stream
+            SET live_cache_updated_at = ?
+            WHERE id = ?
+            AND live_started_at IS NOT NULL
+            AND (live_cache_updated_at IS NULL OR live_cache_updated_at < ?)
+        ');
+        $stmt->execute([
+            $now->format('Y-m-d H:i:s.u'),
+            $stream->id,
+            $threshold->format('Y-m-d H:i:s.u'),
+        ]);
+
+        return $stmt->rowCount() === 1;
+    }
+
     public function delete(Stream $stream): void
     {
         $this->pdo->beginTransaction();
@@ -246,6 +273,11 @@ class StreamRepository
             } catch (Exception $e) {
                 // Table may not exist yet — skip silently
             }
+
+            $query = 'DELETE FROM ' . $this->prefix . 'stream_donation_history
+                WHERE charity_stream_guid = ?';
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([$stream->guid]);
 
             $query = 'DELETE FROM ' . $this->prefix . 'user_right
                 WHERE id_charity_stream = ?';

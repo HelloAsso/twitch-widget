@@ -16,6 +16,8 @@ use Slim\Views\Twig;
 
 class WidgetController
 {
+    use RespondsWithJson;
+
     private int $cacheTtl;
 
     public function __construct(
@@ -46,17 +48,6 @@ class WidgetController
     }
 
     // ── Helpers ───────────────────────────────────────────────────
-
-    private function jsonResponse(Response $response, array $data, int $status = 200): Response
-    {
-        $response->getBody()->write(json_encode($data));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
-    }
-
-    private function jsonError(Response $response, string $message, int $status): Response
-    {
-        return $this->jsonResponse($response, ['error' => $message], $status);
-    }
 
     private function calculatePercentage(int $amountInCents, int $goal): int
     {

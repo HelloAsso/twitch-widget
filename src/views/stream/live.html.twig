@@ -31,7 +31,7 @@
 
 			{% if charityStream.live_started_at %}
 				<p class="text-muted small">
-					Live démarré le {{ charityStream.live_started_at | date('d/m/Y à H:i') }} —
+					Live démarré le <span class="live-time" data-short data-ts="{{ charityStream.live_started_at | date('c') }}">{{ charityStream.live_started_at | date('d/m/Y à H:i') }}</span> —
 					les nouveaux dons apparaissent automatiquement toutes les 10 secondes.
 				</p>
 			{% endif %}
@@ -58,7 +58,7 @@
 							<div class="d-flex justify-content-between align-items-baseline gap-2">
 								<span class="fw-bold">{{ entry.pseudo }}</span>
 								<span class="badge bg-success" style="font-size:0.9rem;">{{ (entry.amount / 100) | number_format(2, ',', ' ') }} €</span>
-								<span class="text-muted small ms-auto">{{ entry.received_at | date('d/m/Y H:i:s') }}</span>
+								<span class="live-time text-muted small ms-auto" data-ts="{{ entry.received_at | date('c') }}">{{ entry.received_at | date('d/m/Y H:i:s') }}</span>
 							</div>
 							{% if entry.message %}
 								<p class="mb-0 mt-1" style="opacity:0.85;">{{ entry.message }}</p>
@@ -82,6 +82,8 @@
 		window.newestLoadedId = {{ entries is not empty ? entries|first.id : 0 }};
 		window.oldestLoadedId = {{ entries is not empty ? entries|last.id : 0 }};
 		window.initialCount = {{ entries|length }};
+		window.livePageSize = {{ pageSize }};
+		window.livePollLimit = {{ pollLimit }};
 	</script>
 	{% if viteEntries.live.js is defined and viteEntries.live.js %}
 	<script type="module" src="/dist/{{ viteEntries.live.js }}"></script>

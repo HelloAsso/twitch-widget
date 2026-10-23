@@ -1,6 +1,6 @@
 # HelloAsso Stream — Documentation utilisateur
 
-HelloAsso Stream est un outil gratuit qui permet aux associations et aux streamers de suivre en temps réel les dons collectés via HelloAsso, directement sur un live (Twitch, YouTube, etc.) ou sur un site web. Il fonctionne grâce à des **widgets** personnalisables (barre de progression, alertes, carte de don) que vous intégrez dans votre logiciel de streaming (OBS, Streamlabs…) ou sur votre site via une iframe.
+HelloAsso Stream est un outil gratuit qui permet aux associations et aux streamers de suivre en temps réel les dons collectés via HelloAsso, directement sur un live (Twitch, YouTube, etc.) ou sur un site web. Il fonctionne grâce à des **widgets** personnalisables (barre de progression, alertes, carte de don) que vous intégrez dans votre logiciel de streaming (OBS, Streamlabs…) ou sur votre site via une iframe. Une **vue Live** permet en plus de suivre, sous forme de fil, chaque don reçu pendant votre direct.
 
 ---
 
@@ -13,7 +13,8 @@ HelloAsso Stream est un outil gratuit qui permet aux associations et aux streame
 5. [Les widgets](#5-les-widgets)
 6. [Intégrer un widget dans OBS / sur votre site](#6-intégrer-un-widget-dans-obs--sur-votre-site)
 7. [Mode test](#7-mode-test)
-8. [FAQ / Résolution de problèmes](#8-faq--résolution-de-problèmes)
+8. [Vue Live : suivre les dons en direct](#8-vue-live--suivre-les-dons-en-direct)
+9. [FAQ / Résolution de problèmes](#9-faq--résolution-de-problèmes)
 
 ---
 
@@ -121,10 +122,11 @@ Depuis la page d'édition d'un stream, vous pouvez :
 - Accéder au **formulaire HelloAsso** lié via le lien direct.
 - Configurer les **3 types de widgets** : barre de don, alerte, carte de don.
 - Activer le **mode test**.
+- Ouvrir la **vue Live** avec le bouton **🔴 Voir le direct** (voir [section 8](#8-vue-live--suivre-les-dons-en-direct)).
 
 ### Supprimer un stream
 
-Cliquez sur le bouton de suppression depuis le tableau de bord.
+Cliquez sur le bouton de suppression depuis le tableau de bord. Si un live est en cours, son historique de dons est supprimé avec le stream.
 
 ---
 
@@ -250,6 +252,8 @@ Une fois le mode test activé, un formulaire de simulation apparaît :
 
 Cliquez sur **💸 Simuler un don** pour envoyer le don fictif. Les widgets se mettent à jour en temps réel.
 
+Si un live est en cours, le don simulé apparaît aussi dans la [vue Live](#8-vue-live--suivre-les-dons-en-direct).
+
 ### Remettre à zéro
 
 Cliquez sur **🔄 Remettre à zéro** pour réinitialiser le compteur de test à 0 €.
@@ -260,9 +264,43 @@ Cliquez sur **❌ Désactiver le mode test**. Le montant test est automatiquemen
 
 > ⚠️ En mode test, **aucun appel à l'API HelloAsso n'est effectué**. Les widgets affichent uniquement les montants simulés.
 
+> ⚠️ Activer ou désactiver le mode test **arrête le live en cours** et supprime son historique (voir [section 8](#8-vue-live--suivre-les-dons-en-direct)).
+
 ---
 
-## 8. FAQ / Résolution de problèmes
+## 8. Vue Live : suivre les dons en direct
+
+La **vue Live** est une page de votre espace d'administration qui affiche, sous forme de fil, chaque don reçu pendant votre direct : **pseudo**, **montant**, **message** et **heure**. C'est pratique pour lire les messages des donateurs à l'antenne ou garder une trace des dons de la session.
+
+> ℹ️ La vue Live est faite pour être consultée par vous (sur un second écran, par exemple). Elle n'est pas destinée à être affichée dans OBS : pour cela, utilisez les [widgets](#5-les-widgets).
+
+### Ouvrir la vue Live
+
+Depuis la page d'édition d'un stream, cliquez sur **🔴 Voir le direct**, à côté du bouton **Retour**.
+
+### Démarrer et terminer un live
+
+- **▶ Démarrer le live** ouvre une session. Seuls les dons reçus **à partir de ce moment** apparaissent dans le fil : les dons faits avant le démarrage ne sont pas affichés. Le démarrage interroge HelloAsso et peut prendre quelques secondes, davantage si le formulaire a déjà reçu beaucoup de dons.
+- **⏹ Terminer le live** ferme la session et **supprime définitivement l'historique des dons de la session**. Une confirmation vous est demandée. Les dons eux-mêmes ne sont pas concernés : ils restent dans votre espace HelloAsso, et les widgets ne sont pas affectés.
+
+> ⚠️ Si HelloAsso ne répond pas, ou si le token de l'association a expiré, le live **n'est pas démarré** et un message d'erreur s'affiche. Réessayez dans un instant, ou renouvelez le token (voir la [FAQ](#9-faq--résolution-de-problèmes)).
+
+### Lire le fil des dons
+
+- Les nouveaux dons apparaissent **automatiquement en haut du fil**, sans recharger la page. Comptez jusqu'à une quarantaine de secondes entre le don et son affichage : la page vérifie les nouveautés toutes les 10 secondes, et HelloAsso n'est interrogé qu'une fois toutes les 30 secondes environ.
+- Faites défiler vers le bas pour charger les dons plus anciens, par lots de 30. Le message **— Début du live —** s'affiche quand vous avez atteint le premier don de la session.
+- Au plus **300 dons** sont affichés en même temps. Au-delà, les plus anciens disparaissent de l'écran (ils ne sont pas supprimés) et un message **Limite d'affichage atteinte** apparaît : rechargez la page pour repartir des dons les plus récents.
+- Les heures sont affichées dans le **fuseau horaire de votre navigateur**.
+- Vous pouvez ouvrir la vue Live dans plusieurs onglets ou sur plusieurs appareils : ils affichent le même fil.
+
+### Vue Live et mode test
+
+- Quand le stream est en [mode test](#7-mode-test), les dons simulés avec **💸 Simuler un don** apparaissent dans le fil, sans aucun appel à HelloAsso.
+- **Activer ou désactiver le mode test pendant un live arrête ce live et supprime son historique**, pour ne pas mélanger dons fictifs et dons réels. Un message vous prévient : redémarrez simplement le live depuis la vue Live.
+
+---
+
+## 9. FAQ / Résolution de problèmes
 
 ### ⚠️ « Token invalide » s'affiche à côté d'un stream
 
@@ -282,6 +320,28 @@ Le token d'accès à l'API HelloAsso a expiré. Pour le renouveler :
 - Vérifiez que le stream n'est pas en **mode test** (les widgets afficheraient alors les montants simulés et non les vrais dons).
 - Vérifiez que le token de l'association est valide (pas de badge ⚠️ dans le tableau de bord).
 - Les widgets disposent d'un **cache** de quelques secondes. Patientez un instant avant que les nouveaux dons n'apparaissent.
+
+### Le message « Impossible de démarrer le live » s'affiche
+
+Le live ne se lance que si HelloAsso a pu être interrogé. Deux causes possibles :
+
+- Le **token de l'association a expiré** : le message l'indique. Renouvelez-le comme décrit plus haut (« Token invalide »), puis relancez le live.
+- **HelloAsso est momentanément injoignable** : patientez un instant et cliquez de nouveau sur **▶ Démarrer le live**.
+
+### Les dons n'apparaissent pas dans la vue Live
+
+- Vérifiez que le live est bien **démarré** (le bouton **⏹ Terminer le live** doit être affiché). Les dons faits **avant** le démarrage n'apparaissent pas.
+- Patientez jusqu'à une quarantaine de secondes : le fil se met à jour automatiquement, sans recharger la page.
+- Vérifiez que le stream n'est pas en **mode test** si vous attendez de vrais dons (et inversement : en mode test, seuls les dons simulés apparaissent).
+- Vérifiez que le token de l'association est valide (pas de badge ⚠️ dans le tableau de bord).
+
+### Mon live s'est arrêté tout seul
+
+C'est le comportement attendu quand vous **activez ou désactivez le mode test** pendant un live : le live est arrêté et son historique supprimé. Redémarrez-le depuis la vue Live.
+
+### Puis-je récupérer l'historique après avoir terminé un live ?
+
+Non, **⏹ Terminer le live** supprime définitivement l'historique de la session. Vos dons restent en revanche consultables dans votre espace HelloAsso.
 
 ### Puis-je rattacher plusieurs streams à un même événement ?
 
