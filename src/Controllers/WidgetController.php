@@ -2,6 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Models\Stream;
+use App\Models\WidgetCard;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
@@ -16,6 +18,8 @@ use Slim\Views\Twig;
 
 class WidgetController
 {
+    use RespondsWithJson;
+
     private int $cacheTtl;
 
     public function __construct(
@@ -47,21 +51,25 @@ class WidgetController
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    private function jsonResponse(Response $response, array $data, int $status = 200): Response
-    {
-        $response->getBody()->write(json_encode($data));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
-    }
-
-    private function jsonError(Response $response, string $message, int $status): Response
-    {
-        return $this->jsonResponse($response, ['error' => $message], $status);
-    }
-
     private function calculatePercentage(int $amountInCents, int $goal): int
     {
         $safeGoal = $goal ?: 1;
         return min(100, (int) round(($amountInCents / 100) / $safeGoal * 100));
+    }
+
+    /**
+     * Ajoute le montant / nombre de donateurs de départ configurés sur la carte.
+     */
+    private function withCardStartOffset(?WidgetCard $card, int $amount, int $donors): array
+    {
+        if (!$card) {
+            return ['amount' => $amount, 'donors' => $donors];
+        }
+
+        return [
+            'amount' => $amount + max(0, (int) $card->start_amount),
+            'donors' => $donors + max(0, (int) $card->start_donors),
+        ];
     }
 
     private function requireIdArg(array $args, string $label): string
@@ -79,6 +87,33 @@ class WidgetController
         return $this->view->render($response, 'widget/error.html.twig', [
             'message' => $message,
         ]);
+    }
+
+    /**
+     * Cumule le montant encaissé d'un stream (paiements autorisés, mensualités comprises) à partir de son cache.
+     * Le montant ne vient pas des commandes : celui d'une commande ne compte que sa première échéance.
+     *
+     * @param array $cache Cache du stream, avec `amount` et `payments_continuation_token`
+     * @return array{amount: int, payments_continuation_token: ?string}
+     */
+    private function fetchStreamPaymentsAmount(Stream $stream, array $cache): array
+    {
+        // Cache d'avant le passage aux paiements : son montant venait des commandes, on repart de zéro
+        if (!array_key_exists('payments_continuation_token', $cache)) {
+            $cache['amount'] = 0;
+            $cache['payments_continuation_token'] = null;
+        }
+
+        $result = $this->apiWrapper->getAllPaymentsAmount(
+            $stream->organization_slug,
+            $stream->form_slug,
+            (int) $cache['amount'],
+            $cache['payments_continuation_token'],
+            $stream->form_type ?? 'Donation',
+            $stream->getStartDateTime()
+        );
+
+        return ['amount' => $result['amount'], 'payments_continuation_token' => $result['continuation_token']];
     }
 
     /**
@@ -101,31 +136,36 @@ class WidgetController
             unset($cachedStream);
 
             if (!$streamCache) {
-                $defaultCache = ['id' => $stream->id, 'amount' => 0, 'continuation_token' => null];
+                $defaultCache = ['id' => $stream->id, 'amount' => 0, 'payments_continuation_token' => null];
                 if ($trackDonors) {
                     $defaultCache['donors'] = 0;
+                    $defaultCache['continuation_token'] = null;
                 }
                 $streamCache = $defaultCache;
                 $cacheData['streams'][] = &$streamCache;
             }
 
-            $result = $this->apiWrapper->getAllOrders(
-                $stream->organization_slug,
-                $stream->form_slug,
-                $streamCache['amount'],
-                $streamCache['continuation_token'],
-                $stream->form_type ?? 'Donation'
-            );
-
-            $streamCache['amount'] = $result['amount'];
-            $streamCache['continuation_token'] = $result['continuation_token'];
+            $payments = $this->fetchStreamPaymentsAmount($stream, $streamCache);
+            $streamCache['amount'] = $payments['amount'];
+            $streamCache['payments_continuation_token'] = $payments['payments_continuation_token'];
 
             if ($trackDonors) {
+                // Les donateurs restent comptés à partir des commandes
+                $result = $this->apiWrapper->getAllOrders(
+                    $stream->organization_slug,
+                    $stream->form_slug,
+                    0,
+                    $streamCache['continuation_token'] ?? null,
+                    $stream->form_type ?? 'Donation',
+                    $stream->getStartDateTime()
+                );
+
+                $streamCache['continuation_token'] = $result['continuation_token'];
                 $streamCache['donors'] = ($streamCache['donors'] ?? 0) + count($result['donations'] ?? []);
                 $totalDonors += $streamCache['donors'];
             }
 
-            $totalAmount += $result['amount'];
+            $totalAmount += $streamCache['amount'];
             unset($streamCache);
         }
 
@@ -156,40 +196,27 @@ class WidgetController
         }
 
         $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'continuation_token' => ''];
+            ?? ['amount' => 0, 'payments_continuation_token' => null];
 
         // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
         if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
             return ['stream' => $charityStream, 'result' => [
                 'amount' => $cacheData['amount'],
                 'donations' => [],
-                'continuation_token' => $cacheData['continuation_token'],
+                'continuation_token' => $cacheData['payments_continuation_token'] ?? '',
             ]];
         }
 
-        $result = $this->apiWrapper->getAllOrders(
-            $charityStream->organization_slug,
-            $charityStream->form_slug,
-            $cacheData['amount'],
-            $cacheData['continuation_token'],
-            $charityStream->form_type ?? 'Donation',
-        );
+        $payments = $this->fetchStreamPaymentsAmount($charityStream, $cacheData);
 
-        if ($cacheData['continuation_token'] !== $result['continuation_token']
-            || $cacheData['amount'] !== $result['amount']) {
-            $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
-                'amount' => $result['amount'],
-                'continuation_token' => $result['continuation_token'],
-            ]);
-        } else {
-            // Même si rien n'a changé, on met à jour le timestamp du cache
-            $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, [
-                'amount' => $cacheData['amount'],
-                'continuation_token' => $cacheData['continuation_token'],
-            ]);
-        }
+        // Met aussi à jour le timestamp du cache quand rien n'a changé
+        $this->widgetRepository->updateStreamDonationWidgetCacheData($charityStream->guid, $payments);
 
-        return ['stream' => $charityStream, 'result' => $result];
+        return ['stream' => $charityStream, 'result' => [
+            'amount' => $payments['amount'],
+            'donations' => [],
+            'continuation_token' => $payments['payments_continuation_token'],
+        ]];
     }
 
     // ── Event donation: shared logic ─────────────────────────────
@@ -250,41 +277,37 @@ class WidgetController
         }
 
         $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($charityStream)
-            ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => ''];
+            ?? ['amount' => 0, 'donors' => 0, 'continuation_token' => '', 'payments_continuation_token' => null];
 
         // Si le cache est encore frais, on retourne les données en cache sans appeler l'API
         if ($this->widgetRepository->isCacheFresh($cacheData, $this->cacheTtl)) {
             return ['stream' => $charityStream, 'amount' => $cacheData['amount'], 'donors' => $cacheData['donors'] ?? 0];
         }
 
+        $payments = $this->fetchStreamPaymentsAmount($charityStream, $cacheData);
+
+        // Les donateurs restent comptés à partir des commandes
         $result = $this->apiWrapper->getAllOrders(
             $charityStream->organization_slug,
             $charityStream->form_slug,
-            $cacheData['amount'],
+            0,
             $cacheData['continuation_token'],
             $charityStream->form_type ?? 'Donation',
+            $charityStream->getStartDateTime(),
         );
 
         $newDonors = count($result['donations'] ?? []);
         $donors = ($cacheData['donors'] ?? 0) + $newDonors;
 
-        if ($cacheData['continuation_token'] !== $result['continuation_token']
-            || $cacheData['amount'] !== $result['amount']) {
-            $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
-                'amount' => $result['amount'],
-                'donors' => $donors,
-                'continuation_token' => $result['continuation_token'],
-            ]);
-        } else {
-            // Même si rien n'a changé, on met à jour le timestamp du cache
-            $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
-                'amount' => $cacheData['amount'],
-                'donors' => $donors,
-                'continuation_token' => $cacheData['continuation_token'],
-            ]);
-        }
+        // Met aussi à jour le timestamp du cache quand rien n'a changé
+        $this->widgetRepository->updateStreamCardWidgetCacheData($charityStream->guid, [
+            'amount' => $payments['amount'],
+            'donors' => $donors,
+            'continuation_token' => $result['continuation_token'],
+            'payments_continuation_token' => $payments['payments_continuation_token'],
+        ]);
 
-        return ['stream' => $charityStream, 'amount' => $result['amount'], 'donors' => $donors];
+        return ['stream' => $charityStream, 'amount' => $payments['amount'], 'donors' => $donors];
     }
 
     // ── Event card: shared logic ─────────────────────────────────
@@ -418,6 +441,7 @@ class WidgetController
                             0,
                             $cacheData['continuation_token'],
                             $charityStream->form_type ?? 'Donation',
+                            $charityStream->getStartDateTime(),
                         );
 
                         if ($cacheData['continuation_token'] !== $result['continuation_token']) {
@@ -487,7 +511,8 @@ class WidgetController
                 $charityStream->form_slug,
                 0,
                 $cacheData['continuation_token'],
-                $charityStream->form_type ?? 'Donation'
+                $charityStream->form_type ?? 'Donation',
+                $charityStream->getStartDateTime()
             );
 
             if ($cacheData['continuation_token'] !== $result['continuation_token']) {
@@ -605,6 +630,10 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $offset = $this->withCardStartOffset($cardWidget, $currentAmount, $donors);
+            $currentAmount = $offset['amount'];
+            $donors = $offset['donors'];
+
             $formTypeUrlSegment = ($stream->form_type === 'CrowdFunding') ? 'collectes' : 'formulaires';
             $donationUrl = ($_SERVER['HA_URL'] ?? 'https://www.helloasso.com')
                 . '/associations/' . $stream->organization_slug
@@ -638,10 +667,12 @@ class WidgetController
 
         try {
             $data = $this->fetchStreamCardData($charityStreamId);
+            $cardWidget = $this->widgetRepository->selectCardWidgetByGuid($charityStreamId, null);
+            $offset = $this->withCardStartOffset($cardWidget, $data['amount'], $data['donors']);
             $goals = $this->goalRepository->selectAmountsByStreamGuid($charityStreamId);
-            $goal = $this->resolveActiveGoal($goals, $data['amount']);
-            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
+            $goal = $this->resolveActiveGoal($goals, $offset['amount']);
+            $allGoalsReached = !empty($goals) && ($offset['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $offset['amount'], 'donors' => $offset['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             $status = $e->getCode() === 401 ? 401 : 500;
             $message = $status === 401
@@ -677,6 +708,10 @@ class WidgetController
                 $donors = $cacheData['donors'] ?? 0;
             }
 
+            $offset = $this->withCardStartOffset($cardWidget, $currentAmount, $donors);
+            $currentAmount = $offset['amount'];
+            $donors = $offset['donors'];
+
             $goals = $this->goalRepository->selectAmountsByEventGuid($eventGuid);
             $goal = $this->resolveActiveGoal($goals, $currentAmount);
 
@@ -704,10 +739,12 @@ class WidgetController
 
         try {
             $data = $this->fetchEventCardData($eventId);
+            $cardWidget = $this->widgetRepository->selectCardWidgetByGuid(null, $eventId);
+            $offset = $this->withCardStartOffset($cardWidget, $data['amount'], $data['donors']);
             $goals = $this->goalRepository->selectAmountsByEventGuid($eventId);
-            $goal = $this->resolveActiveGoal($goals, $data['amount']);
-            $allGoalsReached = !empty($goals) && ($data['amount'] / 100) >= end($goals);
-            return $this->jsonResponse($response, ['amount' => $data['amount'], 'donors' => $data['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
+            $goal = $this->resolveActiveGoal($goals, $offset['amount']);
+            $allGoalsReached = !empty($goals) && ($offset['amount'] / 100) >= end($goals);
+            return $this->jsonResponse($response, ['amount' => $offset['amount'], 'donors' => $offset['donors'], 'goal' => $goal, 'allGoalsReached' => $allGoalsReached]);
         } catch (Exception $e) {
             return $this->jsonError($response, 'Impossible de récupérer les données.', 500);
         }

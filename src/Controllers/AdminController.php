@@ -24,6 +24,8 @@ use Slim\Views\Twig;
 
 class AdminController
 {
+    use RespondsWithJson;
+
     private int $cacheTtl;
 
     public function __construct(
@@ -492,6 +494,24 @@ class AdminController
         return $this->view->render($response, 'stream/edit.html.twig', $data);
     }
 
+    /**
+     * Normalise la valeur d'un champ datetime-local (heure de Paris).
+     *
+     * @return string|null|false 'Y-m-d H:i:s', null si vide (= tous les paiements), false si invalide
+     */
+    private function parseStartDate(mixed $value): string|null|false
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $value)
+            ?: \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s', $value);
+
+        return $date ? $date->format('Y-m-d H:i:s') : false;
+    }
+
     public function editStreamPost(Request $request, Response $response, array $args): Response
     {
         $user = $request->getAttribute('user');
@@ -505,7 +525,24 @@ class AdminController
             if (isset($body['stream_title'])) {
                 $updateData['title'] = $body['stream_title'];
             }
+
+            $startDateChanged = false;
+            if (array_key_exists('start_date', $body)) {
+                $startDate = $this->parseStartDate($body['start_date']);
+                if ($startDate === false) {
+                    $this->messages->addMessage('error', 'Date de début invalide');
+                } elseif ($startDate !== $charityStream->start_date) {
+                    $updateData['start_date'] = $startDate;
+                    $startDateChanged = true;
+                }
+            }
+
             $this->streamRepository->update($charityStream, $updateData);
+
+            // Les montants en cache ont été calculés avec l'ancienne date : on repart de zéro
+            if ($startDateChanged) {
+                $this->widgetRepository->resetStreamCaches($charityStream);
+            }
         }
 
         if (isset($body['link_event'])) {
@@ -535,6 +572,13 @@ class AdminController
             }
             $this->streamRepository->update($charityStream, $updateData);
             $this->messages->addMessage('success', $newMode ? 'Mode test activé' : 'Mode test désactivé (montant réinitialisé)');
+
+            // Dons de test et dons réels ne doivent pas se mélanger dans le fil du live,
+            // et le curseur API n'est posé qu'en mode réel : on repart d'une session vierge
+            if ($charityStream->live_started_at !== null) {
+                $this->endLiveSession($charityStream);
+                $this->messages->addMessage('info', 'Le live en cours a été arrêté et son historique supprimé car le mode test a changé. Redémarre-le depuis la vue Live.');
+            }
         }
 
         // Reset montant test
@@ -599,26 +643,6 @@ class AdminController
 
     // ── Vue "Live" : relecture des dons en temps réel ──────────────
 
-    private function jsonResponse(Response $response, array $data, int $status = 200): Response
-    {
-        $response->getBody()->write(json_encode($data));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
-    }
-
-    /**
-     * Le cache du live suit le même TTL que les widgets (WIDGET_CACHE_TTL, 30s par défaut).
-     */
-    private function isLiveCacheFresh(Stream $stream): bool
-    {
-        if ($stream->live_cache_updated_at === null) {
-            return false;
-        }
-
-        $updatedAt = new \DateTime($stream->live_cache_updated_at);
-        $age = (new \DateTime())->getTimestamp() - $updatedAt->getTimestamp();
-        return $age < $this->cacheTtl;
-    }
-
     private function serializeDonationEntries(array $entries): array
     {
         return array_map(fn($entry) => [
@@ -626,8 +650,22 @@ class AdminController
             'pseudo' => $entry->pseudo,
             'message' => $entry->message,
             'amount' => (int) $entry->amount,
-            'received_at' => $entry->received_at,
+            // ISO 8601 avec fuseau : le navigateur l'affiche dans son heure locale
+            'received_at' => (new \DateTimeImmutable($entry->received_at))->format(DATE_ATOM),
         ], $entries);
+    }
+
+    /**
+     * Termine la session de live : purge l'historique puis remet le curseur à zéro.
+     */
+    private function endLiveSession(Stream $stream): void
+    {
+        $this->donationHistoryRepository->deleteByStreamGuid($stream->guid);
+        $this->streamRepository->update($stream, [
+            'live_started_at' => null,
+            'live_continuation_token' => null,
+            'live_cache_updated_at' => null,
+        ]);
     }
 
     public function liveView(Request $request, Response $response, array $args): Response
@@ -641,13 +679,15 @@ class AdminController
 
         $entries = [];
         if ($charityStream->live_started_at !== null) {
-            $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, null, 30);
+            $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, null);
         }
 
         return $this->view->render($response, 'stream/live.html.twig', [
             "logged" => true,
             "charityStream" => $charityStream,
             "entries" => $entries,
+            "pageSize" => StreamDonationHistoryRepository::PAGE_SIZE,
+            "pollLimit" => StreamDonationHistoryRepository::POLL_LIMIT,
             "messages" => $this->messages->getMessages(),
         ]);
     }
@@ -662,32 +702,46 @@ class AdminController
         }
 
         // Idempotent : un double submit ne doit pas réinitialiser la session en cours
-        if ($charityStream->live_started_at === null) {
-            // Avance le curseur à la fin du flux de commandes pour ne capter
-            // que les dons reçus après le démarrage du live
-            $continuationToken = null;
-            if (!$charityStream->is_test_mode) {
-                try {
-                    $result = $this->apiWrapper->getAllOrders(
-                        $charityStream->organization_slug,
-                        $charityStream->form_slug,
-                        0,
-                        null,
-                        $charityStream->form_type ?? 'Donation',
-                    );
-                    $continuationToken = $result['continuation_token'];
-                } catch (Exception $e) {
-                    error_log('[LiveStart] Erreur API pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
-                }
+        if ($charityStream->live_started_at !== null) {
+            return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
+        }
+
+        // Avance le curseur à la fin du flux de commandes pour ne capter
+        // que les dons reçus après le démarrage du live
+        $continuationToken = null;
+        if (!$charityStream->is_test_mode) {
+            try {
+                $result = $this->apiWrapper->getAllOrders(
+                    $charityStream->organization_slug,
+                    $charityStream->form_slug,
+                    0,
+                    null,
+                    $charityStream->form_type ?? 'Donation',
+                );
+            } catch (Exception $e) {
+                error_log('[LiveStart] Erreur API pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
+                // Sans curseur, le premier poll relirait tout l'historique du formulaire : on ne démarre pas
+                $reason = $e->getCode() === 401 ? $e->getMessage() : 'HelloAsso ne répond pas, réessaie dans un instant.';
+                $this->messages->addMessage('error', 'Impossible de démarrer le live : ' . $reason);
+                return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
             }
 
-            $this->streamRepository->update($charityStream, [
-                'live_started_at' => date('Y-m-d H:i:s.u'),
-                'live_continuation_token' => $continuationToken,
-                'live_cache_updated_at' => date('Y-m-d H:i:s.u'),
-            ]);
-            $this->messages->addMessage('success', 'Le live est démarré, les dons vont apparaître ici.');
+            $continuationToken = $result['continuation_token'];
+            if ($continuationToken === null && !empty($result['donations'])) {
+                error_log('[LiveStart] Aucun curseur renvoyé par l\'API pour stream ' . $charityStream->guid);
+                $this->messages->addMessage('error', 'Impossible de démarrer le live : réponse inattendue de HelloAsso, réessaie dans un instant.');
+                return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
+            }
         }
+
+        // Écarte d'éventuels restes d'une session précédente (poll en vol au moment de l'arrêt)
+        $this->donationHistoryRepository->deleteByStreamGuid($charityStream->guid);
+        $this->streamRepository->update($charityStream, [
+            'live_started_at' => date('Y-m-d H:i:s.u'),
+            'live_continuation_token' => $continuationToken,
+            'live_cache_updated_at' => date('Y-m-d H:i:s.u'),
+        ]);
+        $this->messages->addMessage('success', 'Le live est démarré, les dons vont apparaître ici.');
 
         return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
     }
@@ -701,12 +755,7 @@ class AdminController
             return $this->redirectToRoute($request, $response, 'app_admin_index', [], ['tab' => 'streams']);
         }
 
-        $this->donationHistoryRepository->deleteByStreamGuid($charityStream->guid);
-        $this->streamRepository->update($charityStream, [
-            'live_started_at' => null,
-            'live_continuation_token' => null,
-            'live_cache_updated_at' => null,
-        ]);
+        $this->endLiveSession($charityStream);
         $this->messages->addMessage('info', 'Le live est terminé, l\'historique des dons a été supprimé.');
 
         return $this->redirectToRoute($request, $response, 'app_stream_live', ["id" => $charityStream->guid]);
@@ -721,7 +770,7 @@ class AdminController
         $user = $request->getAttribute('user');
         $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         if (!$charityStream) {
-            return $this->jsonResponse($response, ['error' => 'Stream non trouvé ou non autorisé.'], 404);
+            return $this->jsonError($response, 'Stream non trouvé ou non autorisé.', 404);
         }
 
         if ($charityStream->live_started_at === null) {
@@ -729,8 +778,10 @@ class AdminController
         }
 
         // En mode test, les dons simulés sont insérés directement dans l'historique :
-        // pas d'appel API, on retourne juste les nouvelles lignes
-        if (!$charityStream->is_test_mode && !$this->isLiveCacheFresh($charityStream)) {
+        // pas d'appel API, on retourne juste les nouvelles lignes.
+        // Le cache du live suit le même TTL que les widgets (WIDGET_CACHE_TTL, 30s par défaut) ;
+        // claimLiveRefresh garantit qu'un seul poll à la fois consomme le curseur.
+        if (!$charityStream->is_test_mode && $this->streamRepository->claimLiveRefresh($charityStream, $this->cacheTtl)) {
             try {
                 $result = $this->apiWrapper->getAllOrders(
                     $charityStream->organization_slug,
@@ -744,12 +795,15 @@ class AdminController
                     $this->donationHistoryRepository->insertMany($charityStream->guid, $result['donations']);
                 }
 
-                $this->streamRepository->update($charityStream, [
-                    'live_continuation_token' => $result['continuation_token'],
-                    'live_cache_updated_at' => date('Y-m-d H:i:s.u'),
-                ]);
+                // Le curseur n'avance qu'après l'insertion, et jamais vers null : un curseur
+                // perdu ferait relire tout l'historique du formulaire
+                if ($result['continuation_token'] !== null) {
+                    $this->streamRepository->update($charityStream, [
+                        'live_continuation_token' => $result['continuation_token'],
+                    ]);
+                }
             } catch (Exception $e) {
-                // On sert quand même ce qui est déjà en base, le prochain poll réessaiera
+                // On sert quand même ce qui est déjà en base, le prochain rafraîchissement réessaiera
                 error_log('[LiveFetch] Erreur API pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
             }
         }
@@ -768,12 +822,12 @@ class AdminController
         $user = $request->getAttribute('user');
         $charityStream = $this->streamRepository->selectByUserAndGuid($user, $args['id']);
         if (!$charityStream) {
-            return $this->jsonResponse($response, ['error' => 'Stream non trouvé ou non autorisé.'], 404);
+            return $this->jsonError($response, 'Stream non trouvé ou non autorisé.', 404);
         }
 
         $queryParams = $request->getQueryParams();
         $beforeId = isset($queryParams['before_id']) ? (int) $queryParams['before_id'] : null;
-        $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, $beforeId, 30);
+        $entries = $this->donationHistoryRepository->selectPage($charityStream->guid, $beforeId);
 
         return $this->jsonResponse($response, $this->serializeDonationEntries($entries));
     }

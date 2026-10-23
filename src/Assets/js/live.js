@@ -8,7 +8,10 @@ const emptyState = document.getElementById('feedEmptyState');
 const endNotice = document.getElementById('feedEndNotice');
 const capNotice = document.getElementById('feedCapNotice');
 
-const PAGE_SIZE = 30;
+// Tailles de page fixées côté serveur (StreamDonationHistoryRepository) et transmises par la vue
+const PAGE_SIZE = window.livePageSize || 30;
+const POLL_LIMIT = window.livePollLimit || 100;
+const POLL_INTERVAL_MS = 10000;
 // Cap du nombre de lignes rendues : au-delà, on arrête de charger plus
 // d'historique pour ne pas faire exploser le DOM sur un long live
 const MAX_RENDERED_ROWS = 300;
@@ -24,10 +27,22 @@ function formatAmount(cents) {
     return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 }
 
-function formatDate(receivedAt) {
-    // MySQL DATETIME "YYYY-MM-DD HH:MM:SS.uuuuuu" → parsable en remplaçant l'espace
-    const date = new Date(String(receivedAt).replace(' ', 'T'));
-    return isNaN(date.getTime()) ? String(receivedAt) : date.toLocaleString('fr-FR');
+// Les dates arrivent en ISO 8601 avec fuseau : elles s'affichent dans l'heure du navigateur,
+// que le don soit rendu par le serveur au chargement ou ajouté par le polling.
+function formatDate(isoDate, withSeconds = true) {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) {
+        return String(isoDate);
+    }
+    return withSeconds
+        ? date.toLocaleString('fr-FR')
+        : date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function localizeServerDates() {
+    document.querySelectorAll('.live-time[data-ts]').forEach((element) => {
+        element.textContent = formatDate(element.dataset.ts, !element.hasAttribute('data-short'));
+    });
 }
 
 function buildEntry(entry) {
@@ -69,11 +84,36 @@ function buildEntry(entry) {
     return card;
 }
 
+// Quand les nouveaux dons font dépasser le cap, on retire les plus anciens du bas du fil.
+// L'historique au-delà n'est alors plus chargeable : on le signale comme au cap du scroll.
+function trimOverflow() {
+    if (renderedCount <= MAX_RENDERED_ROWS) {
+        return;
+    }
+
+    const rows = feed.querySelectorAll('.live-entry');
+    for (let i = rows.length - 1; i >= MAX_RENDERED_ROWS; i--) {
+        rows[i].remove();
+    }
+    renderedCount = MAX_RENDERED_ROWS;
+    oldestId = Number(rows[MAX_RENDERED_ROWS - 1].dataset.id);
+
+    reachedEnd = true;
+    observer.disconnect();
+    if (endNotice) {
+        endNotice.style.display = 'none';
+    }
+    if (capNotice) {
+        capNotice.style.display = 'block';
+    }
+}
+
 async function fetchNewDonations() {
     if (isFetching) {
         return;
     }
     isFetching = true;
+    let hasMore = false;
 
     try {
         const response = await fetch(`/admin/stream/${window.charityStreamId}/live/fetch?since_id=${newestId}`);
@@ -101,10 +141,18 @@ async function fetchNewDonations() {
             }
             renderedCount++;
         }
+        trimOverflow();
+
+        // Le serveur borne chaque réponse : tant qu'elle est pleine, il reste du retard à rattraper
+        hasMore = entries.length >= POLL_LIMIT;
     } catch (error) {
         console.error('Erreur réseau lors de la récupération des dons du live :', error);
     } finally {
         isFetching = false;
+    }
+
+    if (hasMore) {
+        fetchNewDonations();
     }
 }
 
@@ -131,7 +179,9 @@ async function fetchOlderDonations() {
         }
 
         const entries = await response.json();
-        if (!Array.isArray(entries)) {
+        // Si de nouveaux dons ont fait atteindre le cap pendant la requête, le bas du fil a été
+        // rogné : ajouter cette page laisserait un trou entre les dons affichés et ceux-ci
+        if (!Array.isArray(entries) || reachedEnd) {
             return;
         }
 
@@ -162,9 +212,11 @@ const observer = new IntersectionObserver((observedEntries) => {
     }
 });
 
+localizeServerDates();
+
 if (feed && window.liveStarted) {
     fetchNewDonations();
-    setInterval(fetchNewDonations, 10000);
+    setInterval(fetchNewDonations, POLL_INTERVAL_MS);
 
     if (sentinel && !reachedEnd) {
         observer.observe(sentinel);

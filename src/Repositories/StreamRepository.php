@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Event;
 use App\Models\Stream;
 use App\Models\User;
+use DateTime;
 use Exception;
 use PDO;
 
@@ -17,16 +18,18 @@ class StreamRepository
 
     public function selectList(): array
     {
+        // LEFT JOIN : un stream sans droit reste listé. Une ligne remonte par admin,
+        // repliées ensuite en une seule (propriétaire en premier dans la colonne admin).
         $stmt = $this->pdo->query('
             SELECT c.*, u.email as admin
             FROM ' . $this->prefix . 'charity_stream c
-            INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_stream = c.id
-            INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
-            ORDER BY c.creation_date DESC
+            LEFT JOIN ' . $this->prefix . 'user_right r ON r.id_charity_stream = c.id
+            LEFT JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
+            ORDER BY c.creation_date DESC, c.id DESC, r.is_owner DESC, u.email ASC
         ');
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, Stream::class);
-        return $stmt->fetchAll();
+        return AdminListMerger::mergeByEntity($stmt->fetchAll());
     }
 
     public function selectByGuid(string $guid): ?Stream
@@ -197,6 +200,10 @@ class StreamRepository
             $fields[] = 'test_amount = ?';
             $params[] = (int) $data['test_amount'];
         }
+        if (array_key_exists('start_date', $data)) {
+            $fields[] = 'start_date = ?';
+            $params[] = $data['start_date'];
+        }
         if (array_key_exists('live_started_at', $data)) {
             $fields[] = 'live_started_at = ?';
             $params[] = $data['live_started_at'];
@@ -216,6 +223,32 @@ class StreamRepository
         $sql = 'UPDATE ' . $this->prefix . 'charity_stream SET ' . implode(', ', $fields) . ' WHERE id = ?';
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
+    }
+
+    /**
+     * Réserve le rafraîchissement du live auprès de l'API HelloAsso : compare-and-set sur
+     * live_cache_updated_at, de sorte qu'un seul des polls concurrents obtient true (et
+     * peut donc consommer le curseur). Les autres servent l'historique déjà en base.
+     */
+    public function claimLiveRefresh(Stream $stream, int $ttlSeconds): bool
+    {
+        $now = new DateTime();
+        $threshold = (clone $now)->modify('-' . $ttlSeconds . ' seconds');
+
+        $stmt = $this->pdo->prepare('
+            UPDATE ' . $this->prefix . 'charity_stream
+            SET live_cache_updated_at = ?
+            WHERE id = ?
+            AND live_started_at IS NOT NULL
+            AND (live_cache_updated_at IS NULL OR live_cache_updated_at < ?)
+        ');
+        $stmt->execute([
+            $now->format('Y-m-d H:i:s.u'),
+            $stream->id,
+            $threshold->format('Y-m-d H:i:s.u'),
+        ]);
+
+        return $stmt->rowCount() === 1;
     }
 
     public function delete(Stream $stream): void
@@ -246,6 +279,11 @@ class StreamRepository
             } catch (Exception $e) {
                 // Table may not exist yet — skip silently
             }
+
+            $query = 'DELETE FROM ' . $this->prefix . 'stream_donation_history
+                WHERE charity_stream_guid = ?';
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([$stream->guid]);
 
             $query = 'DELETE FROM ' . $this->prefix . 'user_right
                 WHERE id_charity_stream = ?';

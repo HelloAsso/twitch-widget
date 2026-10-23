@@ -189,6 +189,9 @@ if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     // Active Whoops uniquement en dev
     $whoops = new \Whoops\Run;
     $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+    // Whoops transforme les dépréciations PHP en exceptions : on ignore celles des dépendances
+    // (ex. mailchimp/transactional sous PHP 8.4+), mais on garde celles du code de l'app
+    $whoops->silenceErrorsInPaths('~[/\\\\]vendor[/\\\\]~', E_DEPRECATED | E_USER_DEPRECATED);
     $whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 } else {

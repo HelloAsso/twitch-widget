@@ -218,6 +218,8 @@ Pour éviter de surcharger l'API HelloAsso, un **cache serveur avec TTL** est en
 
 **Le TTL est configurable** via la variable d'environnement `WIDGET_CACHE_TTL` (en secondes, défaut : **30 secondes**).
 
+Le **montant collecté** est la somme des paiements autorisés du formulaire (endpoint `/payments`, mensualités des dons mensuels comprises, pourboires exclus), comme dans le back-office de l'association. Le cache garde le montant cumulé et le `continuation_token` des paiements (`payments_continuation_token`) : chaque rafraîchissement ne relit que les nouveaux paiements. Le **nombre de donateurs** continue d'être compté à partir des commandes (`continuation_token`). Un cache créé avant ce changement (sans `payments_continuation_token`) voit son montant recalculé depuis le début au premier rafraîchissement, ses donateurs sont conservés.
+
 Cela garantit qu'**un seul appel API HelloAsso** est effectué par widget et par période de TTL, quel que soit le nombre de visiteurs simultanés.
 
 ### Database Migrations

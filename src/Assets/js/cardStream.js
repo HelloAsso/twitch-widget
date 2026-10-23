@@ -7,6 +7,7 @@ const CENTS_DIVISOR = 100;
 const COUNTUP_OPTIONS = {
     separator: ' ',
     decimal: ',',
+    decimalPlaces: 0,
     suffix: ' €',
 };
 
@@ -44,7 +45,7 @@ function updateWidget() {
 
     if (barFill) barFill.style.width = `${percentage}%`;
     if (percentEl) percentEl.textContent = `${percentage}%`;
-    if (donorsEl) donorsEl.textContent = window.donorCount ?? 0;
+    if (donorsEl) donorsEl.textContent = (window.donorCount ?? 0).toLocaleString('fr-FR');
 }
 
 async function fetchDonationData() {

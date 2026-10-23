@@ -5,6 +5,9 @@
     -webkit-box-sizing: border-box;
     position: relative;
     display: flex;
+    width: calc(100% - 80px);
+    max-width: 100%;
+    min-width: 0;
     height: 70px;
     border: 10px #ffffff solid;
     border-radius: 999px;
@@ -21,11 +24,30 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 30px;
+    gap: 12px;
+    min-width: 0;
 }
 
 .back p,
 .front p {
     margin: 0;
+    min-width: 0;
+}
+
+#back-title,
+#front-title {
+    flex: 1 1 auto;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#back-goal-current,
+#front-goal-current,
+#back-goal-total,
+#front-goal-total {
+    flex-shrink: 0;
 }
 
 .back {
@@ -73,6 +95,22 @@
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent);
     animation: bar-shimmer 0.8s ease-in-out 3;
     pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    .progress {
+        height: 52px;
+        font-size: 14px;
+        border-width: 4px;
+        width: calc(100% - 16px);
+        margin: 0 8px;
+    }
+
+    .back,
+    .front {
+        padding: 0 10px;
+        gap: 6px;
+    }
 }
 
 /* Alert */
