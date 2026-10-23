@@ -187,17 +187,21 @@ Une carte visuelle élégante qui affiche la progression de la collecte avec une
 
 | Option | Description |
 |---|---|
-| Image de fond | Image affichée à gauche de la carte |
-| Tag | Étiquette courte (ex : « URGENCE NATURE ») |
+| Image de fond | Image affichée à gauche de la carte. Format recommandé : **600 × 800 px** (portrait 3:4), JPG ou WebP, 7 Mo maximum. Sur mobile, l'image est coupée sur sa bande centrale : placez le sujet au centre. |
+| Tag | Étiquette courte (ex : « URGENCE NATURE »). Elle n'est pas affichée si le champ est vide. |
 | Titre | Titre principal de la carte |
 | Description | Texte descriptif de la campagne |
+| Montant de départ (€) | Montant ajouté au total HelloAsso affiché sur la jauge (ex : 2750 pour démarrer à 2 750 €) |
+| Donateurs de départ | Nombre ajouté au nombre de donateurs HelloAsso affiché |
 | Couleurs | Fond de la carte, texte, barre de progression, fond de la barre, texte du tag, fond du tag |
 
 La carte affiche automatiquement :
-- Le **montant collecté**
+- Le **montant collecté** (total HelloAsso + montant de départ)
 - Le **pourcentage** de l'objectif atteint
-- Le **nombre de donateurs**
+- Le **nombre de donateurs** (donateurs HelloAsso + donateurs de départ)
 - L'**objectif** en euros
+
+La carte s'adapte à la largeur disponible : sur mobile, elle bascule en colonne.
 
 Un aperçu en direct est affiché sous le formulaire de configuration.
 
@@ -219,16 +223,20 @@ Un aperçu en direct est affiché sous le formulaire de configuration.
 
 ### Sur un site web (iframe)
 
-Pour le widget carte de don, un **code iframe prêt à copier** est disponible dans la page de configuration. Cliquez sur **📋 Copier** pour l'ajouter à votre site.
+Pour les widgets **carte de don** et **barre de don**, un **code iframe prêt à copier** est disponible dans la page de configuration. Cliquez sur **📋 Copier** pour l'ajouter à votre site.
 
-Exemple de code généré :
+Exemple de code généré pour la carte de don :
 
 ```html
 <iframe src="https://votre-domaine.com/widget-stream/GUID/card"
-        width="720" height="340" frameborder="0"
-        style="border:none;overflow:hidden;"
+        title="Widget de collecte"
+        style="width:100%;max-width:720px;height:560px;border:none;overflow:hidden;"
         scrolling="no" allowtransparency="true"></iframe>
 ```
+
+La barre de don est générée de la même façon, avec une hauteur de `80px` (`height:80px`).
+
+> ⚠️ L'iframe doit prendre **100 % de la largeur du bloc parent** : ne forcez pas de `width="720"`. C'est ce qui permet à la carte de basculer en colonne sur mobile et à la barre de rester lisible.
 
 > 💡 Vous pouvez aussi utiliser directement l'URL de n'importe quel widget dans une iframe.
 
@@ -277,7 +285,7 @@ La **vue Live** est une page de votre espace d'administration qui affiche, sous 
 
 ### Ouvrir la vue Live
 
-Depuis la page d'édition d'un stream, cliquez sur **🔴 Voir le direct**, à côté du bouton **Retour**.
+Depuis la page d'édition d'un stream, cliquez sur **🔴 Voir le direct**, à côté du bouton **Retour**. La vue Live est accessible à toutes les personnes ayant accès au stream (administrateurs du stream ou de son événement).
 
 ### Démarrer et terminer un live
 
