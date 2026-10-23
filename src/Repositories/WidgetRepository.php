@@ -179,6 +179,33 @@ class WidgetRepository
         return $age < $ttlSeconds;
     }
 
+    /**
+     * Vide les caches (montant, jetons de continuation) d'un stream et de l'event auquel il est lié.
+     * À appeler quand les paramètres de récupération des commandes changent (ex. date de début).
+     */
+    public function resetStreamCaches(Stream $stream): void
+    {
+        foreach (['widget_alert_box', 'widget_donation_goal_bar', 'widget_card'] as $table) {
+            $stmt = $this->pdo->prepare(
+                'UPDATE ' . $this->prefix . $table . ' SET cache_data = NULL, cache_updated_at = NULL WHERE charity_stream_guid = ?'
+            );
+            $stmt->execute([$stream->guid]);
+        }
+
+        if (!$stream->charity_event_id) {
+            return;
+        }
+
+        // Le cache d'un event agrège celui de ses streams : il doit être recalculé
+        foreach (['widget_donation_goal_bar', 'widget_card'] as $table) {
+            $stmt = $this->pdo->prepare(
+                'UPDATE ' . $this->prefix . $table . ' SET cache_data = NULL, cache_updated_at = NULL
+                 WHERE charity_event_guid = (SELECT guid FROM ' . $this->prefix . 'charity_event WHERE id = ?)'
+            );
+            $stmt->execute([$stream->charity_event_id]);
+        }
+    }
+
     // ── Alert widget cache ────────────────────────────────────────
 
     public function selectAlertWidgetCacheData(Stream $stream): ?array
@@ -233,6 +260,8 @@ class WidgetRepository
                     text_color,
                     tag_color,
                     tag_background_color,
+                    start_amount,
+                    start_donors,
                     cache_data,
                     creation_date,
                     last_update
@@ -263,16 +292,20 @@ class WidgetRepository
         $this->pdo->beginTransaction();
 
         try {
+            $startAmountCents = (int) round(max(0, (float) ($data['card_start_amount'] ?? 0)) * 100);
+            $startDonors = max(0, (int) ($data['card_start_donors'] ?? 0));
+
             $stmt = $this->pdo->prepare('
                 UPDATE ' . $this->prefix . 'widget_card
                 SET tag = ?, title = ?, description = ?,
                     background_color = ?, bar_color = ?, bar_background_color = ?,
-                    text_color = ?, tag_color = ?, tag_background_color = ?
+                    text_color = ?, tag_color = ?, tag_background_color = ?,
+                    start_amount = ?, start_donors = ?
                 WHERE charity_stream_guid = ?
                 OR charity_event_guid = ?
             ');
             $stmt->execute([
-                $data['card_tag'] ?? '',
+                trim($data['card_tag'] ?? ''),
                 $data['card_title'] ?? '',
                 $data['card_description'] ?? '',
                 $data['card_background_color'] ?? '#ffffff',
@@ -281,6 +314,8 @@ class WidgetRepository
                 $data['card_text_color'] ?? '#1a1a1a',
                 $data['card_tag_color'] ?? '#166534',
                 $data['card_tag_background_color'] ?? '#dcfce7',
+                $startAmountCents,
+                $startDonors,
                 $streamGuid,
                 $eventGuid
             ]);

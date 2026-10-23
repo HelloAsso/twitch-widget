@@ -157,22 +157,38 @@ if (cardWidgetForm) {
             preview.style.color = textColor;
         }
         if (tag) {
+            const tagValue = (document.getElementById('card_tag')?.value || '').trim();
             tag.style.color = tagColor;
             tag.style.backgroundColor = tagBgColor;
-            tag.textContent = `✏️ ${document.getElementById('card_tag').value || ''}`;
+            if (tagValue) {
+                tag.style.display = 'inline-flex';
+                tag.textContent = `✏️ ${tagValue}`;
+            } else {
+                tag.style.display = 'none';
+                tag.textContent = '';
+            }
         }
         if (title) title.textContent = document.getElementById('card_title').value || '';
         if (desc) desc.textContent = document.getElementById('card_description').value || '';
 
         const halfGoal = goalValue / 2;
-        if (amount) amount.textContent = `${halfGoal} €`;
+        const startAmountEl = document.getElementById('card_start_amount');
+        const startDonorsEl = document.getElementById('card_start_donors');
+        const startAmount = parseFloat(startAmountEl?.value || '0') || 0;
+        const startDonors = parseInt(startDonorsEl?.value || '0', 10) || 0;
+        const previewAmount = startAmount > 0 ? startAmount : halfGoal;
+        const pctValue = goalValue > 0 ? Math.min(100, Math.round((previewAmount / goalValue) * 100)) : 0;
+
+        if (amount) amount.textContent = `${previewAmount.toLocaleString('fr-FR')} €`;
         if (barFill) {
             barFill.style.backgroundColor = barColor;
-            barFill.style.width = '50%';
+            barFill.style.width = `${pctValue}%`;
             barFill.parentElement.style.backgroundColor = barBgColor;
         }
-        if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue} €</strong>`;
-        if (pct) pct.textContent = '50%';
+        if (goalEl) goalEl.innerHTML = `Objectif : <strong>${goalValue.toLocaleString('fr-FR')} €</strong>`;
+        if (pct) pct.textContent = `${pctValue}%`;
+        const donorsEl = document.getElementById('cardPreviewDonors');
+        if (donorsEl) donorsEl.textContent = startDonors.toLocaleString('fr-FR');
 
         const cta = document.getElementById('cardPreviewCta');
         if (cta) {
@@ -184,6 +200,7 @@ if (cardWidgetForm) {
     bindPreviewInputs(
         [
             'card_tag', 'card_title', 'card_description',
+            'card_start_amount', 'card_start_donors',
             'card_background_color', 'card_text_color', 'card_bar_color',
             'card_bar_background_color', 'card_tag_color', 'card_tag_background_color',
         ],

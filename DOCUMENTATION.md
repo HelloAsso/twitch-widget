@@ -118,6 +118,7 @@ Deux méthodes sont proposées :
 Depuis la page d'édition d'un stream, vous pouvez :
 
 - Modifier le **titre** et l'**objectif** (en €).
+- Définir une **date de début** (heure de Paris) : seuls les paiements effectués à partir de cette date sont pris en compte par les widgets. Laissée vide (par défaut), tous les paiements du formulaire sont comptabilisés. Changer la date remet les compteurs à zéro avant de les recalculer. Pour un événement, chaque stream rattaché applique sa propre date.
 - **Lier / délier un événement parent** : rattacher le stream à un événement ou l'en détacher.
 - Accéder au **formulaire HelloAsso** lié via le lien direct.
 - Configurer les **3 types de widgets** : barre de don, alerte, carte de don.
@@ -136,7 +137,7 @@ Chaque stream dispose de **3 widgets** personnalisables. Les événements dispos
 
 ### 5.1 Widget barre de don 🎯
 
-Une barre de progression horizontale qui affiche le montant collecté par rapport à l'objectif.
+Une barre de progression horizontale qui affiche le montant collecté par rapport à l'objectif. Le montant collecté est le même que dans le back-office de l'association : paiements autorisés du formulaire, mensualités des dons mensuels comprises, hors pourboire.
 
 **Options de personnalisation :**
 

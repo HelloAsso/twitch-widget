@@ -18,16 +18,18 @@ class StreamRepository
 
     public function selectList(): array
     {
+        // LEFT JOIN : un stream sans droit reste listé. Une ligne remonte par admin,
+        // repliées ensuite en une seule (propriétaire en premier dans la colonne admin).
         $stmt = $this->pdo->query('
             SELECT c.*, u.email as admin
             FROM ' . $this->prefix . 'charity_stream c
-            INNER JOIN ' . $this->prefix . 'user_right r ON r.id_charity_stream = c.id
-            INNER JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
-            ORDER BY c.creation_date DESC
+            LEFT JOIN ' . $this->prefix . 'user_right r ON r.id_charity_stream = c.id
+            LEFT JOIN ' . $this->prefix . 'users u ON u.id = r.id_user
+            ORDER BY c.creation_date DESC, c.id DESC, r.is_owner DESC, u.email ASC
         ');
 
         $stmt->setFetchMode(PDO::FETCH_CLASS, Stream::class);
-        return $stmt->fetchAll();
+        return AdminListMerger::mergeByEntity($stmt->fetchAll());
     }
 
     public function selectByGuid(string $guid): ?Stream
@@ -197,6 +199,10 @@ class StreamRepository
         if (array_key_exists('test_amount', $data)) {
             $fields[] = 'test_amount = ?';
             $params[] = (int) $data['test_amount'];
+        }
+        if (array_key_exists('start_date', $data)) {
+            $fields[] = 'start_date = ?';
+            $params[] = $data['start_date'];
         }
         if (array_key_exists('live_started_at', $data)) {
             $fields[] = 'live_started_at = ?';

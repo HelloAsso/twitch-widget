@@ -9,25 +9,32 @@
 	body {
 		background: transparent;
 		font-family: 'Open Sans', sans-serif;
+		width: 100%;
+		max-width: 100%;
+		overflow-x: hidden;
 	}
 
 	.card-widget {
 		display: flex;
+		width: 100%;
 		max-width: 720px;
 		border-radius: 16px;
 		overflow: hidden;
 		box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+		min-width: 0;
 	}
 
 	.card-widget__image {
 		flex: 0 0 260px;
 		min-height: 340px;
+		min-width: 0;
 		background-size: cover;
 		background-position: center;
 	}
 
 	.card-widget__content {
 		flex: 1;
+		min-width: 0;
 		padding: 32px 36px;
 		display: flex;
 		flex-direction: column;
@@ -74,13 +81,16 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+		min-width: 0;
+		flex-wrap: wrap;
 	}
 
 	.card-widget__bar {
-		flex: 1;
+		flex: 1 1 120px;
 		height: 12px;
 		border-radius: 999px;
 		overflow: hidden;
+		min-width: 0;
 	}
 
 	.card-widget__goal {
@@ -188,8 +198,9 @@
 		font-weight: 700;
 		padding: 16px 32px;
 		border-radius: 16px;
-		white-space: nowrap;
 		text-align: center;
+		max-width: calc(100% - 32px);
+		white-space: normal;
 		animation: goal-banner 6s ease forwards;
 		z-index: 101;
 	}
@@ -203,6 +214,63 @@
 	.card-widget__goal--flash {
 		animation: goal-flash 0.7s ease;
 	}
+
+	@media (max-width: 600px) {
+		.card-widget {
+			flex-direction: column;
+			border-radius: 12px;
+		}
+
+		.card-widget__image {
+			flex: none;
+			width: 100%;
+			min-height: 140px;
+			height: 140px;
+		}
+
+		.card-widget__content {
+			padding: 18px 16px 20px;
+			gap: 10px;
+		}
+
+		.card-widget__title {
+			font-size: 20px;
+		}
+
+		.card-widget__description {
+			font-size: 13px;
+			line-height: 1.45;
+		}
+
+		.card-widget__amount {
+			font-size: 24px;
+		}
+
+		.card-widget__bar-wrapper {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 6px;
+		}
+
+		.card-widget__bar {
+			flex: none;
+			width: 100%;
+		}
+
+		.card-widget__goal {
+			white-space: normal;
+		}
+
+		.card-widget__stats {
+			gap: 16px;
+			flex-wrap: wrap;
+		}
+
+		.goal-banner {
+			font-size: 15px;
+			padding: 12px 18px;
+		}
+	}
 </style>
 {% endblock %}
 {% block content %}
@@ -212,7 +280,7 @@
 		<div class="card-widget__image" style="background-image: url('{{ cardWidgetPictureUrl }}')"></div>
 		{% endif %}
 		<div class="card-widget__content">
-			{% if cardWidget.tag %}
+			{% if cardWidget.tag|default('')|trim %}
 			<div class="card-widget__tag" style="color: {{ cardWidget.tag_color }}; background-color: {{ cardWidget.tag_background_color }}">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -228,17 +296,17 @@
 			{% endif %}
 
 			<div>
-				<div class="card-widget__amount" id="card-amount">{{ currentAmount / 100 }} €</div>
+				<div class="card-widget__amount" id="card-amount">{{ (currentAmount / 100)|number_format(0, ',', ' ') }} €</div>
 				<div class="card-widget__bar-wrapper">
 					<div class="card-widget__bar" style="background-color: {{ cardWidget.bar_background_color }}">
 						<div class="card-widget__bar-fill" id="card-bar-fill"
 							 style="background-color: {{ cardWidget.bar_color }}; width: {{ percentage }}%"></div>
 					</div>
-					<div class="card-widget__goal" id="card-goal-text">Objectif : <strong>{{ goal }} €</strong></div>
+					<div class="card-widget__goal" id="card-goal-text">Objectif : <strong>{{ goal|number_format(0, ',', ' ') }} €</strong></div>
 				</div>
 				<div class="card-widget__stats">
 					<span><strong id="card-percentage">{{ percentage }}%</strong> collectés</span>
-					<span><strong id="card-donors">{{ donorCount }}</strong> donateurs</span>
+					<span><strong id="card-donors">{{ donorCount|number_format(0, ',', ' ') }}</strong> donateurs</span>
 				</div>
 			</div>
 
