@@ -242,9 +242,8 @@ class WidgetControllerTest extends TestCase
         $this->widgetRepository->method('selectDonationWidgetByGuid')->willReturn($donationWidget);
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
         $this->widgetRepository->method('selectStreamDonationWidgetCacheData')->willReturn(null);
-        $this->apiWrapper->method('getAllOrders')->willReturn([
+        $this->apiWrapper->method('getAllPaymentsAmount')->willReturn([
             'amount' => 3000,
-            'donations' => [],
             'continuation_token' => null,
         ]);
 
@@ -318,10 +317,9 @@ class WidgetControllerTest extends TestCase
 
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
         $this->widgetRepository->method('selectStreamDonationWidgetCacheData')
-            ->willReturn(['amount' => 1000, 'continuation_token' => 'prev_token']);
-        $this->apiWrapper->method('getAllOrders')->willReturn([
+            ->willReturn(['amount' => 1000, 'payments_continuation_token' => 'prev_token']);
+        $this->apiWrapper->method('getAllPaymentsAmount')->willReturn([
             'amount' => 1500,
-            'donations' => [],
             'continuation_token' => 'new_token',
         ]);
         $this->widgetRepository->method('updateStreamDonationWidgetCacheData');
@@ -345,17 +343,17 @@ class WidgetControllerTest extends TestCase
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
         $this->widgetRepository->method('selectStreamDonationWidgetCacheData')->willReturn(null);
         $this->apiWrapper->expects($this->once())
-            ->method('getAllOrders')
+            ->method('getAllPaymentsAmount')
             ->with(
                 'test-org',
                 'test-form',
                 0,
-                '',
+                null,
                 'Donation',
                 $this->callback(fn($from) => $from instanceof \DateTimeImmutable
                     && $from->format('Y-m-d H:i:s T') === '2026-10-21 20:00:00 CEST')
             )
-            ->willReturn(['amount' => 500, 'donations' => [], 'continuation_token' => 'tk']);
+            ->willReturn(['amount' => 500, 'continuation_token' => 'tk']);
 
         $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
         $result = $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
@@ -371,9 +369,9 @@ class WidgetControllerTest extends TestCase
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
         $this->widgetRepository->method('selectStreamDonationWidgetCacheData')->willReturn(null);
         $this->apiWrapper->expects($this->once())
-            ->method('getAllOrders')
-            ->with('test-org', 'test-form', 0, '', 'Donation', null)
-            ->willReturn(['amount' => 500, 'donations' => [], 'continuation_token' => 'tk']);
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 0, null, 'Donation', null)
+            ->willReturn(['amount' => 500, 'continuation_token' => 'tk']);
 
         $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
         $result = $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
@@ -406,20 +404,62 @@ class WidgetControllerTest extends TestCase
 
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
         $this->widgetRepository->method('selectStreamDonationWidgetCacheData')
-            ->willReturn(['amount' => 500, 'continuation_token' => null]);
-        $this->apiWrapper->method('getAllOrders')->willReturn([
+            ->willReturn(['amount' => 500, 'payments_continuation_token' => null]);
+        $this->apiWrapper->method('getAllPaymentsAmount')->willReturn([
             'amount' => 800,
-            'donations' => [],
             'continuation_token' => 'ct_new',
         ]);
 
         // Vérifie que le cache est mis à jour
         $this->widgetRepository->expects($this->once())
             ->method('updateStreamDonationWidgetCacheData')
-            ->with($streamGuid, ['amount' => 800, 'continuation_token' => 'ct_new']);
+            ->with($streamGuid, ['amount' => 800, 'payments_continuation_token' => 'ct_new']);
 
         $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
         $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
+    }
+
+    public function testWidgetDonationFetchResumesFromPaymentsContinuationToken(): void
+    {
+        $streamGuid = 'resume-payments-guid';
+        $stream = $this->buildStream($streamGuid);
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectStreamDonationWidgetCacheData')
+            ->willReturn(['amount' => 1000, 'payments_continuation_token' => 'prev_token']);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 1000, 'prev_token', 'Donation', null)
+            ->willReturn(['amount' => 1500, 'continuation_token' => 'new_token']);
+        $this->apiWrapper->expects($this->never())->method('getAllOrders');
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
+        $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
+    }
+
+    public function testWidgetDonationFetchRestartsAmountFromZeroWhenCacheComesFromOrders(): void
+    {
+        $streamGuid = 'legacy-cache-guid';
+        $stream = $this->buildStream($streamGuid);
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        // Cache d'avant le passage aux paiements : montant des commandes, jeton de continuation des commandes
+        $this->widgetRepository->method('selectStreamDonationWidgetCacheData')
+            ->willReturn(['amount' => 17168797, 'continuation_token' => 'orders_token']);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 0, null, 'Donation', null)
+            ->willReturn(['amount' => 17934097, 'continuation_token' => 'payments_token']);
+
+        $this->widgetRepository->expects($this->once())
+            ->method('updateStreamDonationWidgetCacheData')
+            ->with($streamGuid, ['amount' => 17934097, 'payments_continuation_token' => 'payments_token']);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-donation/{$streamGuid}/fetch");
+        $result = $this->controller->widgetDonationFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertEquals(17934097, $body['amount']);
     }
 
     // =====================================================================
@@ -435,9 +475,8 @@ class WidgetControllerTest extends TestCase
         $this->eventRepository->method('selectByGuid')->willReturn($event);
         $this->widgetRepository->method('selectEventDonationWidgetCacheData')->willReturn(null);
         $this->streamRepository->method('selectListByEvent')->willReturn($streams);
-        $this->apiWrapper->method('getAllOrders')->willReturn([
+        $this->apiWrapper->method('getAllPaymentsAmount')->willReturn([
             'amount' => 2000,
-            'donations' => [],
             'continuation_token' => null,
         ]);
 
@@ -520,6 +559,143 @@ class WidgetControllerTest extends TestCase
         $body = json_decode((string) $result->getBody(), true);
         $this->assertEquals(280000, $body['amount']);
         $this->assertEquals(35, $body['donors']);
+    }
+
+    // =====================================================================
+    // Widget Card — montant depuis les paiements, donateurs depuis les commandes
+    // =====================================================================
+
+    public function testWidgetStreamCardFetchTakesAmountFromPaymentsAndDonorsFromOrders(): void
+    {
+        $streamGuid = 'stream-card-guid';
+        $stream = $this->buildStream($streamGuid);
+
+        $this->widgetRepository->method('selectCardWidgetByGuid')->willReturn($this->buildCardWidget($streamGuid, null));
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectStreamCardWidgetCacheData')->willReturn([
+            'amount' => 1000,
+            'donors' => 5,
+            'continuation_token' => 'orders_token',
+            'payments_continuation_token' => 'payments_token',
+        ]);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 1000, 'payments_token', 'Donation', null)
+            ->willReturn(['amount' => 1800, 'continuation_token' => 'payments_token_2']);
+        // Le montant des commandes n'est plus utilisé : on ne leur demande que les nouveaux donateurs
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllOrders')
+            ->with('test-org', 'test-form', 0, 'orders_token', 'Donation', null)
+            ->willReturn([
+                'amount' => 999999,
+                'donations' => [['pseudo' => 'a', 'message' => '', 'amount' => 500], ['pseudo' => 'b', 'message' => '', 'amount' => 300]],
+                'continuation_token' => 'orders_token_2',
+            ]);
+
+        $this->widgetRepository->expects($this->once())
+            ->method('updateStreamCardWidgetCacheData')
+            ->with($streamGuid, [
+                'amount' => 1800,
+                'donors' => 7,
+                'continuation_token' => 'orders_token_2',
+                'payments_continuation_token' => 'payments_token_2',
+            ]);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-card/{$streamGuid}/fetch");
+        $result = $this->controller->widgetStreamCardFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertEquals(1800, $body['amount']);
+        $this->assertEquals(7, $body['donors']);
+    }
+
+    public function testWidgetStreamCardFetchRestartsAmountButKeepsDonorsWhenCacheComesFromOrders(): void
+    {
+        $streamGuid = 'stream-card-legacy-guid';
+        $stream = $this->buildStream($streamGuid);
+
+        $this->widgetRepository->method('selectCardWidgetByGuid')->willReturn($this->buildCardWidget($streamGuid, null));
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        // Cache d'avant le passage aux paiements : pas de jeton de continuation des paiements
+        $this->widgetRepository->method('selectStreamCardWidgetCacheData')->willReturn([
+            'amount' => 17168797,
+            'donors' => 2249,
+            'continuation_token' => 'orders_token',
+        ]);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 0, null, 'Donation', null)
+            ->willReturn(['amount' => 17934097, 'continuation_token' => 'payments_token']);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllOrders')
+            ->with('test-org', 'test-form', 0, 'orders_token', 'Donation', null)
+            ->willReturn(['amount' => 0, 'donations' => [], 'continuation_token' => 'orders_token']);
+
+        $this->widgetRepository->expects($this->once())
+            ->method('updateStreamCardWidgetCacheData')
+            ->with($streamGuid, [
+                'amount' => 17934097,
+                'donors' => 2249,
+                'continuation_token' => 'orders_token',
+                'payments_continuation_token' => 'payments_token',
+            ]);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-card/{$streamGuid}/fetch");
+        $result = $this->controller->widgetStreamCardFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertEquals(17934097, $body['amount']);
+        $this->assertEquals(2249, $body['donors']);
+    }
+
+    public function testWidgetEventCardFetchRestartsStreamAmountButKeepsDonorsWhenCacheComesFromOrders(): void
+    {
+        $eventGuid = 'event-card-legacy-guid';
+        $event = $this->buildEvent($eventGuid);
+        $stream = $this->buildStream('event-stream');
+
+        $this->widgetRepository->method('selectCardWidgetByGuid')->willReturn($this->buildCardWidget(null, $eventGuid));
+        $this->eventRepository->method('selectByGuid')->willReturn($event);
+        $this->streamRepository->method('selectListByEvent')->willReturn([$stream]);
+        $this->widgetRepository->method('selectEventCardWidgetCacheData')->willReturn([
+            'amount' => 999,
+            'donors' => 10,
+            'streams' => [['id' => $stream->id, 'amount' => 999, 'continuation_token' => 'orders_token', 'donors' => 10]],
+        ]);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllPaymentsAmount')
+            ->with('test-org', 'test-form', 0, null, 'Donation', null)
+            ->willReturn(['amount' => 1800, 'continuation_token' => 'payments_token']);
+        $this->apiWrapper->expects($this->once())
+            ->method('getAllOrders')
+            ->with('test-org', 'test-form', 0, 'orders_token', 'Donation', null)
+            ->willReturn([
+                'amount' => 0,
+                'donations' => [['pseudo' => 'a', 'message' => '', 'amount' => 500]],
+                'continuation_token' => 'orders_token_2',
+            ]);
+
+        $this->widgetRepository->expects($this->once())
+            ->method('updateEventCardWidgetCacheData')
+            ->with($eventGuid, [
+                'amount' => 1800,
+                'donors' => 11,
+                'streams' => [[
+                    'id' => $stream->id,
+                    'amount' => 1800,
+                    'continuation_token' => 'orders_token_2',
+                    'donors' => 11,
+                    'payments_continuation_token' => 'payments_token',
+                ]],
+            ]);
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-event-card/{$eventGuid}/fetch");
+        $result = $this->controller->widgetEventCardFetch($request, new Response(), ['id' => $eventGuid]);
+
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertEquals(1800, $body['amount']);
+        $this->assertEquals(11, $body['donors']);
     }
 
     // =====================================================================

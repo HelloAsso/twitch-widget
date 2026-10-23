@@ -135,7 +135,7 @@ Chaque stream dispose de **3 widgets** personnalisables. Les événements dispos
 
 ### 5.1 Widget barre de don 🎯
 
-Une barre de progression horizontale qui affiche le montant collecté par rapport à l'objectif.
+Une barre de progression horizontale qui affiche le montant collecté par rapport à l'objectif. Le montant collecté est le même que dans le back-office de l'association : paiements autorisés du formulaire, mensualités des dons mensuels comprises, hors pourboire.
 
 **Options de personnalisation :**
 

@@ -543,28 +543,13 @@ class ApiWrapper
         $previousToken = '';
         $donations = [];
 
-        try {
-            $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
-        } catch (Exception $e) {
-            $isTokenError = str_contains($e->getMessage(), 'token')
-                || str_contains($e->getMessage(), 'Token')
-                || str_contains($e->getMessage(), 'expired')
-                || $e->getCode() === 401;
-            if ($isTokenError) {
-                throw new Exception('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.', 401, $e);
-            }
-            throw new Exception('Erreur lors de la récupération du token pour l\'organisation ' . $organizationSlug . ' : ' . $e->getMessage(), 0, $e);
-        }
-
-        if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
-            throw new Exception('Jeton d\'accès API non trouvé ou expiré pour l\'organisation ' . $organizationSlug . '.', 401);
-        }
+        $accessToken = $this->requireOrganizationAccessToken($organizationSlug);
 
         do {
             $formOrdersData = $this->getDonationFormOrders(
                 $organizationSlug,
                 $formSlug,
-                $organizationAccessToken->access_token,
+                $accessToken,
                 $continuationToken,
                 $formType,
                 $from
@@ -618,6 +603,124 @@ class ApiWrapper
         return [
             'amount' => $currentAmount,
             'donations' => $donations,
+            'continuation_token' => $continuationToken
+        ];
+    }
+
+    /**
+     * Retourne le jeton d'accès API d'une organisation, ou lève une exception (code 401 si le jeton est expiré ou invalide).
+     */
+    private function requireOrganizationAccessToken(string $organizationSlug): string
+    {
+        try {
+            $organizationAccessToken = $this->getOrganizationAccessToken($organizationSlug);
+        } catch (Exception $e) {
+            $isTokenError = str_contains($e->getMessage(), 'token')
+                || str_contains($e->getMessage(), 'Token')
+                || str_contains($e->getMessage(), 'expired')
+                || $e->getCode() === 401;
+            if ($isTokenError) {
+                throw new Exception('Votre token d\'accès pour l\'organisation ' . $organizationSlug . ' est expiré ou invalide. Veuillez vous reconnecter pour renouveler votre token.', 401, $e);
+            }
+            throw new Exception('Erreur lors de la récupération du token pour l\'organisation ' . $organizationSlug . ' : ' . $e->getMessage(), 0, $e);
+        }
+
+        if (!$organizationAccessToken || !isset($organizationAccessToken->access_token)) {
+            throw new Exception('Jeton d\'accès API non trouvé ou expiré pour l\'organisation ' . $organizationSlug . '.', 401);
+        }
+
+        return $organizationAccessToken->access_token;
+    }
+
+    /**
+     * Récupère une page de paiements autorisés pour un formulaire donné, du plus ancien au plus récent.
+     */
+    private function getFormPayments(string $organizationSlug, string $formSlug, string $accessToken, ?string $continuationToken = null, string $formType = 'Donation', ?DateTimeImmutable $from = null): array
+    {
+        $query = ['states' => 'Authorized', 'sortField' => 'Date', 'sortOrder' => 'Asc', 'pageSize' => 100];
+        if ($continuationToken) {
+            $query['continuationToken'] = $continuationToken;
+        }
+        if ($from !== null) {
+            $query['from'] = $from->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        }
+
+        $formTypePath = $formType ?: 'Donation';
+
+        $response = $this->httpRequest(
+            'GET',
+            "{$this->apiUrl}/organizations/{$organizationSlug}/forms/{$formTypePath}/{$formSlug}/payments",
+            [
+                'query' => $query,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'accept' => 'application/json',
+                ],
+            ],
+            "la récupération des paiements pour {$organizationSlug}/{$formSlug}",
+        );
+
+        return json_decode($response->getBody(), true);
+    }
+
+    /**
+     * Cumule les paiements autorisés d'un formulaire, en gérant la pagination avec les continuation tokens.
+     *
+     * Le montant d'une commande ne compte que sa première échéance : les mensualités suivantes d'un don mensuel
+     * sont des paiements de la même commande, que getAllOrders() ne revoit jamais. Un paiement, lui, apparaît à sa
+     * date, ce qui permet de cumuler de façon incrémentale. C'est ce total que montre le back-office de l'asso.
+     * Le `amount` d'un paiement ne comprend pas le pourboire (cet endpoint ne renvoie pas `amountTip`).
+     *
+     * @param string $organizationSlug
+     * @param string $formSlug
+     * @param integer $currentAmount Montant déjà cumulé jusqu'au continuation token (en centimes)
+     * @param string|null $continuationToken
+     * @param DateTimeImmutable|null $from Ne prend en compte que les paiements effectués à partir de cette date (null = tous)
+     * @return array{amount: int, continuation_token: ?string}
+     */
+    public function getAllPaymentsAmount(string $organizationSlug, string $formSlug, int $currentAmount = 0, ?string $continuationToken = null, string $formType = 'Donation', ?DateTimeImmutable $from = null): array
+    {
+        $previousToken = '';
+
+        $accessToken = $this->requireOrganizationAccessToken($organizationSlug);
+
+        do {
+            $formPaymentsData = $this->getFormPayments(
+                $organizationSlug,
+                $formSlug,
+                $accessToken,
+                $continuationToken,
+                $formType,
+                $from
+            );
+
+            if (!isset($formPaymentsData['data'])) {
+                break;
+            }
+
+            foreach ($formPaymentsData['data'] as $payment) {
+                // Filtres déjà appliqués côté API (`states`, `from`), on les revérifie pour ne jamais compter un autre paiement
+                if (($payment['state'] ?? null) !== 'Authorized') {
+                    continue;
+                }
+                if ($from !== null && isset($payment['date']) && new DateTimeImmutable($payment['date']) < $from) {
+                    continue;
+                }
+
+                $currentAmount += isset($payment['amount']) && is_numeric($payment['amount']) ? (int) $payment['amount'] : 0;
+            }
+
+            $previousToken = $continuationToken;
+            $continuationToken = $formPaymentsData['pagination']['continuationToken'] ?? null;
+
+            // Pause entre les pages pour respecter le rate limit HelloAsso
+            if ($continuationToken && $continuationToken !== $previousToken) {
+                usleep(200_000); // 200ms entre chaque page
+            }
+        } while ($continuationToken && $continuationToken !== $previousToken);
+
+        return [
+            'amount' => $currentAmount,
             'continuation_token' => $continuationToken
         ];
     }

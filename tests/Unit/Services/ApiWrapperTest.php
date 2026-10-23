@@ -490,6 +490,114 @@ class ApiWrapperTest extends TestCase
         $this->assertSame(3000, $result['amount']);
         $this->assertCount(2, $result['donations']);
     }
+
+    // =====================================================================
+    // Récupération des paiements (montant encaissé, mensualités comprises)
+    // =====================================================================
+
+    private function buildPaymentsResponse(array $payments, ?string $continuationToken = null): Response
+    {
+        $data = array_map(fn(array $payment) => [
+            'date' => $payment['date'],
+            'amount' => $payment['amount'],
+            'state' => $payment['state'] ?? 'Authorized',
+        ] + (isset($payment['amountTip']) ? ['amountTip' => $payment['amountTip']] : []), $payments);
+
+        return new Response(200, [], json_encode(['data' => $data, 'pagination' => ['continuationToken' => $continuationToken]]));
+    }
+
+    public function testGetAllPaymentsAmountRequestsAuthorizedPaymentsOldestFirst(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildPaymentsResponse([['date' => '2026-10-01T10:00:00+02:00', 'amount' => 1000]]),
+        ], $history);
+
+        $this->apiWrapper->getAllPaymentsAmount('my-org', 'my-form');
+
+        $uri = $history[0]['request']->getUri();
+        $this->assertStringEndsWith('/organizations/my-org/forms/Donation/my-form/payments', $uri->getPath());
+        parse_str($uri->getQuery(), $query);
+        $this->assertSame('Authorized', $query['states']);
+        $this->assertSame('Date', $query['sortField']);
+        $this->assertSame('Asc', $query['sortOrder']);
+        $this->assertArrayNotHasKey('from', $query);
+        $this->assertArrayNotHasKey('continuationToken', $query);
+    }
+
+    public function testGetAllPaymentsAmountSumsEveryInstallmentWithoutTip(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildPaymentsResponse([
+                ['date' => '2026-08-01T10:00:00+02:00', 'amount' => 1500, 'amountTip' => 100],
+                ['date' => '2026-09-01T10:00:00+02:00', 'amount' => 1500],
+                ['date' => '2026-10-01T10:00:00+02:00', 'amount' => 1500],
+            ]),
+        ], $history);
+
+        $result = $this->apiWrapper->getAllPaymentsAmount('my-org', 'my-form', 2500);
+
+        $this->assertSame(7000, $result['amount']);
+    }
+
+    public function testGetAllPaymentsAmountIgnoresPaymentsThatAreNotAuthorized(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildPaymentsResponse([
+                ['date' => '2026-10-01T10:00:00+02:00', 'amount' => 1000, 'state' => 'Refused'],
+                ['date' => '2026-10-02T10:00:00+02:00', 'amount' => 2000, 'state' => 'Authorized'],
+            ]),
+        ], $history);
+
+        $result = $this->apiWrapper->getAllPaymentsAmount('my-org', 'my-form');
+
+        $this->assertSame(2000, $result['amount']);
+    }
+
+    public function testGetAllPaymentsAmountSendsFromFilterInUtcAndIgnoresEarlierPayments(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildPaymentsResponse([
+                ['date' => '2026-10-21T19:59:59+02:00', 'amount' => 5000],
+                ['date' => '2026-10-21T20:00:00+02:00', 'amount' => 1000],
+                ['date' => '2026-10-22T09:00:00+02:00', 'amount' => 2000],
+            ]),
+        ], $history);
+
+        $from = new DateTimeImmutable('2026-10-21 20:00:00', new DateTimeZone('Europe/Paris'));
+        $result = $this->apiWrapper->getAllPaymentsAmount('my-org', 'my-form', 0, null, 'Donation', $from);
+
+        parse_str($history[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame('2026-10-21T18:00:00Z', $query['from']);
+        $this->assertSame(3000, $result['amount']);
+    }
+
+    public function testGetAllPaymentsAmountResumesFromContinuationTokenAndReturnsTheLastOne(): void
+    {
+        $this->stubValidOrganizationToken();
+        $history = [];
+        $this->injectMockHttpClientWithHistory([
+            $this->buildPaymentsResponse([['date' => '2026-10-01T10:00:00+02:00', 'amount' => 1000]], 'tk_1'),
+            $this->buildPaymentsResponse([['date' => '2026-10-02T10:00:00+02:00', 'amount' => 2000]], 'tk_2'),
+            $this->buildPaymentsResponse([], 'tk_2'),
+        ], $history);
+
+        $result = $this->apiWrapper->getAllPaymentsAmount('my-org', 'my-form', 500, 'tk_0');
+
+        parse_str($history[0]['request']->getUri()->getQuery(), $firstQuery);
+        parse_str($history[1]['request']->getUri()->getQuery(), $secondQuery);
+        $this->assertSame('tk_0', $firstQuery['continuationToken']);
+        $this->assertSame('tk_1', $secondQuery['continuationToken']);
+        $this->assertSame(3500, $result['amount']);
+        $this->assertSame('tk_2', $result['continuation_token']);
+    }
 }
 
 
