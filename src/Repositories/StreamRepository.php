@@ -197,6 +197,10 @@ class StreamRepository
             $fields[] = 'test_amount = ?';
             $params[] = (int) $data['test_amount'];
         }
+        if (array_key_exists('start_date', $data)) {
+            $fields[] = 'start_date = ?';
+            $params[] = $data['start_date'];
+        }
 
         if (empty($fields)) return;
 
