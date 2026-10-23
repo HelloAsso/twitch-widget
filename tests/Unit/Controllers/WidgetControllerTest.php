@@ -13,6 +13,7 @@ use App\Models\WidgetDonation;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -36,6 +37,7 @@ class WidgetControllerTest extends TestCase
     private StreamRepository&MockObject $streamRepository;
     private WidgetRepository&MockObject $widgetRepository;
     private GoalRepository&MockObject $goalRepository;
+    private StreamDonationHistoryRepository&MockObject $donationHistoryRepository;
     private WidgetController $controller;
 
     protected function setUp(): void
@@ -47,6 +49,7 @@ class WidgetControllerTest extends TestCase
         $this->streamRepository = $this->createMock(StreamRepository::class);
         $this->widgetRepository = $this->createMock(WidgetRepository::class);
         $this->goalRepository = $this->createMock(GoalRepository::class);
+        $this->donationHistoryRepository = $this->createMock(StreamDonationHistoryRepository::class);
 
         $this->goalRepository->method('selectAmountsByStreamGuid')->willReturn([1000]);
         $this->goalRepository->method('selectAmountsByEventGuid')->willReturn([1000]);
@@ -59,6 +62,7 @@ class WidgetControllerTest extends TestCase
             $this->streamRepository,
             $this->widgetRepository,
             $this->goalRepository,
+            $this->donationHistoryRepository,
         );
     }
 
@@ -496,6 +500,56 @@ class WidgetControllerTest extends TestCase
         $result = $this->controller->widgetEventDonationFetch($request, new Response(), ['id' => 'ghost-event']);
 
         $this->assertEquals(404, $result->getStatusCode());
+    }
+
+    // =====================================================================
+    // Mode test : don simulé et vue Live
+    // =====================================================================
+
+    public function testSimulateStreamDonationFeedsLiveHistoryWhenLiveStarted(): void
+    {
+        $stream = $this->buildStream('stream-test');
+        $stream->is_test_mode = 1;
+        $stream->live_started_at = '2026-10-23 14:00:00.000000';
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->expects($this->once())->method('update')->with($stream, ['test_amount' => 1500]);
+        $this->donationHistoryRepository->expects($this->once())
+            ->method('insertMany')
+            ->with('stream-test', [['pseudo' => 'Alice', 'message' => 'Bravo', 'amount' => 1500]]);
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-test/simulate')
+            ->withParsedBody(['amount' => 1500, 'pseudo' => 'Alice', 'message' => 'Bravo']);
+        $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-test']);
+
+        $this->assertEquals(200, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationSkipsLiveHistoryWhenLiveNotStarted(): void
+    {
+        $stream = $this->buildStream('stream-test');
+        $stream->is_test_mode = 1;
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->donationHistoryRepository->expects($this->never())->method('insertMany');
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-test/simulate')
+            ->withParsedBody(['amount' => 1000]);
+        $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-test']);
+
+        $this->assertEquals(200, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationRejectsStreamOutsideTestMode(): void
+    {
+        $stream = $this->buildStream('stream-live');
+        $stream->live_started_at = '2026-10-23 14:00:00.000000';
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->donationHistoryRepository->expects($this->never())->method('insertMany');
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-live/simulate')
+            ->withParsedBody(['amount' => 1000]);
+        $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-live']);
+
+        $this->assertEquals(400, $result->getStatusCode());
     }
 
     // =====================================================================
