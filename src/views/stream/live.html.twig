@@ -1,0 +1,91 @@
+{% block title %}HelloAsso Widgets - Live du stream{% endblock %}
+
+
+{% extends "layout.html.twig" %}
+{% block content %}
+
+		<div class="container">
+			{# ── En-tête ─────────────────────────────────────────────── #}
+			<div class="d-flex justify-content-between align-items-center my-4">
+				<a href="/admin/stream/{{ charityStream.guid }}/edit" class="btn btn-secondary">Retour</a>
+				<h1 class="mb-0">🔴 {{ charityStream.title }}</h1>
+				{% if charityStream.live_started_at %}
+					<form method="POST" action="/admin/stream/{{ charityStream.guid }}/live/stop" onsubmit="return confirm('Terminer le live ? L\'historique des dons de cette session sera supprimé.')">
+						<button type="submit" class="btn btn-danger">⏹ Terminer le live</button>
+					</form>
+				{% else %}
+					<form method="POST" action="/admin/stream/{{ charityStream.guid }}/live/start">
+						<button type="submit" class="btn btn-success">▶ Démarrer le live</button>
+					</form>
+				{% endif %}
+			</div>
+
+			{% for key, msgs in messages|default({}) %}
+				{% for msg in msgs %}
+					<div class="alert alert-{{ key == 'error' ? 'danger' : key }} alert-dismissible fade show" role="alert">
+						{{ msg }}
+						<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+					</div>
+				{% endfor %}
+			{% endfor %}
+
+			{% if charityStream.live_started_at %}
+				<p class="text-muted small">
+					Live démarré le <span class="live-time" data-short data-ts="{{ charityStream.live_started_at | date('c') }}">{{ charityStream.live_started_at | date('d/m/Y à H:i') }}</span> —
+					les nouveaux dons apparaissent automatiquement, en général moins de 40 secondes après avoir été faits.
+				</p>
+			{% endif %}
+
+			{# ── Fil des dons ───────────────────────────────────────── #}
+			<div id="donationFeed" class="mb-5">
+				{% if not charityStream.live_started_at %}
+					<div class="text-center text-muted py-5" id="feedEmptyState">
+						<p style="font-size:2rem;" class="mb-2">📴</p>
+						<p class="mb-0">Le live n'a pas encore démarré.</p>
+					</div>
+				{% elseif entries is empty %}
+					<div class="text-center text-muted py-5" id="feedEmptyState">
+						<p style="font-size:2rem;" class="mb-2">⏳</p>
+						<p class="mb-0">En attente du premier don…</p>
+					</div>
+				{% else %}
+					<div class="text-center text-muted py-5" id="feedEmptyState" style="display:none;"></div>
+				{% endif %}
+
+				{% for entry in entries %}
+					<div class="live-entry card mb-2" data-id="{{ entry.id }}">
+						<div class="card-body py-2 px-3">
+							<div class="d-flex justify-content-between align-items-baseline gap-2">
+								<span class="fw-bold">{{ entry.pseudo }}</span>
+								<span class="badge bg-success" style="font-size:0.9rem;">{{ (entry.amount / 100) | number_format(2, ',', ' ') }} €</span>
+								<span class="live-time text-muted small ms-auto" data-ts="{{ entry.received_at | date('c') }}">{{ entry.received_at | date('d/m/Y H:i:s') }}</span>
+							</div>
+							{% if entry.message %}
+								<p class="mb-0 mt-1" style="opacity:0.85;">{{ entry.message }}</p>
+							{% endif %}
+						</div>
+					</div>
+				{% endfor %}
+
+				<div id="feedSentinel"></div>
+				<div id="feedEndNotice" class="text-center text-muted small py-3" style="display:none;">— Début du live —</div>
+				<div id="feedCapNotice" class="text-center text-muted small py-3" style="display:none;">
+					Limite d'affichage atteinte, rechargez la page pour repartir des dons les plus récents.
+				</div>
+			</div>
+		</div>
+{% endblock %}
+{% block scripts %}
+	<script>
+		window.charityStreamId = '{{ charityStream.guid }}';
+		window.liveStarted = {{ charityStream.live_started_at ? 'true' : 'false' }};
+		window.newestLoadedId = {{ entries is not empty ? entries|first.id : 0 }};
+		window.oldestLoadedId = {{ entries is not empty ? entries|last.id : 0 }};
+		window.initialCount = {{ entries|length }};
+		window.livePageSize = {{ pageSize }};
+		window.livePollLimit = {{ pollLimit }};
+	</script>
+	{% if viteEntries.live.js is defined and viteEntries.live.js %}
+	<script type="module" src="/dist/{{ viteEntries.live.js }}"></script>
+	{% endif %}
+{% endblock %}

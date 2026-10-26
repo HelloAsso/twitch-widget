@@ -7,6 +7,7 @@ use App\Models\WidgetCard;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
@@ -17,6 +18,8 @@ use Slim\Views\Twig;
 
 class WidgetController
 {
+    use RespondsWithJson;
+
     private int $cacheTtl;
 
     public function __construct(
@@ -27,6 +30,7 @@ class WidgetController
         private StreamRepository $streamRepository,
         private WidgetRepository $widgetRepository,
         private GoalRepository $goalRepository,
+        private StreamDonationHistoryRepository $donationHistoryRepository,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
     }
@@ -46,17 +50,6 @@ class WidgetController
     }
 
     // ── Helpers ───────────────────────────────────────────────────
-
-    private function jsonResponse(Response $response, array $data, int $status = 200): Response
-    {
-        $response->getBody()->write(json_encode($data));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus($status);
-    }
-
-    private function jsonError(Response $response, string $message, int $status): Response
-    {
-        return $this->jsonResponse($response, ['error' => $message], $status);
-    }
 
     private function calculatePercentage(int $amountInCents, int $goal): int
     {
@@ -785,6 +778,15 @@ class WidgetController
 
         $newAmount = (int) $charityStream->test_amount + $amount;
         $this->streamRepository->update($charityStream, ['test_amount' => $newAmount]);
+
+        // Si un live est en cours, le don simulé alimente aussi la vue "Live"
+        if ($charityStream->live_started_at !== null) {
+            $this->donationHistoryRepository->insertMany($charityStream->guid, [[
+                'pseudo' => $pseudo,
+                'message' => $message,
+                'amount' => $amount,
+            ]]);
+        }
 
         return $this->jsonResponse($response, [
             'amount' => $newAmount,
