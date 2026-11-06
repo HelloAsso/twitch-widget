@@ -2,6 +2,8 @@ var alertQueue = [];
 var isAlertActive = false;
 var isFetching = false;
 var audioUnlocked = false;
+// Mode test : id du dernier don simulé reçu par ce widget (null tant que le serveur n'en a pas donné)
+var testAlertCursor = null;
 
 // Pré-déverrouiller l'audio pour les navigateurs/OBS
 (function unlockAudio() {
@@ -120,10 +122,18 @@ async function fetchAlerts() {
     isFetching = true;
 
     try {
-        const response = await fetch(`/widget-stream-alert/${window.charityStreamId}/fetch`);
+        let url = `/widget-stream-alert/${window.charityStreamId}/fetch`;
+        if (testAlertCursor !== null) {
+            url += `?after=${testAlertCursor}`;
+        }
+        const response = await fetch(url);
 
         if (response.ok) {
             const json = await response.json();
+            // En mode test, le serveur renvoie un curseur pour n'envoyer chaque don simulé qu'une fois à ce widget
+            if (Number.isInteger(json.cursor)) {
+                testAlertCursor = json.cursor;
+            }
             json.donations.forEach(donation => {
                 displayAlertBox(donation.pseudo, donation.message, donation.amount);
             });
