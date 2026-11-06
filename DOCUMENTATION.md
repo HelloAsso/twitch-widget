@@ -251,6 +251,8 @@ Une fois le mode test activé, un formulaire de simulation apparaît :
 
 Cliquez sur **💸 Simuler un don** pour envoyer le don fictif. Les widgets se mettent à jour en temps réel.
 
+Sur un stream, le don simulé déclenche aussi l'**alerte** sur le widget d'alerte (onglet du navigateur ou source OBS) dans les 10 secondes, sans recharger la page. Chaque widget ouvert l'affiche une seule fois. Un widget ouvert après la simulation ne rejoue pas les dons déjà simulés.
+
 ### Remettre à zéro
 
 Cliquez sur **🔄 Remettre à zéro** pour réinitialiser le compteur de test à 0 €.

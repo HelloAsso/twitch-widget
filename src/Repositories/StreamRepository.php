@@ -241,6 +241,15 @@ class StreamRepository
                 // Table may not exist yet — skip silently
             }
 
+            $query = 'DELETE FROM ' . $this->prefix . 'widget_alert_test_donation
+                WHERE charity_stream_guid = ?';
+            try {
+                $stmt = $this->pdo->prepare($query);
+                $stmt->execute([$stream->guid]);
+            } catch (Exception $e) {
+                // Table may not exist yet — skip silently
+            }
+
             $query = 'DELETE FROM ' . $this->prefix . 'user_right
                 WHERE id_charity_stream = ?';
             $stmt = $this->pdo->prepare($query);

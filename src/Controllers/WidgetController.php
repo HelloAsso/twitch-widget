@@ -17,6 +17,12 @@ use Slim\Views\Twig;
 
 class WidgetController
 {
+    /** Durée pendant laquelle un don simulé peut encore s'afficher sur un widget d'alerte déjà ouvert. */
+    private const TEST_ALERT_MAX_AGE_SECONDS = 120;
+
+    /** Longueur maximale du pseudo et du message d'un don simulé. */
+    private const TEST_DONATION_TEXT_MAX_LENGTH = 255;
+
     private int $cacheTtl;
 
     public function __construct(
@@ -420,6 +426,46 @@ class WidgetController
 
     // ── Stream Alert ─────────────────────────────────────────────
 
+    /**
+     * Dons simulés (mode test) à afficher par une instance du widget d'alerte.
+     *
+     * Chaque instance (onglet, source OBS) renvoie dans `after` le `cursor` reçu au fetch précédent :
+     * elle reçoit une fois chaque don simulé depuis, sans gêner les autres instances.
+     * Sans curseur (premier fetch), elle reçoit seulement le curseur courant,
+     * pour ne pas rejouer les dons simulés avant son ouverture.
+     */
+    private function fetchTestAlertDonations(Stream $stream, ?int $afterId): array
+    {
+        $result = [
+            'amount' => 0,
+            'donations' => [],
+            'continuation_token' => '',
+            'cursor' => $afterId,
+        ];
+
+        try {
+            if ($afterId === null) {
+                $result['cursor'] = $this->widgetRepository->selectLastTestAlertDonationId($stream->guid);
+                return $result;
+            }
+
+            $donations = $this->widgetRepository->selectTestAlertDonations(
+                $stream->guid,
+                $afterId,
+                self::TEST_ALERT_MAX_AGE_SECONDS
+            );
+            foreach ($donations as $donation) {
+                $result['cursor'] = max($result['cursor'], (int) $donation['id']);
+            }
+            $result['donations'] = $donations;
+        } catch (Exception $e) {
+            // Table absente (migration non jouée) ou erreur SQL : pas d'alerte simulée, le widget continue de tourner
+            error_log('[WidgetAlertFetch] Dons simulés indisponibles pour stream ' . $stream->guid . ' : ' . $e->getMessage());
+        }
+
+        return $result;
+    }
+
     public function widgetAlert(Request $request, Response $response, array $args): Response
     {
         try {
@@ -491,13 +537,10 @@ class WidgetController
             return $this->jsonError($response, 'Charity Stream non trouvé.', 404);
         }
 
-        // En mode test, retourner un résultat vide (les alertes sont simulées via l'endpoint dédié)
+        // En mode test, retourner les dons simulés (via l'endpoint dédié) pas encore affichés par ce widget
         if ($charityStream->is_test_mode) {
-            return $this->jsonResponse($response, [
-                'amount' => 0,
-                'donations' => [],
-                'continuation_token' => '',
-            ]);
+            $after = filter_var($request->getQueryParams()['after'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            return $this->jsonResponse($response, $this->fetchTestAlertDonations($charityStream, $after === false ? null : $after));
         }
 
         $cacheData = $this->widgetRepository->selectAlertWidgetCacheData($charityStream)
@@ -780,11 +823,23 @@ class WidgetController
             $body = json_decode((string) $request->getBody(), true) ?? [];
         }
         $amount = (int) ($body['amount'] ?? 1000);
-        $pseudo = $body['pseudo'] ?? 'Testeur';
-        $message = $body['message'] ?? 'Don de test';
+        if ($amount <= 0) {
+            return $this->jsonError($response, 'Le montant doit être supérieur à 0.', 400);
+        }
+        $pseudo = $this->testDonationText($body['pseudo'] ?? null, 'Testeur');
+        $message = $this->testDonationText($body['message'] ?? null, 'Don de test');
 
         $newAmount = (int) $charityStream->test_amount + $amount;
         $this->streamRepository->update($charityStream, ['test_amount' => $newAmount]);
+
+        // Met le don en attente pour le widget d'alerte, qui le récupère à son prochain fetch
+        $alertQueued = true;
+        try {
+            $this->widgetRepository->insertTestAlertDonation($charityStream->guid, $pseudo, $message, $amount);
+        } catch (Exception $e) {
+            $alertQueued = false;
+            error_log('[SimulateStreamDonation] Alerte simulée non enregistrée pour stream ' . $streamGuid . ' : ' . $e->getMessage());
+        }
 
         return $this->jsonResponse($response, [
             'amount' => $newAmount,
@@ -793,7 +848,20 @@ class WidgetController
                 'message' => $message,
                 'amount' => $amount,
             ],
+            'alertQueued' => $alertQueued,
         ]);
+    }
+
+    /**
+     * Pseudo ou message d'un don simulé : texte tronqué à la taille de la colonne, valeur par défaut si absent.
+     */
+    private function testDonationText(mixed $value, string $default): string
+    {
+        if (!is_scalar($value)) {
+            return $default;
+        }
+
+        return mb_substr(trim((string) $value), 0, self::TEST_DONATION_TEXT_MAX_LENGTH);
     }
 
     public function simulateEventDonation(Request $request, Response $response, array $args): Response

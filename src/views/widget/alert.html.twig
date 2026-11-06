@@ -18,7 +18,7 @@
 			var charityStreamId = '{{ alertBoxWidget.charity_stream_guid }}';
 		</script>
 	{% if viteEntries.alert.js %}
-		<script type="module" src="/dist/{{ viteEntries.alert.js }}"></script>
+		<script type="module" src="/dist/{{ viteEntries.alert.js }}{% if appVersion %}?v={{ appVersion|url_encode }}{% endif %}"></script>
 	{% endif %}
 		{# <script src="/node_modules/countup.js/dist/countUp.umd.js"></script>
 		<script src="/js/alert.min.js"></script> #}

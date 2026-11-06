@@ -52,7 +52,8 @@
 						</div>
 					</div>
 					<div id="simulateAlert" class="mt-2" style="display:none;"></div>
-					<small class="text-muted d-block mt-2">⚠️ Rechargez les widgets dans le navigateur pour qu'ils prennent en compte le mode test.</small>
+					<small class="text-muted d-block mt-2">🔔 Chaque don simulé s'affiche une fois sur le widget d'alerte (navigateur ou OBS) dans les 10 secondes, sans recharger la page. Les barres et cartes de dons se mettent à jour avec le montant test.</small>
+					<small class="text-muted d-block">⚠️ Après avoir activé ou désactivé le mode test, rechargez les widgets (dans OBS : clic droit sur la source › Actualiser) pour afficher ou retirer le bandeau « mode test ».</small>
 				</div>
 			</div>
 			{% endif %}
@@ -510,7 +511,12 @@
 				const json = await resp.json();
 				if (resp.ok) {
 					document.getElementById('testAmountDisplay').textContent = (json.amount / 100).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
-					alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>✅ Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
+					alertBox.innerHTML = '<div class="alert alert-dismissible fade show py-1 px-2 mb-0"><small></small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
+					const summary = '✅ Don simulé : ' + json.donation.pseudo + ' — ' + (amount / 100).toLocaleString('fr-FR') + ' €';
+					alertBox.firstChild.classList.add(json.alertQueued ? 'alert-success' : 'alert-warning');
+					alertBox.querySelector('small').textContent = json.alertQueued
+						? summary + '. L\'alerte s\'affichera sur le widget d\'alerte d\'ici 10 secondes.'
+						: summary + ' (montant mis à jour), mais l\'alerte n\'a pas pu être envoyée au widget d\'alerte.';
 					alertBox.style.display = 'block';
 				} else {
 					alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ ' + (json.error || 'Erreur') + '</small></div>';

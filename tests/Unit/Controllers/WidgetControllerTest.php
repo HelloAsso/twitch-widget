@@ -229,6 +229,270 @@ class WidgetControllerTest extends TestCase
         $this->assertEquals(500, $result->getStatusCode());
     }
 
+    public function testWidgetAlertFetchInRealModeIgnoresTestAlertCursor(): void
+    {
+        $streamGuid = 'real-mode-cursor-guid';
+        $stream = $this->buildStream($streamGuid);
+        $ordersResult = [
+            'amount' => 0,
+            'donations' => [['pseudo' => 'Alice', 'message' => 'Bravo!', 'amount' => 500]],
+            'continuation_token' => 'newToken123',
+        ];
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectAlertWidgetCacheData')->willReturn(['continuation_token' => 'oldToken']);
+        $this->apiWrapper->expects($this->once())->method('getAllOrders')->willReturn($ordersResult);
+        $this->widgetRepository->expects($this->never())->method('selectTestAlertDonations');
+        $this->widgetRepository->expects($this->never())->method('selectLastTestAlertDonationId');
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('GET', "/widget-stream-alert/{$streamGuid}/fetch")
+            ->withQueryParams(['after' => '12']);
+        $result = $this->controller->widgetAlertFetch($request, new Response(), ['id' => $streamGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $this->assertSame($ordersResult, json_decode((string) $result->getBody(), true));
+    }
+
+    // =====================================================================
+    // Widget Alert — mode test : dons simulés
+    // =====================================================================
+
+    public function testWidgetAlertFetchInTestModeWithoutCursorReturnsCurrentCursorOnly(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->expects($this->once())
+            ->method('selectLastTestAlertDonationId')
+            ->with($streamGuid)
+            ->willReturn(42);
+        // Les dons simulés avant l'ouverture du widget ne sont pas rejoués
+        $this->widgetRepository->expects($this->never())->method('selectTestAlertDonations');
+        $this->apiWrapper->expects($this->never())->method('getAllOrders');
+
+        $result = $this->fetchAlerts($streamGuid);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertSame([], $body['donations']);
+        $this->assertSame(42, $body['cursor']);
+    }
+
+    public function testWidgetAlertFetchInTestModeReturnsSimulatedDonationsAfterCursor(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $donations = [
+            ['id' => 43, 'pseudo' => 'Alice', 'message' => 'Bravo !', 'amount' => 1000],
+            ['id' => 47, 'pseudo' => 'Bob', 'message' => '', 'amount' => 250],
+        ];
+
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->expects($this->once())
+            ->method('selectTestAlertDonations')
+            ->with($streamGuid, 42, 120)
+            ->willReturn($donations);
+        $this->apiWrapper->expects($this->never())->method('getAllOrders');
+
+        $result = $this->fetchAlerts($streamGuid, '42');
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertSame($donations, $body['donations']);
+        $this->assertSame(47, $body['cursor']);
+    }
+
+    public function testWidgetAlertFetchInTestModeKeepsCursorWhenNoNewDonation(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->method('selectTestAlertDonations')->willReturn([]);
+
+        $body = json_decode((string) $this->fetchAlerts($streamGuid, '47')->getBody(), true);
+
+        $this->assertSame([], $body['donations']);
+        $this->assertSame(47, $body['cursor']);
+    }
+
+    public function testWidgetAlertFetchInTestModeTreatsInvalidCursorAsMissing(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->expects($this->exactly(2))->method('selectLastTestAlertDonationId')->willReturn(5);
+        $this->widgetRepository->expects($this->never())->method('selectTestAlertDonations');
+
+        foreach (['abc', '-3'] as $after) {
+            $body = json_decode((string) $this->fetchAlerts($streamGuid, $after)->getBody(), true);
+            $this->assertSame([], $body['donations']);
+            $this->assertSame(5, $body['cursor']);
+        }
+    }
+
+    public function testWidgetAlertFetchInTestModeReturnsNoDonationWhenStorageFails(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->method('selectTestAlertDonations')
+            ->willThrowException(new \PDOException('Table widget_alert_test_donation doesn\'t exist'));
+
+        $result = $this->fetchAlerts($streamGuid, '7');
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertSame([], $body['donations']);
+        $this->assertSame(7, $body['cursor']);
+    }
+
+    /**
+     * Deux widgets ouverts (ex. onglet du navigateur + source OBS) : chacun affiche une fois chaque don simulé.
+     */
+    public function testSimulatedDonationIsShownOnceByEachOpenAlertWidget(): void
+    {
+        $streamGuid = 'test-alert-guid';
+        $stream = $this->buildTestModeStream($streamGuid);
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->useInMemoryTestAlertDonations();
+
+        // Les deux widgets s'ouvrent : premier fetch sans curseur
+        $obsCursor = $this->fetchAlertsBody($streamGuid)['cursor'];
+        $tabCursor = $this->fetchAlertsBody($streamGuid)['cursor'];
+
+        $this->simulateDonation($streamGuid, ['pseudo' => 'Alice', 'amount' => 1500, 'message' => 'Allez !']);
+
+        $obs = $this->fetchAlertsBody($streamGuid, (string) $obsCursor);
+        $tab = $this->fetchAlertsBody($streamGuid, (string) $tabCursor);
+        $expected = [['id' => 1, 'pseudo' => 'Alice', 'message' => 'Allez !', 'amount' => 1500]];
+        $this->assertSame($expected, $obs['donations']);
+        $this->assertSame($expected, $tab['donations']);
+
+        // Fetch suivant : rien à rejouer
+        $this->assertSame([], $this->fetchAlertsBody($streamGuid, (string) $obs['cursor'])['donations']);
+        $this->assertSame([], $this->fetchAlertsBody($streamGuid, (string) $tab['cursor'])['donations']);
+
+        // Un widget ouvert après coup ne rejoue pas le don déjà simulé
+        $lateCursor = $this->fetchAlertsBody($streamGuid)['cursor'];
+        $this->assertSame([], $this->fetchAlertsBody($streamGuid, (string) $lateCursor)['donations']);
+    }
+
+    // =====================================================================
+    // Simulation d'un don (stream)
+    // =====================================================================
+
+    public function testSimulateStreamDonationUpdatesTestAmountAndQueuesAlert(): void
+    {
+        $streamGuid = 'simulate-guid';
+        $stream = $this->buildTestModeStream($streamGuid);
+        $stream->test_amount = 500;
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->expects($this->once())
+            ->method('update')
+            ->with($stream, ['test_amount' => 1500]);
+        $this->widgetRepository->expects($this->once())
+            ->method('insertTestAlertDonation')
+            ->with($streamGuid, 'Alice', 'Bravo !', 1000)
+            ->willReturn(1);
+
+        $result = $this->simulateDonation($streamGuid, ['pseudo' => 'Alice', 'amount' => 1000, 'message' => 'Bravo !']);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertSame(1500, $body['amount']);
+        $this->assertSame(['pseudo' => 'Alice', 'message' => 'Bravo !', 'amount' => 1000], $body['donation']);
+        $this->assertTrue($body['alertQueued']);
+    }
+
+    public function testSimulateStreamDonationAcceptsJsonBody(): void
+    {
+        $streamGuid = 'simulate-json-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->widgetRepository->expects($this->once())
+            ->method('insertTestAlertDonation')
+            ->with($streamGuid, 'Zoé', 'Coucou', 700);
+
+        $request = (new ServerRequestFactory())->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate");
+        $request->getBody()->write(json_encode(['pseudo' => 'Zoé', 'amount' => 700, 'message' => 'Coucou']));
+        $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => $streamGuid]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationUsesDefaultsAndTruncatesTexts(): void
+    {
+        $streamGuid = 'simulate-defaults-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $calls = [];
+        $this->widgetRepository->method('insertTestAlertDonation')
+            ->willReturnCallback(function (string $guid, string $pseudo, string $message, int $amount) use (&$calls) {
+                $calls[] = [$pseudo, $message, $amount];
+                return count($calls);
+            });
+
+        $this->simulateDonation($streamGuid, []);
+        $this->simulateDonation($streamGuid, [
+            'pseudo' => '  ' . str_repeat('é', 300),
+            'message' => str_repeat('a', 300),
+            'amount' => 100,
+        ]);
+
+        $this->assertSame([
+            ['Testeur', 'Don de test', 1000],
+            [str_repeat('é', 255), str_repeat('a', 255), 100],
+        ], $calls);
+    }
+
+    public function testSimulateStreamDonationStillUpdatesAmountWhenAlertCannotBeQueued(): void
+    {
+        $streamGuid = 'simulate-no-table-guid';
+        $stream = $this->buildTestModeStream($streamGuid);
+
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->expects($this->once())->method('update')->with($stream, ['test_amount' => 1000]);
+        $this->widgetRepository->method('insertTestAlertDonation')
+            ->willThrowException(new \PDOException('Table widget_alert_test_donation doesn\'t exist'));
+
+        $result = $this->simulateDonation($streamGuid, ['pseudo' => 'Alice', 'amount' => 1000]);
+
+        $this->assertEquals(200, $result->getStatusCode());
+        $body = json_decode((string) $result->getBody(), true);
+        $this->assertSame(1000, $body['amount']);
+        $this->assertFalse($body['alertQueued']);
+    }
+
+    public function testSimulateStreamDonationRejectsStreamNotInTestMode(): void
+    {
+        $streamGuid = 'simulate-real-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildStream($streamGuid));
+        $this->streamRepository->expects($this->never())->method('update');
+        $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
+
+        $result = $this->simulateDonation($streamGuid, ['pseudo' => 'Alice', 'amount' => 1000]);
+
+        $this->assertEquals(400, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationRejectsNonPositiveAmount(): void
+    {
+        $streamGuid = 'simulate-zero-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->expects($this->never())->method('update');
+        $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
+
+        foreach ([0, -500] as $amount) {
+            $result = $this->simulateDonation($streamGuid, ['pseudo' => 'Alice', 'amount' => $amount]);
+            $this->assertEquals(400, $result->getStatusCode());
+        }
+    }
+
+    public function testSimulateStreamDonationReturns404WhenStreamNotFound(): void
+    {
+        $this->streamRepository->method('selectByGuid')->willReturn(null);
+        $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
+
+        $result = $this->simulateDonation('ghost-guid', ['pseudo' => 'Alice', 'amount' => 1000]);
+
+        $this->assertEquals(404, $result->getStatusCode());
+    }
+
     // =====================================================================
     // Widget Donation (stream) — rendu (affichage)
     // =====================================================================
@@ -711,6 +975,70 @@ class WidgetControllerTest extends TestCase
         $stream->organization_slug = 'test-org';
         $stream->form_slug = 'test-form';
         return $stream;
+    }
+
+    private function buildTestModeStream(string $guid): Stream
+    {
+        $stream = $this->buildStream($guid);
+        $stream->is_test_mode = 1;
+        $stream->test_amount = 0;
+        return $stream;
+    }
+
+    private function fetchAlerts(string $streamGuid, ?string $after = null): ResponseInterface
+    {
+        $request = (new ServerRequestFactory())->createServerRequest('GET', "/widget-stream-alert/{$streamGuid}/fetch");
+        if ($after !== null) {
+            $request = $request->withQueryParams(['after' => $after]);
+        }
+        return $this->controller->widgetAlertFetch($request, new Response(), ['id' => $streamGuid]);
+    }
+
+    private function fetchAlertsBody(string $streamGuid, ?string $after = null): array
+    {
+        $result = $this->fetchAlerts($streamGuid, $after);
+        $this->assertEquals(200, $result->getStatusCode());
+        return json_decode((string) $result->getBody(), true);
+    }
+
+    private function simulateDonation(string $streamGuid, array $body): ResponseInterface
+    {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate")
+            ->withParsedBody($body);
+        return $this->controller->simulateStreamDonation($request, new Response(), ['id' => $streamGuid]);
+    }
+
+    /**
+     * Branche les méthodes « dons simulés » du WidgetRepository mocké sur un stockage en mémoire.
+     */
+    private function useInMemoryTestAlertDonations(): void
+    {
+        $rows = [];
+
+        $this->widgetRepository->method('insertTestAlertDonation')
+            ->willReturnCallback(function (string $guid, string $pseudo, string $message, int $amount) use (&$rows) {
+                $id = count($rows) + 1;
+                $rows[] = ['guid' => $guid, 'id' => $id, 'pseudo' => $pseudo, 'message' => $message, 'amount' => $amount];
+                return $id;
+            });
+
+        $this->widgetRepository->method('selectTestAlertDonations')
+            ->willReturnCallback(function (string $guid, int $afterId) use (&$rows) {
+                $donations = [];
+                foreach ($rows as $row) {
+                    if ($row['guid'] === $guid && $row['id'] > $afterId) {
+                        $donations[] = ['id' => $row['id'], 'pseudo' => $row['pseudo'], 'message' => $row['message'], 'amount' => $row['amount']];
+                    }
+                }
+                return $donations;
+            });
+
+        $this->widgetRepository->method('selectLastTestAlertDonationId')
+            ->willReturnCallback(function (string $guid) use (&$rows) {
+                $ids = array_column(array_filter($rows, fn($row) => $row['guid'] === $guid), 'id');
+                return $ids ? max($ids) : 0;
+            });
     }
 
     private function buildEvent(string $guid): Event
