@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\Stream;
+use App\Models\User;
 use App\Models\WidgetCard;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
@@ -809,7 +810,9 @@ class WidgetController
             return $this->jsonError($response, 'Stream ID manquant.', 400);
         }
 
-        $charityStream = $this->streamRepository->selectByGuid($streamGuid);
+        // Seuls les admins du stream peuvent simuler un don : il s'affiche sur leur widget d'alerte
+        $user = $request->getAttribute('user');
+        $charityStream = $user instanceof User ? $this->streamRepository->selectByUserAndGuid($user, $streamGuid) : null;
         if (!$charityStream) {
             return $this->jsonError($response, 'Stream non trouvé.', 404);
         }

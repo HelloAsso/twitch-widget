@@ -7,6 +7,7 @@ namespace Tests\Unit\Controllers;
 use App\Controllers\WidgetController;
 use App\Models\Event;
 use App\Models\Stream;
+use App\Models\User;
 use App\Models\WidgetAlert;
 use App\Models\WidgetCard;
 use App\Models\WidgetDonation;
@@ -350,6 +351,7 @@ class WidgetControllerTest extends TestCase
         $streamGuid = 'test-alert-guid';
         $stream = $this->buildTestModeStream($streamGuid);
         $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($stream);
         $this->useInMemoryTestAlertDonations();
 
         // Les deux widgets s'ouvrent : premier fetch sans curseur
@@ -383,7 +385,10 @@ class WidgetControllerTest extends TestCase
         $stream = $this->buildTestModeStream($streamGuid);
         $stream->test_amount = 500;
 
-        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->expects($this->once())
+            ->method('selectByUserAndGuid')
+            ->with($this->isInstanceOf(User::class), $streamGuid)
+            ->willReturn($stream);
         $this->streamRepository->expects($this->once())
             ->method('update')
             ->with($stream, ['test_amount' => 1500]);
@@ -404,12 +409,14 @@ class WidgetControllerTest extends TestCase
     public function testSimulateStreamDonationAcceptsJsonBody(): void
     {
         $streamGuid = 'simulate-json-guid';
-        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($this->buildTestModeStream($streamGuid));
         $this->widgetRepository->expects($this->once())
             ->method('insertTestAlertDonation')
             ->with($streamGuid, 'Zoé', 'Coucou', 700);
 
-        $request = (new ServerRequestFactory())->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate");
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate")
+            ->withAttribute('user', $this->buildUser());
         $request->getBody()->write(json_encode(['pseudo' => 'Zoé', 'amount' => 700, 'message' => 'Coucou']));
         $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => $streamGuid]);
 
@@ -419,7 +426,7 @@ class WidgetControllerTest extends TestCase
     public function testSimulateStreamDonationUsesDefaultsAndTruncatesTexts(): void
     {
         $streamGuid = 'simulate-defaults-guid';
-        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($this->buildTestModeStream($streamGuid));
         $calls = [];
         $this->widgetRepository->method('insertTestAlertDonation')
             ->willReturnCallback(function (string $guid, string $pseudo, string $message, int $amount) use (&$calls) {
@@ -445,7 +452,7 @@ class WidgetControllerTest extends TestCase
         $streamGuid = 'simulate-no-table-guid';
         $stream = $this->buildTestModeStream($streamGuid);
 
-        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($stream);
         $this->streamRepository->expects($this->once())->method('update')->with($stream, ['test_amount' => 1000]);
         $this->widgetRepository->method('insertTestAlertDonation')
             ->willThrowException(new \PDOException('Table widget_alert_test_donation doesn\'t exist'));
@@ -461,7 +468,7 @@ class WidgetControllerTest extends TestCase
     public function testSimulateStreamDonationRejectsStreamNotInTestMode(): void
     {
         $streamGuid = 'simulate-real-guid';
-        $this->streamRepository->method('selectByGuid')->willReturn($this->buildStream($streamGuid));
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($this->buildStream($streamGuid));
         $this->streamRepository->expects($this->never())->method('update');
         $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
 
@@ -473,7 +480,7 @@ class WidgetControllerTest extends TestCase
     public function testSimulateStreamDonationRejectsNonPositiveAmount(): void
     {
         $streamGuid = 'simulate-zero-guid';
-        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($this->buildTestModeStream($streamGuid));
         $this->streamRepository->expects($this->never())->method('update');
         $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
 
@@ -485,10 +492,39 @@ class WidgetControllerTest extends TestCase
 
     public function testSimulateStreamDonationReturns404WhenStreamNotFound(): void
     {
-        $this->streamRepository->method('selectByGuid')->willReturn(null);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn(null);
         $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
 
         $result = $this->simulateDonation('ghost-guid', ['pseudo' => 'Alice', 'amount' => 1000]);
+
+        $this->assertEquals(404, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationIsRefusedToUserWithoutRightOnStream(): void
+    {
+        $streamGuid = 'someone-else-guid';
+        // Le stream existe et est en mode test, mais l'utilisateur connecté n'en est pas admin
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn(null);
+        $this->streamRepository->expects($this->never())->method('update');
+        $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
+
+        $result = $this->simulateDonation($streamGuid, ['pseudo' => 'Intrus', 'amount' => 1000, 'message' => 'Coucou']);
+
+        $this->assertEquals(404, $result->getStatusCode());
+    }
+
+    public function testSimulateStreamDonationIsRefusedWithoutUser(): void
+    {
+        $streamGuid = 'no-user-guid';
+        $this->streamRepository->method('selectByGuid')->willReturn($this->buildTestModeStream($streamGuid));
+        $this->streamRepository->expects($this->never())->method('selectByUserAndGuid');
+        $this->widgetRepository->expects($this->never())->method('insertTestAlertDonation');
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate")
+            ->withParsedBody(['pseudo' => 'Alice', 'amount' => 1000]);
+        $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => $streamGuid]);
 
         $this->assertEquals(404, $result->getStatusCode());
     }
@@ -1005,8 +1041,18 @@ class WidgetControllerTest extends TestCase
     {
         $request = (new ServerRequestFactory())
             ->createServerRequest('POST', "/widget-stream/{$streamGuid}/simulate")
+            ->withAttribute('user', $this->buildUser())
             ->withParsedBody($body);
         return $this->controller->simulateStreamDonation($request, new Response(), ['id' => $streamGuid]);
+    }
+
+    private function buildUser(): User
+    {
+        $user = new User();
+        $user->id = 7;
+        $user->email = 'streamer@example.org';
+        $user->role = 'USER';
+        return $user;
     }
 
     /**
