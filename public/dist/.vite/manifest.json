@@ -63,6 +63,12 @@
       "src/Assets/js/utilities.js"
     ]
   },
+  "src/Assets/js/live.js": {
+    "file": "live.min.js",
+    "name": "live",
+    "src": "src/Assets/js/live.js",
+    "isEntry": true
+  },
   "src/Assets/js/stream.js": {
     "file": "stream.min.js",
     "name": "stream",

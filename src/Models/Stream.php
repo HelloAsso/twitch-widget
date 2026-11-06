@@ -16,6 +16,9 @@ class Stream implements HasRight
     public $admin;
     public $is_test_mode = 0;
     public $test_amount = 0;
+    public $live_started_at;
+    public $live_continuation_token;
+    public $live_cache_updated_at;
     /** Date de début de prise en compte des paiements (heure de Paris), null = tous les paiements. */
     public $start_date = null;
 
