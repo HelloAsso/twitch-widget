@@ -114,6 +114,8 @@ class StreamRepository
     public function insert(string $form_slug, string $organization_slug, string $title, ?int $parent = null, string $form_type = 'Donation'): Stream
     {
         $guid = bin2hex(random_bytes(16));
+        $form_slug = Stream::normalizeSlug($form_slug);
+        $organization_slug = Stream::normalizeSlug($organization_slug);
 
         $this->pdo->beginTransaction();
 
