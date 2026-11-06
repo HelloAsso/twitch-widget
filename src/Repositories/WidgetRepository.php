@@ -12,6 +12,9 @@ use PDO;
 
 class WidgetRepository
 {
+    /** Âge au-delà duquel un don simulé (mode test) est purgé. */
+    private const TEST_ALERT_DONATION_RETENTION = 'PT1H';
+
     public function __construct(
         private PDO $pdo,
         private string $prefix
@@ -216,6 +219,81 @@ class WidgetRepository
     public function updateAlertWidgetCacheData(string $streamGuid, array $data): void
     {
         $this->updateCacheData('widget_alert_box', 'charity_stream_guid', $streamGuid, $data);
+    }
+
+    // ── Alert widget: dons simulés (mode test) ────────────────────
+
+    /**
+     * Met un don simulé en attente pour le widget d'alerte du stream, et purge les dons simulés trop anciens.
+     *
+     * @return int Id du don simulé
+     */
+    public function insertTestAlertDonation(string $streamGuid, string $pseudo, string $message, int $amount): int
+    {
+        $now = $this->nowUtc();
+
+        $stmt = $this->pdo->prepare(
+            'DELETE FROM ' . $this->prefix . 'widget_alert_test_donation WHERE creation_date < ?'
+        );
+        $stmt->execute([$this->formatDateTime($now->sub(new \DateInterval(self::TEST_ALERT_DONATION_RETENTION)))]);
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO ' . $this->prefix . 'widget_alert_test_donation (charity_stream_guid, pseudo, message, amount, creation_date)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$streamGuid, $pseudo, $message, $amount, $this->formatDateTime($now)]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /**
+     * Dons simulés d'un stream dont l'id est supérieur à $afterId et qui datent de moins de $maxAgeSeconds,
+     * du plus ancien au plus récent.
+     *
+     * @return list<array{id: int, pseudo: string, message: string, amount: int}>
+     */
+    public function selectTestAlertDonations(string $streamGuid, int $afterId, int $maxAgeSeconds, int $limit = 20): array
+    {
+        $since = $this->nowUtc()->sub(new \DateInterval('PT' . max(0, $maxAgeSeconds) . 'S'));
+
+        $stmt = $this->pdo->prepare(
+            'SELECT id, pseudo, message, amount
+             FROM ' . $this->prefix . 'widget_alert_test_donation
+             WHERE charity_stream_guid = ? AND id > ? AND creation_date >= ?
+             ORDER BY id
+             LIMIT ' . max(1, $limit)
+        );
+        $stmt->execute([$streamGuid, $afterId, $this->formatDateTime($since)]);
+
+        return array_map(fn(array $row) => [
+            'id' => (int) $row['id'],
+            'pseudo' => (string) $row['pseudo'],
+            'message' => (string) $row['message'],
+            'amount' => (int) $row['amount'],
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Id du dernier don simulé d'un stream (0 s'il n'y en a pas).
+     */
+    public function selectLastTestAlertDonationId(string $streamGuid): int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(MAX(id), 0) FROM ' . $this->prefix . 'widget_alert_test_donation WHERE charity_stream_guid = ?'
+        );
+        $stmt->execute([$streamGuid]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    private function nowUtc(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+    }
+
+    private function formatDateTime(\DateTimeImmutable $dateTime): string
+    {
+        return $dateTime->format('Y-m-d H:i:s.u');
     }
 
     // ── Donation widget cache ─────────────────────────────────────
