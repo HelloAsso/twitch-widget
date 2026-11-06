@@ -21,6 +21,18 @@ class Stream implements HasRight
 
     public const TIMEZONE = 'Europe/Paris';
 
+    /**
+     * Nettoie un slug d'association ou de formulaire saisi à la main.
+     * Copié depuis la barre d'adresse, il peut garder des paramètres d'URL (ex. `yg?_gl=1*3vyno6*...` ajouté
+     * par Google Analytics) qui font échouer tous les appels à l'API HelloAsso.
+     */
+    public static function normalizeSlug(string $slug): string
+    {
+        $slug = preg_split('/[?#]/', $slug, 2)[0];
+
+        return trim($slug, " \t\n\r\0\x0B/");
+    }
+
     public function getStartDateTime(): ?\DateTimeImmutable
     {
         if (empty($this->start_date)) {

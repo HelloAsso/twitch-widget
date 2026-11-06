@@ -32,4 +32,24 @@ class StreamTest extends TestCase
         $this->assertSame('Europe/Paris', $date->getTimezone()->getName());
         $this->assertSame('2026-10-21T18:00:00+00:00', $date->setTimezone(new \DateTimeZone('UTC'))->format('c'));
     }
+
+    public function testNormalizeSlugKeepsCleanSlug(): void
+    {
+        $this->assertSame('mon-formulaire', Stream::normalizeSlug('mon-formulaire'));
+    }
+
+    public function testNormalizeSlugRemovesTrackingQueryString(): void
+    {
+        $this->assertSame('yg', Stream::normalizeSlug('yg?_gl=1*3vyno6*_gcl_au*NTM3NzQzNTE0LjE3OTMxMTIzNjQ.'));
+    }
+
+    public function testNormalizeSlugRemovesFragment(): void
+    {
+        $this->assertSame('mon-formulaire', Stream::normalizeSlug('mon-formulaire#don'));
+    }
+
+    public function testNormalizeSlugTrimsSpacesAndSlashes(): void
+    {
+        $this->assertSame('mon-association', Stream::normalizeSlug(" /mon-association/ \n"));
+    }
 }
