@@ -16,12 +16,14 @@ use App\Repositories\AuthorizationCodeRepository;
 use App\Repositories\EventRepository;
 use App\Repositories\FileManager;
 use App\Repositories\GoalRepository;
+use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
+use App\Services\BrevoMailer;
+use App\Services\Mailer;
 use DI\Container;
-use MailchimpTransactional\ApiClient;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -34,6 +36,7 @@ use Twig\Extra\Intl\IntlExtension;
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
+App\Services\CleverCloudEnv::load();
 
 $container = new Container();
 $container->set('logger.api', function () {
@@ -83,6 +86,10 @@ $container->set(StreamRepository::class, function ($c) {
     return new StreamRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
 
+$container->set(StreamDonationHistoryRepository::class, function ($c) {
+    return new StreamDonationHistoryRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
+});
+
 $container->set(UserRepository::class, function ($c) {
     return new UserRepository($c->get(PDO::class), $_SERVER['DBPREFIX']);
 });
@@ -127,10 +134,13 @@ $container->set(FileManager::class, function () {
     return new FileManager($storage, $_SERVER['BLOB_URL']);
 });
 
-$container->set(ApiClient::class, function () {
-    $mailchimp = new \MailchimpTransactional\ApiClient();
-    $mailchimp->setApiKey($_SERVER['MANDRILL_API']);
-    return $mailchimp;
+$container->set(Mailer::class, function () {
+    return new BrevoMailer(
+        new \GuzzleHttp\Client(),
+        $_SERVER['BREVO_API_KEY'] ?? '',
+        $_SERVER['MAIL_FROM_EMAIL'] ?? 'contact@helloasso.com',
+        $_SERVER['MAIL_FROM_NAME'] ?? 'HelloAsso',
+    );
 });
 
 $container->set(Twig::class, function (): Twig {
@@ -184,6 +194,9 @@ if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     // Active Whoops uniquement en dev
     $whoops = new \Whoops\Run;
     $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+    // Whoops transforme les dépréciations PHP en exceptions : on ignore celles des dépendances
+    // (ex. librairies pas encore compatibles PHP 8.4+), mais on garde celles du code de l'app
+    $whoops->silenceErrorsInPaths('~[/\\\\]vendor[/\\\\]~', E_DEPRECATED | E_USER_DEPRECATED);
     $whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));
 } else {
@@ -226,6 +239,11 @@ $app->get('/admin/stream/auth-callback', [AdminController::class, 'streamAuthCal
 $app->post('/admin/stream/{id}/delete', [AdminController::class, 'deleteStream'])->add(new AuthMiddleware())->setName('app_stream_delete');
 $app->get('/admin/stream/{id}/edit', [AdminController::class, 'editStream'])->add(new AuthMiddleware())->setName('app_stream_edit');
 $app->post('/admin/stream/{id}/edit', [AdminController::class, 'editStreamPost'])->add(new AuthMiddleware())->setName('app_stream_edit_post');
+$app->get('/admin/stream/{id}/live', [AdminController::class, 'liveView'])->add(new AuthMiddleware())->setName('app_stream_live');
+$app->post('/admin/stream/{id}/live/start', [AdminController::class, 'startLive'])->add(new AuthMiddleware())->setName('app_stream_live_start');
+$app->post('/admin/stream/{id}/live/stop', [AdminController::class, 'stopLive'])->add(new AuthMiddleware())->setName('app_stream_live_stop');
+$app->get('/admin/stream/{id}/live/fetch', [AdminController::class, 'liveFetch'])->add(new AuthMiddleware())->setName('app_stream_live_fetch');
+$app->get('/admin/stream/{id}/live/history', [AdminController::class, 'liveHistory'])->add(new AuthMiddleware())->setName('app_stream_live_history');
 
 $app->post('/api/stream', [ApiController::class, 'new'])->add(new AuthApiMiddleware())->setName('app_api_stream_new');
 

@@ -1,0 +1,20 @@
+{
+  "apps": [
+    {
+      "app_id": "app_ec029d6f-7a46-4998-b400-72209d923c7b",
+      "org_id": "orga_77140cfa-2e6a-4c7b-9836-e6dfc78ba643",
+      "deploy_url": "https://github.com/HelloAsso/twitch-widget.git",
+      "git_ssh_url": "https://github.com/HelloAsso/twitch-widget.git",
+      "name": "ha-stream-sandbox",
+      "alias": "sandbox"
+    },
+    {
+      "app_id": "app_4a80eebe-bdf4-4d99-9c20-02a5be33b122",
+      "org_id": "orga_77140cfa-2e6a-4c7b-9836-e6dfc78ba643",
+      "deploy_url": "https://github.com/HelloAsso/twitch-widget.git",
+      "git_ssh_url": "https://github.com/HelloAsso/twitch-widget.git",
+      "name": "ha-stream-prod",
+      "alias": "prod"
+    }
+  ]
+}

@@ -8,8 +8,8 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Models\User;
 use App\Services\ApiWrapper;
+use App\Services\Mailer;
 use Exception;
-use MailchimpTransactional\ApiClient;
 use Monolog\Logger;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -26,7 +26,7 @@ class LoginController
         private AuthorizationCodeRepository $authorizationCodeRepository,
         private StreamRepository $streamRepository,
         private UserRepository $userRepository,
-        private ApiClient $mailchimp,
+        private Mailer $mailer,
         private Messages $messages,
         private Logger $logger,
     ) {}
@@ -163,23 +163,11 @@ class LoginController
         $verifyUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_verify_email', ["token" => $user->reset_token]);
 
         try {
-            $result = $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Confirmez votre adresse email",
-                    "html" => $this->buildVerificationEmail($verifyUrl),
-                    "to" => [["email" => $user->email, "type" => "to"]],
-                ],
-            ]);
-
-            if ($result instanceof Exception) {
-                throw $result;
-            }
-
-            if (is_array($result) && isset($result[0]->status) && in_array($result[0]->status, ['rejected', 'invalid'])) {
-                throw new Exception('Email rejeté par Mandrill : ' . ($result[0]->reject_reason ?? 'raison inconnue'));
-            }
+            $this->mailer->send(
+                $user->email,
+                "Confirmez votre adresse email",
+                $this->buildVerificationEmail($verifyUrl),
+            );
         } catch (Exception $e) {
             $this->logger->error('Échec de l\'envoi de l\'email de vérification', [
                 'email' => $user->email,
@@ -226,19 +214,11 @@ class LoginController
             $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
             try {
-                $result = $this->mailchimp->messages->send([
-                    "message" => [
-                        "from_email" => "contact@helloasso.io",
-                        "from_name" => "HelloAsso",
-                        "subject" => "Mot de passe oublié",
-                        "html" => "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
-                        "to" => [["email" => $user->email, "type" => "to"]],
-                    ],
-                ]);
-
-                if ($result instanceof \Exception) {
-                    throw $result;
-                }
+                $this->mailer->send(
+                    $user->email,
+                    "Mot de passe oublié",
+                    "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
+                );
             } catch (Exception $e) {
                 $this->logger->error('Échec de l\'envoi de l\'email de réinitialisation', [
                     'email' => $user->email,
@@ -352,19 +332,11 @@ class LoginController
 
         if ($isNewToken) {
             try {
-                $result = $this->mailchimp->messages->send([
-                    "message" => [
-                        "from_email" => "contact@helloasso.io",
-                        "from_name" => "HelloAsso",
-                        "subject" => "Une association vient de valider sa mire",
-                        "html" => "<p>L'association {$tokenData['organization_slug']} vient de valider sa mire d'authorisation sur l'environnement {$_SERVER['WEBSITE_DOMAIN']}</p>",
-                        "to" => [["email" => "helloasso.stream@helloasso.org", "type" => "to"]],
-                    ],
-                ]);
-
-                if ($result instanceof \Exception) {
-                    throw $result;
-                }
+                $this->mailer->send(
+                    "helloasso.stream@helloasso.org",
+                    "Une association vient de valider sa mire",
+                    "<p>L'association {$tokenData['organization_slug']} vient de valider sa mire d'authorisation sur l'environnement {$_SERVER['WEBSITE_DOMAIN']}</p>",
+                );
             } catch (Exception $e) {
                 $this->logger->error('Échec de l\'envoi de la notification de nouvelle association', [
                     'slug' => $tokenData['organization_slug'],
