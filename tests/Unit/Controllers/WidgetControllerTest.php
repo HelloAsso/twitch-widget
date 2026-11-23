@@ -811,13 +811,14 @@ class WidgetControllerTest extends TestCase
         $stream = $this->buildStream('stream-test');
         $stream->is_test_mode = 1;
         $stream->live_started_at = '2026-10-23 14:00:00.000000';
-        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($stream);
         $this->streamRepository->expects($this->once())->method('update')->with($stream, ['test_amount' => 1500]);
         $this->donationHistoryRepository->expects($this->once())
             ->method('insertMany')
             ->with('stream-test', [['pseudo' => 'Alice', 'message' => 'Bravo', 'amount' => 1500]]);
 
         $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-test/simulate')
+            ->withAttribute('user', $this->buildUser())
             ->withParsedBody(['amount' => 1500, 'pseudo' => 'Alice', 'message' => 'Bravo']);
         $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-test']);
 
@@ -828,10 +829,11 @@ class WidgetControllerTest extends TestCase
     {
         $stream = $this->buildStream('stream-test');
         $stream->is_test_mode = 1;
-        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($stream);
         $this->donationHistoryRepository->expects($this->never())->method('insertMany');
 
         $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-test/simulate')
+            ->withAttribute('user', $this->buildUser())
             ->withParsedBody(['amount' => 1000]);
         $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-test']);
 
@@ -842,10 +844,11 @@ class WidgetControllerTest extends TestCase
     {
         $stream = $this->buildStream('stream-live');
         $stream->live_started_at = '2026-10-23 14:00:00.000000';
-        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->streamRepository->method('selectByUserAndGuid')->willReturn($stream);
         $this->donationHistoryRepository->expects($this->never())->method('insertMany');
 
         $request = (new ServerRequestFactory())->createServerRequest('POST', '/widget-stream/stream-live/simulate')
+            ->withAttribute('user', $this->buildUser())
             ->withParsedBody(['amount' => 1000]);
         $result = $this->controller->simulateStreamDonation($request, new Response(), ['id' => 'stream-live']);
 
