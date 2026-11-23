@@ -119,14 +119,16 @@ tests/
 
 ### CI integration
 
-Tests run automatically on every push via GitHub Actions, **before** deployment, on both environments:
+Tests run automatically via GitHub Actions (`php-tests.yml`) on every push and on pull requests targeting `develop` or `main`.
 
-| Workflow | Branch | Trigger |
-|---|---|---|
-| `php-sandbox.yml` | `develop` | Push on develop |
-| `php-prod.yml` | `main` | Push on main |
+Deployment is handled natively by Clever Cloud, which watches the GitHub repository:
 
-A test failure blocks the pipeline immediately — the artifact is never built or deployed.
+| Branch | Clever Cloud app |
+|---|---|
+| `develop` | `ha-stream-sandbox` |
+| `main` | `ha-stream-prod` |
+
+Clever Cloud deploys on push without waiting for the tests: merge into `develop` or `main` through pull requests once the tests are green.
 
 ## Architecture & Code Organization
 

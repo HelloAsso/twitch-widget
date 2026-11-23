@@ -4,6 +4,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
+App\Services\CleverCloudEnv::load();
 
 $requiredVars = ['DBURL', 'DBPORT', 'DBNAME', 'DBUSER', 'DBPASSWORD', 'DBPREFIX'];
 foreach ($requiredVars as $var) {

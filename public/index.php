@@ -35,6 +35,7 @@ use Twig\Extra\Intl\IntlExtension;
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->safeLoad();
+App\Services\CleverCloudEnv::load();
 
 $container = new Container();
 $container->set('logger.api', function () {
