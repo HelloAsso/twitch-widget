@@ -28,5 +28,10 @@
         "psr-4": {
             "Tests\\": "tests/"
         }
+    },
+    "scripts": {
+        "fetch-fonts": "@php bin/fetch-fonts.php",
+        "post-install-cmd": ["@fetch-fonts"],
+        "post-update-cmd": ["@fetch-fonts"]
     }
 }

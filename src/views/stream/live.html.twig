@@ -1,4 +1,4 @@
-{% block title %}HelloAsso Widgets - Live du stream{% endblock %}
+{% block title %}Direct · HelloAsso Stream{% endblock %}
 
 
 {% extends "layout.html.twig" %}
@@ -6,18 +6,23 @@
 
 		<div class="container">
 			{# ── En-tête ─────────────────────────────────────────────── #}
-			<div class="d-flex justify-content-between align-items-center my-4">
-				<a href="/admin/stream/{{ charityStream.guid }}/edit" class="btn btn-secondary">Retour</a>
-				<h1 class="mb-0">🔴 {{ charityStream.title }}</h1>
+			<div class="ha-page-head">
+				<div class="ha-page-head__title">
+					<a href="/admin/stream/{{ charityStream.guid }}/edit" class="ha-back-link">Retour au stream</a>
+					<span class="ha-eyebrow">Direct</span>
+					<h1>{{ charityStream.title }}</h1>
+				</div>
+				<div class="ha-page-head__actions">
 				{% if charityStream.live_started_at %}
 					<form method="POST" action="/admin/stream/{{ charityStream.guid }}/live/stop" onsubmit="return confirm('Terminer le live ? L\'historique des dons de cette session sera supprimé.')">
-						<button type="submit" class="btn btn-danger">⏹ Terminer le live</button>
+						<button type="submit" class="btn btn-danger">Terminer le live</button>
 					</form>
 				{% else %}
 					<form method="POST" action="/admin/stream/{{ charityStream.guid }}/live/start">
-						<button type="submit" class="btn btn-success">▶ Démarrer le live</button>
+						<button type="submit" class="btn btn-primary">Démarrer le live</button>
 					</form>
 				{% endif %}
+				</div>
 			</div>
 
 			{% for key, msgs in messages|default({}) %}
@@ -30,7 +35,7 @@
 			{% endfor %}
 
 			{% if charityStream.live_started_at %}
-				<p class="text-muted small">
+				<p class="text-muted small mb-4">
 					Live démarré le <span class="live-time" data-short data-ts="{{ charityStream.live_started_at | date('c') }}">{{ charityStream.live_started_at | date('d/m/Y à H:i') }}</span> —
 					les nouveaux dons apparaissent automatiquement, en général moins de 40 secondes après avoir été faits.
 				</p>
@@ -39,17 +44,16 @@
 			{# ── Fil des dons ───────────────────────────────────────── #}
 			<div id="donationFeed" class="mb-5">
 				{% if not charityStream.live_started_at %}
-					<div class="text-center text-muted py-5" id="feedEmptyState">
-						<p style="font-size:2rem;" class="mb-2">📴</p>
-						<p class="mb-0">Le live n'a pas encore démarré.</p>
+					<div class="ha-empty" id="feedEmptyState">
+						<p class="ha-empty__title">Le live n'a pas encore démarré</p>
+						<p>Cliquez sur « Démarrer le live » au début de votre direct : les dons reçus ensuite s'affichent ici.</p>
 					</div>
 				{% elseif entries is empty %}
-					<div class="text-center text-muted py-5" id="feedEmptyState">
-						<p style="font-size:2rem;" class="mb-2">⏳</p>
-						<p class="mb-0">En attente du premier don…</p>
+					<div class="ha-empty" id="feedEmptyState">
+						<p class="ha-empty__title">En attente du premier don…</p>
 					</div>
 				{% else %}
-					<div class="text-center text-muted py-5" id="feedEmptyState" style="display:none;"></div>
+					<div class="ha-empty" id="feedEmptyState" style="display:none;"></div>
 				{% endif %}
 
 				{% for entry in entries %}
@@ -57,11 +61,11 @@
 						<div class="card-body py-2 px-3">
 							<div class="d-flex justify-content-between align-items-baseline gap-2">
 								<span class="fw-bold">{{ entry.pseudo }}</span>
-								<span class="badge bg-success" style="font-size:0.9rem;">{{ (entry.amount / 100) | number_format(2, ',', ' ') }} €</span>
+								<span class="badge bg-success">{{ (entry.amount / 100) | number_format(2, ',', ' ') }} €</span>
 								<span class="live-time text-muted small ms-auto" data-ts="{{ entry.received_at | date('c') }}">{{ entry.received_at | date('d/m/Y H:i:s') }}</span>
 							</div>
 							{% if entry.message %}
-								<p class="mb-0 mt-1" style="opacity:0.85;">{{ entry.message }}</p>
+								<p class="mb-0 mt-1">{{ entry.message }}</p>
 							{% endif %}
 						</div>
 					</div>

@@ -120,7 +120,7 @@ class AdminControllerTest extends TestCase
             ->method('send')
             ->with(
                 'new@example.com',
-                'Bienvenue sur HelloAsso Stream !',
+                'Bienvenue sur HelloAsso Stream',
                 $this->stringContains('https://stream.test/reset_password/tok123'),
             );
         $this->messages->expects($this->once())

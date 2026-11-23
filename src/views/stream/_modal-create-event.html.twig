@@ -1,0 +1,31 @@
+{# ── Modale de création d'un événement ──
+   Variables attendues : isAdmin, ownerEmail, currentUser, title
+#}
+<div class="modal fade" id="createEventModal" tabindex="-1" aria-labelledby="createEventModalTitle">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="modal-title" id="createEventModalTitle">Nouvel événement</h2>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+			</div>
+			<div class="modal-body">
+				<p>Un événement regroupe plusieurs streams qui collectent pour la même cause et additionne leurs dons.</p>
+				<form action="/admin/event" method="POST" class="d-flex flex-column gap-3">
+					{% if isAdmin %}
+						<div>
+							<label for="event_owner_email" class="form-label">Email du propriétaire</label>
+							<input type="email" class="form-control" id="event_owner_email" name="owner_email" value="{{ ownerEmail }}" required>
+						</div>
+					{% else %}
+						<input type="hidden" name="owner_email" value="{{ currentUser.email }}">
+					{% endif %}
+					<div>
+						<label for="event_title" class="form-label">Titre de l'événement</label>
+						<input type="text" class="form-control" id="event_title" name="title" value="{{ title|default('') }}" placeholder="Ex. : Marathon caritatif 2026" required>
+					</div>
+					<button type="submit" class="btn btn-primary align-self-start" name="create_charity_event">Créer l'événement</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>

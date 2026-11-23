@@ -1,0 +1,1067 @@
+// Charte HelloAsso appliquée au back-office (pages servies par layout.html.twig).
+// Les widgets ont leur propre bundle (widget.scss) et ne sont pas concernés.
+
+// ── Polices ──
+@font-face {
+    font-family: "ITC Franklin Gothic";
+    src: url("/fonts/ITCFranklinGothic-700-v2.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "ABC Diatype Rounded";
+    src: url("/fonts/ABCDiatypeRounded-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "ABC Diatype Rounded";
+    src: url("/fonts/ABCDiatypeRounded-500.woff2") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "ABC Diatype Rounded";
+    src: url("/fonts/ABCDiatypeRounded-500-italic.woff2") format("woff2");
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "ABC Diatype Rounded";
+    src: url("/fonts/ABCDiatypeRounded-700.woff2") format("woff2");
+    font-weight: 700 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+// ── Tokens exposés en variables CSS ──
+:root {
+    --ha-vert: #{$ha-vert};
+    --ha-vert-hover: #{$ha-vert-hover};
+    --ha-vert-disabled: #{$ha-vert-disabled};
+    --ha-vanille: #{$ha-vanille};
+    --ha-rose: #{$ha-rose};
+    --ha-sahara: #{$ha-sahara};
+    --ha-lila: #{$ha-lila};
+    --ha-cuir: #{$ha-cuir};
+    --ha-prune: #{$ha-prune};
+    --ha-noir: #{$ha-noir};
+    --ha-gris-fonce: #{$ha-gris-fonce};
+    --ha-gris: #{$ha-gris};
+    --ha-gris-clair: #{$ha-gris-clair};
+    --ha-gris-tres-clair: #{$ha-gris-tres-clair};
+    --ha-blanc: #{$ha-blanc};
+    --ha-font-title: #{$ha-font-title};
+    --ha-font-text: #{$ha-font-text};
+    --ha-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+// ── Structure de page ──
+.ha-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: $ha-blanc;
+}
+
+.ha-main {
+    flex: 1 0 auto;
+    padding-bottom: 72px;
+}
+
+// Container : 1280 px, marges 24 px (16 px sur mobile)
+.ha-app .container {
+    max-width: 1280px;
+    padding-left: 24px;
+    padding-right: 24px;
+
+    @media (max-width: 767.98px) {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+// ── Titres : Franklin capitales ──
+.ha-app {
+    h1, h2, h3, h4, h5, h6,
+    .h1, .h2, .h3, .h4, .h5, .h6 {
+        text-transform: uppercase;
+        letter-spacing: 0;
+    }
+
+    h4, .h4 { line-height: 1; }
+    h5, .h5 { line-height: 1.1; }
+    h6, .h6 { line-height: 1.2; }
+
+    .modal-title {
+        font-size: 1.625rem;
+    }
+}
+
+// Titre qui contient la marque : jamais en capitales (graphie « HelloAsso »)
+.ha-title-brand {
+    text-transform: none !important;
+}
+
+// Eyebrow : petit label Franklin capitales précédé du carré indicateur
+.ha-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: $ha-font-title;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: $ha-noir;
+
+    &::before {
+        content: "";
+        flex: 0 0 6px;
+        width: 6px;
+        height: 6px;
+        background: currentColor;
+    }
+}
+
+.ha-lead {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    color: $ha-gris-fonce;
+}
+
+// ── En-tête ──
+.ha-header {
+    background: $ha-blanc;
+    border-bottom: 1px solid $ha-gris-clair;
+
+    &__inner {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 24px;
+        min-height: 72px;
+    }
+
+    &__nav {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+
+        &--end {
+            justify-content: flex-end;
+        }
+    }
+
+    &__brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: $ha-noir;
+        text-decoration: none;
+
+        img {
+            display: block;
+            width: 124px;
+            height: auto;
+        }
+    }
+
+    &__product {
+        font-family: $ha-font-title;
+        font-size: 1.625rem;
+        line-height: 1;
+        text-transform: uppercase;
+        padding-left: 12px;
+        border-left: 1px solid $ha-noir;
+    }
+
+    &__user {
+        font-size: .875rem;
+        color: $ha-gris-fonce;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+
+        @media (max-width: 1199.98px) { display: none; }
+    }
+
+    @media (max-width: 991.98px) {
+        &__inner {
+            grid-template-columns: 1fr auto;
+            padding-top: 16px;
+            padding-bottom: 16px;
+        }
+
+        &__brand { order: -1; }
+
+        &__nav--start {
+            grid-column: 1 / -1;
+            order: 3;
+        }
+
+        &__user { display: none; }
+    }
+
+    @media (max-width: 575.98px) {
+        &__brand img { width: 110px; }
+        &__product { font-size: 1.25rem; }
+    }
+}
+
+// Lien de navigation : Diatype Medium 16, soulignement en fondu au survol
+.ha-nav-link {
+    font-size: 1rem;
+    font-weight: 500;
+    color: $ha-noir;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 150ms var(--ha-ease);
+
+    &:hover,
+    &:focus-visible {
+        color: $ha-noir;
+        text-decoration-color: currentColor;
+    }
+}
+
+// ── Pied de page ──
+.ha-footer {
+    flex-shrink: 0;
+    background: $ha-gris-tres-clair;
+    padding: 48px 0 32px;
+    font-size: .875rem;
+    line-height: 1.4;
+    font-weight: 400;
+
+    &__columns {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 32px;
+    }
+
+    &__title {
+        font-family: $ha-font-title;
+        font-size: 1rem;
+        line-height: 1.2;
+        text-transform: uppercase;
+        color: $ha-noir;
+        margin-bottom: 12px;
+    }
+
+    &__links {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    a {
+        color: $ha-noir;
+        font-weight: 400;
+    }
+
+    // Ligne de crédits entre deux carrés 6 × 6
+    &__credits {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 48px;
+        color: $ha-gris-fonce;
+        font-size: .75rem;
+
+        &::before,
+        &::after {
+            content: "";
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            background: $ha-noir;
+        }
+
+        span { flex: 1; }
+    }
+}
+
+// ── Liens ──
+.ha-app a:not(.btn):not(.ha-nav-link):not(.ha-header__brand) {
+    text-underline-offset: 3px;
+}
+
+// ── Boutons ──
+.ha-app {
+    .btn {
+        --bs-btn-font-size: 1rem;
+        --bs-btn-line-height: 1.3;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: color 150ms var(--ha-ease), background-color 150ms var(--ha-ease), border-color 150ms var(--ha-ease);
+    }
+
+    .btn-sm {
+        --bs-btn-font-size: .875rem;
+    }
+
+    .btn-lg {
+        --bs-btn-padding-y: 1.25rem;
+        --bs-btn-padding-x: 1.5rem;
+        --bs-btn-font-size: 1rem;
+    }
+
+    // Primaire : vert, texte blanc
+    .btn-primary,
+    .btn-success {
+        --bs-btn-color: #{$ha-blanc};
+        --bs-btn-bg: #{$ha-vert};
+        --bs-btn-border-color: #{$ha-vert};
+        --bs-btn-hover-color: #{$ha-blanc};
+        --bs-btn-hover-bg: #{$ha-vert-hover};
+        --bs-btn-hover-border-color: #{$ha-vert-hover};
+        --bs-btn-active-color: #{$ha-blanc};
+        --bs-btn-active-bg: #{$ha-vert-hover};
+        --bs-btn-active-border-color: #{$ha-vert-hover};
+        --bs-btn-disabled-color: #{$ha-blanc};
+        --bs-btn-disabled-bg: #{$ha-vert-disabled};
+        --bs-btn-disabled-border-color: #{$ha-vert-disabled};
+        --bs-btn-disabled-opacity: 1;
+    }
+
+    // Secondaire : fond blanc, bordure gris clair, texte noir
+    .btn-secondary,
+    .btn-outline-primary,
+    .btn-outline-secondary,
+    .btn-outline-success,
+    .btn-info,
+    .btn-light {
+        --bs-btn-color: #{$ha-noir};
+        --bs-btn-bg: #{$ha-blanc};
+        --bs-btn-border-color: #{$ha-gris-clair};
+        --bs-btn-hover-color: #{$ha-noir};
+        --bs-btn-hover-bg: #{$ha-blanc};
+        --bs-btn-hover-border-color: #{$ha-noir};
+        --bs-btn-active-color: #{$ha-noir};
+        --bs-btn-active-bg: #{$ha-gris-tres-clair};
+        --bs-btn-active-border-color: #{$ha-noir};
+        --bs-btn-disabled-color: #{$ha-gris};
+        --bs-btn-disabled-bg: #{$ha-blanc};
+        --bs-btn-disabled-border-color: #EBEBEC;
+        --bs-btn-disabled-opacity: 1;
+    }
+
+    // Action destructive : texte Prune, bordure gris clair
+    .btn-outline-danger {
+        --bs-btn-color: #{$ha-prune};
+        --bs-btn-bg: #{$ha-blanc};
+        --bs-btn-border-color: #{$ha-gris-clair};
+        --bs-btn-hover-color: #{$ha-blanc};
+        --bs-btn-hover-bg: #{$ha-prune};
+        --bs-btn-hover-border-color: #{$ha-prune};
+        --bs-btn-active-color: #{$ha-blanc};
+        --bs-btn-active-bg: #{$ha-prune};
+        --bs-btn-active-border-color: #{$ha-prune};
+    }
+
+    .btn-danger {
+        --bs-btn-color: #{$ha-blanc};
+        --bs-btn-bg: #{$ha-prune};
+        --bs-btn-border-color: #{$ha-prune};
+        --bs-btn-hover-color: #{$ha-blanc};
+        --bs-btn-hover-bg: #3F1E28;
+        --bs-btn-hover-border-color: #3F1E28;
+    }
+
+    // Mode test : jaune Sahara, texte noir
+    .btn-warning {
+        --bs-btn-color: #{$ha-noir};
+        --bs-btn-bg: #{$ha-sahara};
+        --bs-btn-border-color: #{$ha-sahara};
+        --bs-btn-hover-color: #{$ha-noir};
+        --bs-btn-hover-bg: #9A7505;
+        --bs-btn-hover-border-color: #9A7505;
+    }
+
+    // Tertiaire : texte seul + flèche
+    .btn-link {
+        --bs-btn-color: #{$ha-noir};
+        --bs-btn-hover-color: #{$ha-noir};
+        --bs-btn-padding-x: 0;
+        text-decoration: underline;
+        text-decoration-color: transparent;
+        text-underline-offset: 4px;
+
+        &:hover { text-decoration-color: currentColor; }
+    }
+
+    // Flèche → à droite d'un libellé
+    .ha-arrow::after {
+        content: "→";
+        font-weight: 400;
+    }
+}
+
+// ── Formulaires ──
+.ha-app {
+    .form-label,
+    .form-check-label {
+        color: $ha-noir;
+        font-weight: 500;
+    }
+
+    .form-label.fw-semibold { font-weight: 700 !important; }
+
+    .form-text {
+        color: $ha-gris-fonce;
+        font-size: .875rem;
+    }
+
+    .form-control,
+    .form-select {
+        min-height: 48px;
+    }
+
+    .form-control-sm,
+    .form-select-sm {
+        min-height: 40px;
+    }
+
+    .form-control-color {
+        min-height: 48px;
+        width: 72px;
+        padding: 4px;
+    }
+
+    .input-group-text {
+        background: $ha-gris-tres-clair;
+        color: $ha-gris-fonce;
+        border-color: $ha-gris;
+    }
+
+    .needs-validation .form-control:valid,
+    .needs-validation .form-select:valid {
+        border-color: $ha-gris;
+    }
+
+    textarea.form-control { min-height: 96px; }
+}
+
+// ── Cartes et sections ──
+.ha-app {
+    .card {
+        --bs-card-border-color: #{$ha-gris-clair};
+        --bs-card-cap-bg: #{$ha-blanc};
+        --bs-card-spacer-y: 24px;
+        --bs-card-spacer-x: 24px;
+        --bs-card-cap-padding-y: 16px;
+        --bs-card-cap-padding-x: 24px;
+    }
+
+    .card-header {
+        border-bottom-color: $ha-gris-clair;
+    }
+
+    // Titre de section dans une carte : eyebrow Franklin avec carré
+    .card-header h5,
+    .ha-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1.25rem;
+        margin: 0;
+
+        &::before {
+            content: "";
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            background: $ha-noir;
+        }
+    }
+
+    .accordion {
+        --bs-accordion-border-color: #{$ha-gris-clair};
+        --bs-accordion-btn-padding-y: 20px;
+        --bs-accordion-btn-padding-x: 24px;
+        --bs-accordion-body-padding-y: 24px;
+        --bs-accordion-body-padding-x: 24px;
+        --bs-accordion-active-bg: #{$ha-gris-tres-clair};
+        --bs-accordion-active-color: #{$ha-noir};
+        --bs-accordion-btn-focus-box-shadow: 0 0 0 .25rem #{rgba($ha-vert, .35)};
+    }
+
+    .accordion-button {
+        font-family: $ha-font-title;
+        font-size: 1.25rem;
+        line-height: 1.1;
+        text-transform: uppercase;
+        color: $ha-noir;
+        gap: 8px;
+
+        &::before {
+            content: "";
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            background: $ha-noir;
+        }
+    }
+
+    .accordion-button::after {
+        transition: transform 400ms var(--ha-ease);
+    }
+
+    // Alertes : aplats de la palette, texte noir
+    .alert {
+        --bs-alert-border-color: transparent;
+        --bs-alert-color: #{$ha-noir};
+        --bs-alert-link-color: #{$ha-noir};
+    }
+
+    .alert-info { --bs-alert-bg: #{$ha-lila}; }
+    .alert-success { --bs-alert-bg: #{$ha-vanille}; }
+    .alert-warning { --bs-alert-bg: #{$ha-vanille}; }
+    .alert-danger { --bs-alert-bg: #{$ha-rose}; }
+
+    // Badges : tags Franklin capitales, angles droits
+    .badge {
+        font-family: $ha-font-title;
+        font-weight: 400;
+        font-size: .875rem;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        padding: 6px 8px;
+    }
+
+    .text-bg-success,
+    .badge.bg-success { background-color: $ha-vert !important; color: $ha-blanc !important; }
+    .text-bg-warning,
+    .badge.bg-warning { background-color: $ha-vanille !important; color: $ha-cuir !important; }
+    .text-bg-info,
+    .badge.bg-info { background-color: $ha-lila !important; color: $ha-prune !important; }
+    .text-bg-secondary,
+    .badge.bg-secondary { background-color: $ha-gris-tres-clair !important; color: $ha-noir !important; }
+    .text-bg-danger,
+    .badge.bg-danger { background-color: $ha-prune !important; color: $ha-blanc !important; }
+
+    .text-muted { color: $ha-gris-fonce !important; }
+
+    // Pastille d'administrateur
+    .ha-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid $ha-gris-clair;
+        background: $ha-blanc;
+        color: $ha-noir;
+        font-size: .875rem;
+
+        &--owner {
+            background: $ha-vanille;
+            border-color: $ha-vanille;
+        }
+
+        form { display: inline-flex; }
+    }
+}
+
+// ── Tableaux ──
+.ha-app {
+    .table {
+        --bs-table-hover-bg: #{$ha-gris-tres-clair};
+        --bs-table-hover-color: #{$ha-noir};
+        margin-bottom: 0;
+    }
+
+    .table > thead th {
+        font-family: $ha-font-title;
+        font-weight: 400;
+        font-size: 1rem;
+        text-transform: uppercase;
+        color: $ha-noir;
+        border-bottom-color: $ha-noir;
+        white-space: nowrap;
+    }
+
+    .table td { padding-top: 12px; padding-bottom: 12px; }
+
+    .ha-table-wrap {
+        border: 1px solid $ha-gris-clair;
+        padding: 0 16px;
+        overflow-x: auto;
+    }
+
+    .cursor-pointer { cursor: pointer; }
+}
+
+// ── Onglets ──
+.ha-app .nav-tabs {
+    --bs-nav-tabs-border-color: #{$ha-gris-clair};
+    --bs-nav-tabs-link-active-color: #{$ha-noir};
+    --bs-nav-tabs-link-active-bg: #{$ha-blanc};
+    --bs-nav-tabs-link-active-border-color: #{$ha-gris-clair} #{$ha-gris-clair} #{$ha-blanc};
+    --bs-nav-link-color: #{$ha-gris-fonce};
+    --bs-nav-link-hover-color: #{$ha-noir};
+
+    .nav-link {
+        font-family: $ha-font-title;
+        font-size: 1.25rem;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+// ── Toasts ──
+.ha-app .toast {
+    --bs-toast-border-color: #{$ha-gris-clair};
+    --bs-toast-header-color: #{$ha-noir};
+    --bs-toast-header-bg: #{$ha-blanc};
+    --bs-toast-color: #{$ha-noir};
+
+    .toast-header strong {
+        font-family: $ha-font-title;
+        font-weight: 400;
+        font-size: 1rem;
+        text-transform: uppercase;
+    }
+}
+
+// ── En-tête de page (titre + actions) ──
+.ha-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 64px 0 48px;
+
+    &__title {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        min-width: 0;
+
+        h1 {
+            margin: 0;
+            font-size: 3.625rem;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+    }
+
+    @media (max-width: 767.98px) {
+        padding: 48px 0 32px;
+
+        &__title h1 { font-size: 2.375rem; }
+    }
+}
+
+.ha-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: $ha-noir;
+    font-weight: 500;
+    text-decoration: none;
+
+    &::before { content: "←"; }
+
+    &:hover { text-decoration: underline; text-underline-offset: 4px; }
+}
+
+// ── Landing ──
+.ha-landing {
+    padding: 96px 0;
+
+    &__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+        gap: 72px;
+        align-items: start;
+    }
+
+    &__intro {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+
+        h1 {
+            margin: 0;
+            font-size: 6rem;
+            line-height: .8;
+        }
+    }
+
+    @media (max-width: 991.98px) {
+        padding: 64px 0;
+
+        &__grid {
+            grid-template-columns: 1fr;
+            gap: 48px;
+        }
+
+        &__intro h1 { font-size: 3.625rem; }
+    }
+}
+
+// Encart plein (Lila, texte noir) : la touche de couleur de la page
+.ha-notice {
+    background: $ha-lila;
+    color: $ha-noir;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    p { margin: 0; }
+
+    a { color: $ha-noir; font-weight: 700; }
+}
+
+// Carte d'authentification (connexion, inscription…)
+.ha-auth-card {
+    border: 1px solid $ha-gris-clair;
+    background: $ha-blanc;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+    h2 {
+        font-size: 2.375rem;
+        margin: 0;
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group label { margin: 0; color: $ha-noir; }
+
+    &__links {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-top: 24px;
+        border-top: 1px solid $ha-gris-clair;
+    }
+
+    @media (max-width: 575.98px) {
+        padding: 32px 24px;
+    }
+}
+
+.ha-auth-page {
+    padding: 96px 0;
+    display: flex;
+    justify-content: center;
+
+    .ha-auth-card {
+        width: 100%;
+        max-width: 560px;
+    }
+
+    @media (max-width: 767.98px) { padding: 48px 0; }
+}
+
+// Règles de mot de passe (inscription)
+.ha-rules {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: grid;
+    gap: 4px;
+    font-size: .875rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: $ha-gris-fonce;
+
+        &::before {
+            content: "";
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            border: 1px solid $ha-gris;
+        }
+
+        &.is-valid {
+            color: $ha-noir;
+
+            &::before {
+                background: $ha-vert;
+                border-color: $ha-vert;
+            }
+        }
+    }
+}
+
+.ha-match {
+    font-size: .875rem;
+    margin-top: 8px;
+    color: $ha-noir;
+}
+
+// ── État vide du tableau de bord ──
+.ha-onboarding {
+    display: flex;
+    flex-direction: column;
+    gap: 72px;
+
+    &__steps {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 24px;
+        counter-reset: ha-step;
+
+        @media (max-width: 991.98px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 575.98px) { grid-template-columns: 1fr; }
+    }
+
+    &__step {
+        border: 1px solid $ha-gris-clair;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        counter-increment: ha-step;
+
+        // Numéro dans un tag coloré : la touche de couleur de la série
+        &::before {
+            content: "0" counter(ha-step);
+            align-self: flex-start;
+            font-family: $ha-font-title;
+            font-size: 1.625rem;
+            line-height: 1;
+            padding: 8px 12px;
+            background: $ha-lila;
+            color: $ha-prune;
+        }
+
+        h3 {
+            font-size: 1.625rem;
+            line-height: 1;
+            margin: 0;
+        }
+
+        p { margin: 0; }
+
+        .btn { align-self: flex-start; margin-top: auto; }
+    }
+
+    &__compare {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+
+        @media (max-width: 767.98px) { grid-template-columns: 1fr; }
+    }
+
+    &__concept {
+        border: 1px solid $ha-gris-clair;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+
+        h3 {
+            font-size: 2.375rem;
+            margin: 0;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 0;
+            list-style: none;
+            display: grid;
+            gap: 8px;
+
+            li {
+                display: flex;
+                gap: 12px;
+
+                &::before {
+                    content: "";
+                    flex: 0 0 5px;
+                    width: 5px;
+                    height: 5px;
+                    margin-top: .45em;
+                    background: $ha-noir;
+                }
+            }
+        }
+
+        p { margin: 0; }
+
+        .btn { align-self: flex-start; margin-top: auto; }
+
+        @media (max-width: 575.98px) { padding: 32px 24px; }
+    }
+}
+
+// ── Modale de création de stream ──
+.ha-app {
+    .modal-header,
+    .modal-body {
+        padding-left: 40px;
+        padding-right: 40px;
+
+        @media (max-width: 575.98px) {
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+    }
+
+    .modal-header { padding-top: 24px; padding-bottom: 24px; }
+    .modal-body { padding-top: 32px; padding-bottom: 40px; }
+
+    .stream-mode-card {
+        cursor: pointer;
+        user-select: none;
+        border: 1px solid $ha-gris-clair;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+        transition: border-color 150ms var(--ha-ease);
+
+        .fw-semibold {
+            font-family: $ha-font-title;
+            font-size: 1.25rem;
+            font-weight: 400 !important;
+            text-transform: uppercase;
+            color: $ha-noir;
+        }
+
+        &:hover { border-color: $ha-noir; }
+
+        &.active {
+            border-color: $ha-vert;
+            box-shadow: inset 0 0 0 1px $ha-vert;
+        }
+    }
+
+    #createStreamModal .input-group-text { font-size: .75rem; }
+
+    .ha-soft-box {
+        background: $ha-gris-tres-clair;
+        padding: 16px;
+    }
+}
+
+// Étapes de connexion de l'asso
+.asso-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+.step-bubble {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: $ha-font-title;
+    font-size: 1rem;
+    background: $ha-blanc;
+    border: 1px solid $ha-gris;
+    color: $ha-gris-fonce;
+    transition: background 150ms var(--ha-ease), border-color 150ms var(--ha-ease), color 150ms var(--ha-ease);
+}
+
+.asso-step.active .step-bubble,
+.asso-step.done .step-bubble {
+    background: $ha-vert;
+    border-color: $ha-vert;
+    color: $ha-blanc;
+}
+
+.step-label { font-size: .75rem; color: $ha-gris-fonce; white-space: nowrap; }
+
+.asso-step.active .step-label,
+.asso-step.done .step-label { color: $ha-noir; font-weight: 700; }
+
+.step-line { height: 1px; background: $ha-gris-clair; margin: 0 8px 18px; }
+
+// ── Mode test ──
+.ha-test-panel {
+    background: $ha-vanille;
+    padding: 24px;
+    margin-bottom: 24px;
+
+    .form-label { margin-bottom: 4px; }
+}
+
+// ── Vue live ──
+.ha-app .live-entry {
+    border-left: 4px solid $ha-vert;
+}
+
+.ha-empty {
+    text-align: center;
+    padding: 72px 24px;
+    border: 1px solid $ha-gris-clair;
+    color: $ha-gris-fonce;
+
+    p { margin: 0; }
+
+    &__title {
+        font-family: $ha-font-title;
+        font-size: 1.625rem;
+        text-transform: uppercase;
+        color: $ha-noir;
+        margin-bottom: 8px !important;
+    }
+}
+
+// ── Prévisualisations des widgets : rendu identique aux widgets réels ──
+.ha-app .widget-alert-box,
+.ha-app .card-widget-preview {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    color: $ha-noir;
+}
+
+.ha-preview-frame {
+    border: 1px dashed $ha-gris;
+    padding: 16px;
+}
+
+// ── Accessibilité : mouvement réduit ──
+@media (prefers-reduced-motion: reduce) {
+    .ha-app *,
+    .ha-app *::before,
+    .ha-app *::after {
+        transition-duration: 0ms !important;
+        animation-duration: 0ms !important;
+    }
+}

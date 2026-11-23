@@ -1,0 +1,104 @@
+// Charte HelloAsso : tokens et variables Bootstrap du back-office.
+// Référence : brandbook HelloAsso V1 (couleurs, typographie, formes).
+
+// ── Palette principale ──
+$ha-vert: #4A8100;
+$ha-vert-hover: #3A6600;
+$ha-vert-disabled: #B7CD99;
+$ha-vanille: #FDFFC6;
+$ha-rose: #FBA2EC;
+$ha-sahara: #B38806;
+$ha-lila: #F1EDFF;
+$ha-cuir: #644A02;
+$ha-prune: #572A37;
+
+// ── Neutres ──
+$ha-noir: #101010;
+$ha-gris-fonce: #434649;
+$ha-gris: #888C8F;
+$ha-gris-clair: #CDCED0;
+$ha-gris-tres-clair: #F5F5F5;
+$ha-blanc: #FFFFFF;
+
+// ── Typographies (fichiers servis depuis /fonts, voir bin/fetch-fonts.php) ──
+$ha-font-title: "ITC Franklin Gothic", Impact, "Arial Narrow", sans-serif;
+$ha-font-text: "ABC Diatype Rounded", Arial, sans-serif;
+
+// ── Variables Bootstrap ──
+$primary: $ha-vert;
+$secondary: $ha-gris-fonce;
+$success: $ha-vert;
+$info: $ha-lila;
+$warning: $ha-sahara;
+$danger: $ha-prune;
+$light: $ha-gris-tres-clair;
+$dark: $ha-noir;
+
+$body-bg: $ha-blanc;
+$body-color: $ha-gris-fonce;
+$body-emphasis-color: $ha-noir;
+$body-secondary-color: $ha-gris-fonce;
+$headings-color: $ha-noir;
+
+$font-family-sans-serif: $ha-font-text;
+$font-weight-base: 500;
+$font-weight-normal: 500;
+$font-weight-semibold: 700;
+$font-weight-bold: 700;
+$line-height-base: 1.3;
+
+$headings-font-family: $ha-font-title;
+$headings-font-weight: 400;
+$headings-line-height: .9;
+$h1-font-size: 4.5rem;     // 72px
+$h2-font-size: 3.625rem;   // 58px
+$h3-font-size: 2.375rem;   // 38px
+$h4-font-size: 1.625rem;   // 26px
+$h5-font-size: 1.25rem;    // 20px
+$h6-font-size: 1rem;       // 16px
+
+$link-color: $ha-noir;
+$link-hover-color: $ha-noir;
+$link-decoration: underline;
+
+// Angles droits partout, boutons à 2px
+$border-radius: 0;
+$border-radius-sm: 0;
+$border-radius-lg: 0;
+$border-radius-xl: 0;
+$border-radius-xxl: 0;
+$btn-border-radius: 2px;
+$btn-border-radius-sm: 2px;
+$btn-border-radius-lg: 2px;
+
+// Pas d'ombre, sauf pour les surcouches (toasts, menus, modales)
+$box-shadow: 0 8px 14px rgba(0, 0, 0, .08);
+$box-shadow-sm: none;
+$box-shadow-lg: 0 8px 14px rgba(0, 0, 0, .08);
+
+$border-color: $ha-gris-clair;
+$input-border-color: $ha-gris;
+$input-color: $ha-noir;
+$input-placeholder-color: $ha-gris;
+$component-active-bg: $ha-vert;
+$focus-ring-color: rgba($ha-vert, .35);
+$input-focus-border-color: $ha-vert;
+$form-check-input-checked-bg-color: $ha-vert;
+$form-check-input-checked-border-color: $ha-vert;
+
+$btn-font-weight: 700;
+$btn-padding-y: .75rem;
+$btn-padding-x: 1rem;
+$btn-padding-y-sm: .375rem;
+$btn-padding-x-sm: .75rem;
+
+$table-color: $ha-noir;
+$table-border-color: $ha-gris-clair;
+$table-hover-bg: $ha-gris-tres-clair;
+
+$modal-content-border-color: $ha-gris-clair;
+$modal-backdrop-opacity: .6;
+$toast-border-color: $ha-gris-clair;
+
+$tooltip-bg: $ha-noir;
+$tooltip-color: $ha-blanc;

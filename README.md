@@ -28,6 +28,10 @@ Install PHP dependencies using Composer:
 composer install
 ```
 
+`composer install` also downloads the HelloAsso brand fonts (ITC Franklin Gothic, ABC Diatype Rounded) into `public/fonts/` (`bin/fetch-fonts.php`, also runnable with `composer fetch-fonts`). They are licensed, so they are not committed (the folder is gitignored), and helloasso.com serves them without CORS headers, so the app has to serve them itself. If the download fails, the back-office falls back to Impact / Arial.
+
+The back-office (`styles.scss`) and the OBS widgets (`widget.scss`) use separate stylesheets: the HelloAsso theme never changes how widgets render on stream.
+
 Install frontend dependencies using npm:
 require node >22.12
 

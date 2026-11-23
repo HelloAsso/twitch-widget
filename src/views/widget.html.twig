@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}HelloAsso Widgets{% endblock %}</title>
-    {% if appCss %}
-      <link rel="stylesheet" href="/dist/{{ appCss }}">
+    <title>{% block title %}HelloAsso Stream{% endblock %}</title>
+    {# Feuille de style propre aux widgets : le thème du back-office ne s'y applique pas #}
+    {% if viteEntries.widgetStyles.css is defined and viteEntries.widgetStyles.css %}
+      <link rel="stylesheet" href="/dist/{{ viteEntries.widgetStyles.css }}">
       {% endif %}
       {% if appJs %}
       <script type="module" src="/dist/{{ appJs }}"></script>

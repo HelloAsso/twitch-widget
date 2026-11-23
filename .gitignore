@@ -10,3 +10,6 @@ log.txt
 node_modules/
 /.phpunit.result.cache
 /.tokensave/
+
+# Polices sous licence de la charte HelloAsso, téléchargées par `composer install` (bin/fetch-fonts.php)
+/public/fonts/

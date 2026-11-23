@@ -175,6 +175,10 @@ $container->set(Twig::class, function (): Twig {
     }
 
     $twig->getEnvironment()->addGlobal('appVersion', $_SERVER['APP_VERSION'] ?? null);
+    $twig->getEnvironment()->addGlobal('sessionUser', $_SESSION['user'] ?? null);
+    foreach (App\Services\HelloAssoLinks::asTwigGlobals() as $name => $value) {
+        $twig->getEnvironment()->addGlobal($name, $value);
+    }
 
     return $twig;
 });

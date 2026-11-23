@@ -1,0 +1,5 @@
+// Styles des widgets affichés dans OBS ou sur le site de l'asso (barre, alerte, carte).
+// Bundle séparé du back-office : le thème HelloAsso du back-office (polices, arrondis, couleurs Bootstrap)
+// ne doit pas modifier le rendu des widgets déjà en place chez les streamers.
+@import "bootstrap/scss/bootstrap";
+@import "main";

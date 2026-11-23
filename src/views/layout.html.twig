@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="fr"  data-bs-theme="dark">
+<html lang="fr" data-bs-theme="light">
   <head>
     <meta charset="UTF-8">
-    <title>{% block title %}HelloAsso Widgets{% endblock %}</title>
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}HelloAsso Stream{% endblock %}</title>
+      <link rel="preload" href="/fonts/ABCDiatypeRounded-500.woff2" as="font" type="font/woff2" crossorigin>
+      <link rel="preload" href="/fonts/ITCFranklinGothic-700-v2.woff2" as="font" type="font/woff2" crossorigin>
       {% if appCss %}
       <link rel="stylesheet" href="/dist/{{ appCss }}">
       {% endif %}
@@ -15,16 +15,61 @@
       {% block scripts %}{% endblock %}
       {% block styles %}{% endblock %}
   </head>
-  <body>
+  <body class="ha-app">
     <style>
     .front {
       clip-path: inset(0 50% 0 0 round 999px);
       -webkit-clip-path: inset(0 50% 0 0 round 999px);
     }
     </style>
-    {% block content %}{% endblock %}
-    <footer class="text-center py-3 mt-auto" style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">
-      Fait par HelloAsso{% if appVersion %} &mdash; <span title="{{ appVersion }}">{{ appVersion|slice(0, 7) }}</span>{% endif %}
+
+    <header class="ha-header">
+      <div class="container ha-header__inner">
+        <nav class="ha-header__nav ha-header__nav--start" aria-label="Liens HelloAsso">
+          {% if sessionUser %}
+            <a class="ha-nav-link" href="{{ helpCenterUrl }}" target="_blank" rel="noopener">Centre d'aide</a>
+          {% endif %}
+          <a class="ha-nav-link" href="{{ helloassoAccountUrl }}" target="_blank" rel="noopener">Mon compte HelloAsso</a>
+        </nav>
+
+        <a class="ha-header__brand" href="{{ sessionUser ? '/admin' : '/' }}" aria-label="HelloAsso Stream, accueil">
+          <img src="{{ wordmarkUrl }}" alt="HelloAsso" width="124" height="27">
+          <span class="ha-header__product">Stream</span>
+        </a>
+
+        <div class="ha-header__nav ha-header__nav--end">
+          {% if sessionUser %}
+            <span class="ha-header__user">{{ sessionUser.email }}</span>
+            <a href="/logout" class="btn btn-secondary btn-sm">Déconnexion</a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    <main class="ha-main">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="ha-footer">
+      <div class="container">
+        <div class="ha-footer__columns">
+          <div>
+            <p class="ha-footer__title ha-title-brand">HelloAsso Stream</p>
+            <p class="mb-0">Affichez vos dons en direct pendant un live caritatif.</p>
+          </div>
+          <div>
+            <p class="ha-footer__title">Ressources</p>
+            <ul class="ha-footer__links">
+              <li><a href="{{ helpCenterUrl }}" target="_blank" rel="noopener">Comment fonctionne HelloAsso Stream</a></li>
+              <li><a href="{{ helloassoAccountUrl }}" target="_blank" rel="noopener">Mon compte HelloAsso</a></li>
+              <li><a href="{{ legalNoticeUrl }}" target="_blank" rel="noopener">Mentions légales</a></li>
+            </ul>
+          </div>
+        </div>
+        <p class="ha-footer__credits">
+          <span>© {{ "now"|date("Y") }} HelloAsso{% if appVersion %} · version <span title="{{ appVersion }}">{{ appVersion|slice(0, 7) }}</span>{% endif %}</span>
+        </p>
+      </div>
     </footer>
   </body>
 </html>

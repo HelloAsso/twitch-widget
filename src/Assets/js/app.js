@@ -1,6 +1,9 @@
 import '../scss/styles.scss';
 import * as bootstrap from 'bootstrap'
 
+// Les scripts inline des vues (création de stream, toasts…) utilisent l'objet global `bootstrap`
+window.bootstrap = bootstrap;
+
 
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))

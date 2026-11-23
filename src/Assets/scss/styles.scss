@@ -1,2 +1,6 @@
+// Back-office HelloAsso Stream : Bootstrap aux couleurs de la charte HelloAsso.
+// Les widgets (OBS, iframe) utilisent widget.scss, sans ce thème.
+@import "theme";
 @import "bootstrap/scss/bootstrap";
 @import "main";
+@import "app";
