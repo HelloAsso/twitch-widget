@@ -216,7 +216,7 @@
 		</div>
 
 	{% if messages['error'] %}
-		{% include '_toast.html.twig' with { title: 'Erreur', body: messages['error'][0] } %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: messages['error'][0] } %}
 	{% endif %}
 
 	{% if messages['success'] %}

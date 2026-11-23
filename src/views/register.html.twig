@@ -40,7 +40,7 @@
 	</section>
 
 	{% if register_error %}
-		{% include '_toast.html.twig' with { title: 'Erreur', body: register_error } %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: register_error } %}
 	{% endif %}
 {% endblock %}
 

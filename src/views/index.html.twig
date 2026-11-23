@@ -42,7 +42,7 @@
 	</section>
 
 	{% if login_failed %}
-		{% include '_toast.html.twig' with { title: 'Erreur', body: 'Email ou mot de passe invalide.' } %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: 'Email ou mot de passe invalide.' } %}
 	{% endif %}
 
 	{% if mail_sent %}
@@ -62,10 +62,10 @@
 	{% endif %}
 
 	{% if email_verify_error %}
-		{% include '_toast.html.twig' with { title: 'Erreur', body: 'Le lien de vérification est invalide ou a expiré.' } %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: 'Le lien de vérification est invalide ou a expiré.' } %}
 	{% endif %}
 
 	{% if email_not_verified %}
-		{% include '_toast.html.twig' with { title: 'Email non vérifié', body: "Votre adresse email n'est pas encore vérifiée. Un nouvel email de vérification vient de vous être envoyé." } %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Email non vérifié', body: "Votre adresse email n'est pas encore vérifiée. Un nouvel email de vérification vient de vous être envoyé." } %}
 	{% endif %}
 {% endblock %}

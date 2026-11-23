@@ -628,18 +628,75 @@
     }
 }
 
-// ── Toasts ──
-.ha-app .toast {
-    --bs-toast-border-color: #{$ha-gris-clair};
-    --bs-toast-header-color: #{$ha-noir};
-    --bs-toast-header-bg: #{$ha-blanc};
-    --bs-toast-color: #{$ha-noir};
+// ── Toasts : en-tête plein (vert = succès, prune = erreur), en haut sous l'en-tête ──
+.ha-toast-container {
+    position: fixed;
+    top: 88px;
+    right: 24px;
+    z-index: $zindex-toast;
 
-    .toast-header strong {
-        font-family: $ha-font-title;
-        font-weight: 400;
-        font-size: 1rem;
-        text-transform: uppercase;
+    // Mobile : pleine largeur avec la marge de 16px, sous l'en-tête qui passe sur deux lignes
+    @include media-breakpoint-down(sm) {
+        top: 116px;
+        left: 16px;
+        right: 16px;
+        width: auto;
+    }
+}
+
+.ha-app .ha-toast {
+    --bs-toast-max-width: 100%;
+    --bs-toast-bg: #{$ha-blanc};
+    --bs-toast-color: #{$ha-noir};
+    --bs-toast-font-size: 1rem;
+    --bs-toast-header-color: #{$ha-blanc};
+    --bs-toast-header-border-color: transparent;
+    // Surcouche : seule ombre tolérée par la charte
+    --bs-toast-box-shadow: 0 8px 14px rgba(0, 0, 0, .08);
+    width: 400px;
+
+    @include media-breakpoint-down(sm) {
+        width: 100%;
+    }
+
+    .toast-header {
+        padding: 12px 16px;
+
+        strong {
+            font-family: $ha-font-title;
+            font-weight: 400;
+            font-size: 1.25rem;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+
+        .btn-close {
+            --bs-btn-close-opacity: 1;
+            --bs-btn-close-focus-shadow: 0 0 0 2px #{$ha-blanc};
+        }
+    }
+
+    .toast-body {
+        padding: 16px;
+    }
+
+    &--success {
+        --bs-toast-border-color: #{$ha-vert};
+        --bs-toast-header-bg: #{$ha-vert};
+    }
+
+    &--error {
+        --bs-toast-border-color: #{$ha-prune};
+        --bs-toast-header-bg: #{$ha-prune};
+    }
+
+    // Entrée en glissant depuis le haut (coupée par prefers-reduced-motion plus bas)
+    &.fade {
+        transition: opacity .2s ease-out, transform .2s ease-out;
+    }
+
+    &.showing {
+        transform: translateY(-8px);
     }
 }
 
