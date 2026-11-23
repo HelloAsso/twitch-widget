@@ -14,8 +14,9 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
+use App\Services\Mailer;
 use Exception;
-use MailchimpTransactional\ApiClient;
+use Monolog\Logger;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Flash\Messages;
@@ -40,8 +41,9 @@ class AdminController
         private ApiWrapper $apiWrapper,
         private AccessTokenRepository $accessTokenRepository,
         private AuthorizationCodeRepository $authorizationCodeRepository,
-        private ApiClient $mailchimp,
+        private Mailer $mailer,
         private StreamDonationHistoryRepository $donationHistoryRepository,
+        private Logger $logger,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
     }
@@ -129,19 +131,11 @@ class AdminController
         $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
         try {
-            $result = $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Bienvenue sur HelloAsso Stream !",
-                    "html" => $this->buildWelcomeEmail($resetUrl),
-                    "to" => [["email" => $user->email, "type" => "to"]],
-                ],
-            ]);
-
-            if ($result instanceof \Exception) {
-                throw $result;
-            }
+            $this->mailer->send(
+                $user->email,
+                "Bienvenue sur HelloAsso Stream !",
+                $this->buildWelcomeEmail($resetUrl),
+            );
         } catch (\Exception $e) {
             $this->logger->error('Échec de l\'envoi de l\'email de bienvenue', [
                 'email' => $user->email,
@@ -198,20 +192,16 @@ class AdminController
         $resetUrl = $_SERVER['WEBSITE_DOMAIN'] . $routeParser->urlFor('app_reset_password', ["token" => $user->reset_token]);
 
         try {
-            $result = $this->mailchimp->messages->send([
-                "message" => [
-                    "from_email" => "contact@helloasso.io",
-                    "from_name" => "HelloAsso",
-                    "subject" => "Bienvenue sur HelloAsso Stream !",
-                    "html" => $this->buildWelcomeEmail($resetUrl),
-                    "to" => [["email" => $user->email, "type" => "to"]],
-                ],
-            ]);
-
-            if ($result instanceof \Exception) {
-                throw $result;
-            }
+            $this->mailer->send(
+                $user->email,
+                "Bienvenue sur HelloAsso Stream !",
+                $this->buildWelcomeEmail($resetUrl),
+            );
         } catch (\Exception $e) {
+            $this->logger->error('Échec de l\'envoi de l\'email d\'invitation admin', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
             $this->messages->addMessage('error', 'Admin ajouté mais l\'email d\'invitation n\'a pas pu être envoyé.');
         }
     }

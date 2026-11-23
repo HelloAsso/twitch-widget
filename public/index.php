@@ -21,8 +21,9 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
+use App\Services\BrevoMailer;
+use App\Services\Mailer;
 use DI\Container;
-use MailchimpTransactional\ApiClient;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -133,10 +134,13 @@ $container->set(FileManager::class, function () {
     return new FileManager($storage, $_SERVER['BLOB_URL']);
 });
 
-$container->set(ApiClient::class, function () {
-    $mailchimp = new \MailchimpTransactional\ApiClient();
-    $mailchimp->setApiKey($_SERVER['MANDRILL_API']);
-    return $mailchimp;
+$container->set(Mailer::class, function () {
+    return new BrevoMailer(
+        new \GuzzleHttp\Client(),
+        $_SERVER['BREVO_API_KEY'] ?? '',
+        $_SERVER['MAIL_FROM_EMAIL'] ?? 'contact@helloasso.com',
+        $_SERVER['MAIL_FROM_NAME'] ?? 'HelloAsso',
+    );
 });
 
 $container->set(Twig::class, function (): Twig {
@@ -191,7 +195,7 @@ if ($_SERVER['LOGLEVEL'] == 'DEBUG') {
     $whoops = new \Whoops\Run;
     $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
     // Whoops transforme les dépréciations PHP en exceptions : on ignore celles des dépendances
-    // (ex. mailchimp/transactional sous PHP 8.4+), mais on garde celles du code de l'app
+    // (ex. librairies pas encore compatibles PHP 8.4+), mais on garde celles du code de l'app
     $whoops->silenceErrorsInPaths('~[/\\\\]vendor[/\\\\]~', E_DEPRECATED | E_USER_DEPRECATED);
     $whoops->register();
     $errorMiddleware = $app->addErrorMiddleware(true, true, true, $container->get(Logger::class));

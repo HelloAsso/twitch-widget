@@ -98,7 +98,8 @@ tests/
 ├── bootstrap.php
 └── Unit/
     ├── Services/
-    │   └── ApiWrapperTest.php          # Token generation & refresh (OAuth)
+    │   ├── ApiWrapperTest.php          # Token generation & refresh (OAuth)
+    │   └── BrevoMailerTest.php         # Brevo email sending (mocked HTTP client)
     ├── Repositories/
     │   └── AccessTokenRepositoryTest.php  # Token storage & retrieval (SQLite)
     └── Controllers/
@@ -139,7 +140,7 @@ Clever Cloud deploys on push without waiting for the tests: merge into `develop`
 - **Template Engine:** Twig
 - **Dependency Injection:** PHP-DI
 - **Cloud Storage:** Azure Blob Storage
-- **Email Service:** Mailchimp Transactional (Mandrill)
+- **Email Service:** Brevo (transactional API)
 
 ### Project Structure
 
@@ -186,6 +187,7 @@ twitch-widget/
 
 #### Services (`src/Services/`)
 - **ApiWrapper:** External API integrations and OAuth handling
+- **Mailer / BrevoMailer:** Transactional emails (`Mailer` interface, sent through the Brevo API)
 
 #### Middlewares (`src/Middlewares/`)
 - **AuthMiddleware:** Session-based authentication
@@ -249,6 +251,6 @@ Key environment variables include:
 - Database connection (DBURL, DBPORT, DBNAME, DBUSER, DBPASSWORD)
 - OAuth configuration (CLIENT_ID, CLIENT_SECRET, API_URL)
 - Azure Blob Storage (BLOB_CONNECTION_STRING, BLOB_URL)
-- Email service (MANDRILL_API)
+- Email service (BREVO_API_KEY, optional MAIL_FROM_EMAIL / MAIL_FROM_NAME)
 - Application domain (WEBSITE_DOMAIN)
 - Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 30)
