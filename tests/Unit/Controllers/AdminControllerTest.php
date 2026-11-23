@@ -19,7 +19,8 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
-use MailchimpTransactional\ApiClient;
+use App\Services\Mailer;
+use Monolog\Logger;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -49,12 +50,15 @@ class AdminControllerTest extends TestCase
     private ApiWrapper&MockObject $apiWrapper;
     private AccessTokenRepository&MockObject $accessTokenRepository;
     private AuthorizationCodeRepository&MockObject $authorizationCodeRepository;
-    private ApiClient&MockObject $mailchimp;
+    private Mailer&MockObject $mailer;
     private StreamDonationHistoryRepository&MockObject $donationHistoryRepository;
+    private Logger&MockObject $logger;
     private AdminController $controller;
+    private mixed $previousWebsiteDomain;
 
     protected function setUp(): void
     {
+        $this->previousWebsiteDomain = $_SERVER['WEBSITE_DOMAIN'] ?? null;
         $this->view = $this->createMock(Twig::class);
         $this->fileManager = $this->createMock(FileManager::class);
         $this->eventRepository = $this->createMock(EventRepository::class);
@@ -66,8 +70,9 @@ class AdminControllerTest extends TestCase
         $this->apiWrapper = $this->createMock(ApiWrapper::class);
         $this->accessTokenRepository = $this->createMock(AccessTokenRepository::class);
         $this->authorizationCodeRepository = $this->createMock(AuthorizationCodeRepository::class);
-        $this->mailchimp = $this->createMock(ApiClient::class);
+        $this->mailer = $this->createMock(Mailer::class);
         $this->donationHistoryRepository = $this->createMock(StreamDonationHistoryRepository::class);
+        $this->logger = $this->createMock(Logger::class);
 
         $this->controller = new AdminController(
             $this->view,
@@ -81,8 +86,94 @@ class AdminControllerTest extends TestCase
             $this->apiWrapper,
             $this->accessTokenRepository,
             $this->authorizationCodeRepository,
-            $this->mailchimp,
+            $this->mailer,
             $this->donationHistoryRepository,
+            $this->logger,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->previousWebsiteDomain === null) {
+            unset($_SERVER['WEBSITE_DOMAIN']);
+        } else {
+            $_SERVER['WEBSITE_DOMAIN'] = $this->previousWebsiteDomain;
+        }
+    }
+
+    // =====================================================================
+    // Tests de création d'utilisateur (email de bienvenue)
+    // =====================================================================
+
+    public function testNewUserSendsWelcomeEmailThroughMailer(): void
+    {
+        $_SERVER['WEBSITE_DOMAIN'] = 'https://stream.test';
+        $newUser = $this->buildUser('USER');
+        $newUser->email = 'new@example.com';
+        $newUser->reset_token = 'tok123';
+
+        $this->userRepository->method('select')->willReturn(null);
+        $this->userRepository->method('insert')->willReturn($newUser);
+        $this->userRepository->method('insertResetToken')->willReturn($newUser);
+
+        $this->mailer->expects($this->once())
+            ->method('send')
+            ->with(
+                'new@example.com',
+                'Bienvenue sur HelloAsso Stream !',
+                $this->stringContains('https://stream.test/reset_password/tok123'),
+            );
+        $this->messages->expects($this->once())
+            ->method('addMessage')
+            ->with('success', $this->stringContains('new@example.com'));
+
+        $result = $this->controller->newUser(
+            $this->liveRequest('POST', '/admin/user', ['user_email' => 'new@example.com']),
+            new Response(),
+        );
+
+        $this->assertEquals(302, $result->getStatusCode());
+    }
+
+    public function testNewUserLogsAndFlashesErrorWhenEmailCannotBeSent(): void
+    {
+        $_SERVER['WEBSITE_DOMAIN'] = 'https://stream.test';
+        $newUser = $this->buildUser('USER');
+        $newUser->email = 'new@example.com';
+        $newUser->reset_token = 'tok123';
+
+        $this->userRepository->method('select')->willReturn(null);
+        $this->userRepository->method('insert')->willReturn($newUser);
+        $this->userRepository->method('insertResetToken')->willReturn($newUser);
+
+        $this->mailer->method('send')->willThrowException(new \RuntimeException('Email rejeté par Brevo (HTTP 401) : Key not found'));
+
+        $this->logger->expects($this->once())
+            ->method('error')
+            ->with($this->anything(), $this->callback(
+                fn(array $context) => $context['email'] === 'new@example.com' && str_contains($context['error'], 'Brevo')
+            ));
+        $this->messages->expects($this->once())
+            ->method('addMessage')
+            ->with('error', $this->stringContains('pas pu être envoyé'));
+
+        $result = $this->controller->newUser(
+            $this->liveRequest('POST', '/admin/user', ['user_email' => 'new@example.com']),
+            new Response(),
+        );
+
+        $this->assertEquals(302, $result->getStatusCode());
+    }
+
+    public function testNewUserDoesNotSendEmailForInvalidAddress(): void
+    {
+        $this->mailer->expects($this->never())->method('send');
+        $this->userRepository->expects($this->never())->method('insert');
+        $this->messages->expects($this->once())->method('addMessage')->with('error', 'Email invalide');
+
+        $this->controller->newUser(
+            $this->liveRequest('POST', '/admin/user', ['user_email' => 'pas-un-email']),
+            new Response(),
         );
     }
 
@@ -621,6 +712,7 @@ class AdminControllerTest extends TestCase
             'app_admin_index' => '/admin',
             'app_stream_live' => '/admin/stream/{id}/live',
             'app_stream_edit' => '/admin/stream/{id}/edit',
+            'app_reset_password' => '/reset_password/{token}',
         ] as $name => $pattern) {
             $app->get($pattern, fn() => null)->setName($name);
         }
