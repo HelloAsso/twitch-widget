@@ -181,6 +181,29 @@ class StreamRepositoryTest extends TestCase
     }
 
     // =====================================================================
+    // insert() : les slugs copiés depuis une URL sont nettoyés
+    // =====================================================================
+
+    public function testInsertRemovesUrlParametersFromSlugs(): void
+    {
+        $this->pdo->exec("CREATE TABLE {$this->prefix}widget_donation_goal_bar (charity_stream_guid TEXT)");
+        $this->pdo->exec("CREATE TABLE {$this->prefix}widget_alert_box (
+            charity_stream_guid TEXT,
+            alert_duration      INTEGER,
+            message_template    TEXT,
+            sound_volume        INTEGER
+        )");
+
+        $stream = $this->repository->insert('yg?_gl=1*3vyno6*_gcl_au*NTM3NzQzNTE0LjE3OTMxMTIzNjQ.', 'mon-association/', 'Stream', null, 'CrowdFunding');
+
+        $this->assertSame('yg', $stream->form_slug);
+        $this->assertSame('mon-association', $stream->organization_slug);
+
+        $row = $this->pdo->query("SELECT form_slug, organization_slug FROM {$this->prefix}charity_stream")->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(['form_slug' => 'yg', 'organization_slug' => 'mon-association'], $row);
+    }
+
+    // =====================================================================
     // Helpers
     // =====================================================================
 
