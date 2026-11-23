@@ -130,6 +130,8 @@ Deployment is handled natively by Clever Cloud, which watches the GitHub reposit
 
 Clever Cloud deploys on push without waiting for the tests: merge into `develop` or `main` through pull requests once the tests are green.
 
+Secrets live in GitHub (`SANDBOX_*` / `PROD_*`). On every push to `develop` or `main`, `clever-env-sync.yml` copies them into the matching Clever Cloud app (`API_KEY`, `BLOB_CONNECTION_STRING`, `BREVO_API_KEY`, `CLIENT_ID`, `CLIENT_SECRET`, `MANDRILL_API`) and restarts it when a value changed; it can also be run by hand from the Actions tab. It needs the `CLEVER_TOKEN` and `CLEVER_SECRET` secrets. Other variables (database, `WEBSITE_DOMAIN`, `CC_*`) are managed directly in Clever Cloud.
+
 ## Architecture & Code Organization
 
 ### Framework & Technologies
