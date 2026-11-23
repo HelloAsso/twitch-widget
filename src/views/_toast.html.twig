@@ -1,0 +1,18 @@
+{# Notification affichée au chargement de la page (ouverte par app.js via #liveToast).
+   Variables : title, body, type ('success' par défaut, ou 'error').
+   Un succès disparaît après 8 s ; une erreur reste affichée jusqu'à ce qu'on la ferme. #}
+{% set toastType = type|default('success') == 'error' ? 'error' : 'success' %}
+<div class="toast-container ha-toast-container">
+	<div id="liveToast" class="toast ha-toast ha-toast--{{ toastType }}"
+		role="{{ toastType == 'error' ? 'alert' : 'status' }}"
+		aria-live="{{ toastType == 'error' ? 'assertive' : 'polite' }}" aria-atomic="true"
+		{% if toastType == 'error' %}data-bs-autohide="false"{% else %}data-bs-delay="8000"{% endif %}>
+		<div class="toast-header">
+			<strong class="me-auto">{{ title }}</strong>
+			<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Fermer"></button>
+		</div>
+		<div class="toast-body">
+			{{ body }}
+		</div>
+	</div>
+</div>

@@ -7,7 +7,7 @@
 		{% if openCreateStream %}
 		var createStreamModal = document.getElementById('createStreamModal');
 		if (createStreamModal) {
-			var modal = new bootstrap.Modal(createStreamModal);
+			var modal = bootstrap.Modal.getOrCreateInstance(createStreamModal);
 			modal.show();
 			{% if selectedEventId %}
 			var parentEventSelect = document.getElementById('parent_event');
@@ -21,7 +21,7 @@
 		{% if openCreateEvent %}
 		var createEventModal = document.getElementById('createEventModal');
 		if (createEventModal) {
-			var modal = new bootstrap.Modal(createEventModal);
+			var modal = bootstrap.Modal.getOrCreateInstance(createEventModal);
 			modal.show();
 		}
 		{% endif %}
@@ -39,11 +39,11 @@
 
 		/* ── Init tooltips Bootstrap ── */
 		var tooltipEls = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-		tooltipEls.forEach(function(el) { new bootstrap.Tooltip(el); });
+		tooltipEls.forEach(function(el) { bootstrap.Tooltip.getOrCreateInstance(el); });
 
 		/* ── Auto-show toast ── */
 		var toastEl = document.getElementById('liveToast');
-		if (toastEl) { new bootstrap.Toast(toastEl).show(); }
+		if (toastEl) { bootstrap.Toast.getOrCreateInstance(toastEl).show(); }
 	});
 
 	/* ── Mise à jour du préfixe formulaire mode manuel ── */
@@ -127,8 +127,8 @@
 		formSelect.innerHTML = '<option value="">— Sélectionner un formulaire —</option>';
 
 		var formTypeLabels = {
-			'Donation': '🎁 Don',
-			'CrowdFunding': '🚀 Crowdfunding'
+			'Donation': 'Don',
+			'CrowdFunding': 'Crowdfunding'
 		};
 
 		forms.forEach(function(form) {

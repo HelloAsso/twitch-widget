@@ -1,4 +1,4 @@
-{% block title %}HelloAsso Widgets - Édition du stream{% endblock %}
+{% block title %}Édition du stream · HelloAsso Stream{% endblock %}
 
 
 {% extends "layout.html.twig" %}
@@ -6,32 +6,35 @@
 
 		<div class="container">
 			{# ── En-tête ─────────────────────────────────────────────── #}
-			<div class="d-flex justify-content-between align-items-center my-4">
-				<div class="d-flex align-items-center gap-2">
-					<a href="/admin" class="btn btn-secondary">Retour</a>
-					<a href="/admin/stream/{{ charityStream.guid }}/live" class="btn btn-outline-danger">🔴 Voir le direct</a>
+			<div class="ha-page-head">
+				<div class="ha-page-head__title">
+					<a href="/admin" class="ha-back-link">Tableau de bord</a>
+					<span class="ha-eyebrow">Stream</span>
+					<h1>{{ charityStream.title }}</h1>
 				</div>
-				<h1 class="mb-0">Édition du stream</h1>
-				<form method="POST" class="d-flex align-items-center gap-2">
-					<input type="hidden" name="toggle_test_mode" value="1">
-					<span class="text-muted small">🧪 Mode test</span>
-					<div class="form-check form-switch mb-0">
-						<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
-							{% if charityStream.is_test_mode %}checked{% endif %}
-							onchange="this.form.submit()">
-					</div>
-				</form>
+				<div class="ha-page-head__actions">
+					<form method="POST" class="d-flex align-items-center gap-2">
+						<input type="hidden" name="toggle_test_mode" value="1">
+						<div class="form-check form-switch mb-0">
+							<input class="form-check-input" type="checkbox" role="switch" id="testModeToggle"
+								{% if charityStream.is_test_mode %}checked{% endif %}
+								onchange="this.form.submit()">
+							<label class="form-check-label" for="testModeToggle">Mode test</label>
+						</div>
+					</form>
+					<a href="/admin/stream/{{ charityStream.guid }}/live" class="btn btn-secondary">Voir le direct</a>
+				</div>
 			</div>
 
 			{# ── Section mode test (visible uniquement si actif) ──────── #}
 			{% if charityStream.is_test_mode %}
-			<div class="card mb-4 border-warning">
-				<div class="card-body bg-warning bg-opacity-10">
+			<div class="ha-test-panel">
+				<div>
 					<div class="row align-items-end">
 						<div class="col-md-4">
 							<p class="mb-1 fw-semibold">Montant test actuel : <span id="testAmountDisplay">{{ (charityStream.test_amount / 100) | number_format(2, ',', ' ') }} €</span></p>
 							<form method="POST" class="d-inline">
-								<button type="submit" class="btn btn-sm btn-outline-secondary" name="reset_test_amount" value="1">🔄 Remettre à zéro</button>
+								<button type="submit" class="btn btn-sm btn-outline-secondary" name="reset_test_amount" value="1">Remettre à zéro</button>
 							</form>
 						</div>
 						<div class="col-md-8">
@@ -49,13 +52,13 @@
 									<input type="text" class="form-control form-control-sm" id="sim_message" value="Don de test">
 								</div>
 								<div class="col-md-3">
-									<button type="submit" class="btn btn-sm btn-warning w-100">💸 Simuler un don</button>
+									<button type="submit" class="btn btn-sm btn-warning w-100">Simuler un don</button>
 								</div>
 							</form>
 						</div>
 					</div>
 					<div id="simulateAlert" class="mt-2" style="display:none;"></div>
-					<small class="text-muted d-block mt-2">⚠️ Rechargez les widgets dans le navigateur pour qu'ils prennent en compte le mode test.</small>
+					<small class="d-block mt-3">Rechargez les widgets dans le navigateur pour qu'ils prennent en compte le mode test.</small>
 				</div>
 			</div>
 			{% endif %}
@@ -72,17 +75,17 @@
 		{# ── Événement parent (lier / délier) ──────────────────────── #}
 		<div class="card mb-4">
 			<div class="card-header">
-				<h5 class="mb-0">📅 Événement parent</h5>
+				<h5 class="mb-0">Événement parent</h5>
 			</div>
 			<div class="card-body">
 				{% if parentEvent %}
 					<div class="d-flex align-items-center justify-content-between">
 						<div>
 							<span class="fw-semibold">{{ parentEvent.title }}</span>
-							<a href="/admin/event/{{ parentEvent.guid }}/edit" class="btn btn-sm btn-outline-primary ms-2">🔗 Voir l'événement</a>
+							<a href="/admin/event/{{ parentEvent.guid }}/edit" class="btn btn-sm btn-outline-primary ms-2">Voir l'événement</a>
 						</div>
 						<form method="POST" class="d-inline" onsubmit="return confirm('Délier ce stream de l\'événement « {{ parentEvent.title | e('js') }} » ?')">
-							<button type="submit" class="btn btn-sm btn-outline-danger" name="unlink_event" value="1">❌ Délier</button>
+							<button type="submit" class="btn btn-sm btn-outline-danger" name="unlink_event" value="1">Délier</button>
 						</form>
 					</div>
 				{% else %}
@@ -96,7 +99,7 @@
 								{% endfor %}
 							</select>
 						</div>
-						<button type="submit" class="btn btn-success" name="link_event" value="1">🔗 Lier</button>
+						<button type="submit" class="btn btn-success" name="link_event" value="1">Lier</button>
 					</form>
 					{% if availableEvents is empty %}
 						<p class="text-muted mt-2 mb-0">Aucun événement disponible. <a href="/admin?createEvent=1">Créer un événement</a>.</p>
@@ -108,7 +111,7 @@
 			{# ── Informations du stream ────────────────────────────────── #}
 			<div class="card mb-4">
 				<div class="card-header">
-					<h5 class="mb-0">📋 Informations du stream</h5>
+					<h5 class="mb-0">Informations du stream</h5>
 				</div>
 				<div class="card-body">
 					<form method="POST">
@@ -128,7 +131,7 @@
 							</div>
 							<div class="col-md-3 d-flex align-items-start pt-4">
 								<div class="mb-3">
-									<button type="submit" class="btn btn-primary" name="save_stream_info">💾 Enregistrer</button>
+									<button type="submit" class="btn btn-primary" name="save_stream_info">Enregistrer</button>
 								</div>
 							</div>
 						</div>
@@ -140,26 +143,26 @@
 			{% if isStreamOwner %}
 			<div class="card mb-4">
 				<div class="card-header">
-					<h5 class="mb-0">👥 Administrateurs</h5>
+					<h5 class="mb-0">Administrateurs</h5>
 				</div>
 				<div class="card-body">
 					<div class="d-flex flex-wrap gap-2 mb-3">
 						{% for admin in streamAdmins %}
-						<span class="badge rounded-pill {{ admin.is_owner ? 'bg-warning text-dark' : 'bg-secondary' }} d-flex align-items-center gap-1 px-3 py-2" style="font-size:0.95rem;">
+						<span class="ha-chip{{ admin.is_owner ? ' ha-chip--owner' : '' }}">
 							{{ admin.email | e }}
 							{% if admin.is_owner %}
-								<span class="ms-1" title="Propriétaire">★</span>
+								<span title="Propriétaire du stream ou de l'événement">★</span>
 							{% elseif admin.id != currentUserId %}
-							<form method="POST" class="d-inline ms-1">
-								<button type="submit" name="remove_admin" value="{{ admin.id }}" class="btn-close btn-close-white" aria-label="Retirer" style="font-size:0.6rem;" onclick="return confirm('Retirer {{ admin.email | e }} ?')"></button>
+							<form method="POST">
+								<button type="submit" name="remove_admin" value="{{ admin.id }}" class="btn-close" aria-label="Retirer" style="font-size:0.6rem;" onclick="return confirm('Retirer {{ admin.email | e }} ?')"></button>
 							</form>
 							{% endif %}
 						</span>
 						{% endfor %}
 					</div>
 					<form method="POST" class="d-flex gap-2" style="max-width:420px;">
-						<input type="email" class="form-control" name="admin_email" placeholder="Email du nouvel admin" required>
-						<button type="submit" class="btn btn-outline-primary text-nowrap" name="add_admin">＋ Ajouter</button>
+						<input type="email" class="form-control" name="admin_email" placeholder="Email du nouvel administrateur" required>
+						<button type="submit" class="btn btn-secondary text-nowrap" name="add_admin">Ajouter</button>
 					</form>
 				</div>
 			</div>
@@ -168,7 +171,7 @@
 			{# ── Objectifs de collecte ───────────────────────────────── #}
 			<div class="card mb-4">
 				<div class="card-header">
-					<h5 class="mb-0">🎯 Objectifs de collecte</h5>
+					<h5 class="mb-0">Objectifs de collecte</h5>
 				</div>
 				<div class="card-body">
 					<form method="POST">
@@ -176,8 +179,8 @@
 						<div id="goalsManager">
 							<div class="goals-chips d-flex flex-wrap gap-2 mb-3" style="min-height:38px;"></div>
 							<div class="input-group mb-3" style="max-width:320px;">
-								<input type="number" class="form-control goals-add-input" placeholder="Montant en € (ex: 500)" min="1" step="1">
-								<button type="button" class="btn btn-outline-primary goals-add-btn">＋ Ajouter</button>
+								<input type="number" class="form-control goals-add-input" placeholder="Montant en € (ex. : 500)" min="1" step="1">
+								<button type="button" class="btn btn-secondary goals-add-btn">Ajouter</button>
 							</div>
 							<div class="goals-hidden">
 								{% for g in streamGoals %}
@@ -186,8 +189,7 @@
 							</div>
 						</div>
 					</form>
-					<div class="alert alert-info d-flex gap-2 mb-0 mt-3 py-2 px-3" style="font-size:0.85rem;">
-						<span style="flex-shrink:0;">ℹ️</span>
+					<div class="alert alert-info d-flex gap-2 mb-0 mt-3">
 						<div>
 							Les objectifs s'affichent <strong>dans l'ordre croissant</strong> sur les widgets. Une fois un objectif atteint, la barre de don se réinitialise vers le suivant avec une animation. Si tous les objectifs sont dépassés, la barre reste à 100 %.
 						</div>
@@ -195,15 +197,15 @@
 				</div>
 			</div>
 
-			<h5 class="d-flex align-items-center gap-2">
-				Formulaire HelloAsso lié
+			<div class="d-flex flex-wrap align-items-center gap-3 mt-5">
+				<h2 class="ha-section-title">Formulaire de collecte lié</h2>
 				{% if charityStream.form_type == 'CrowdFunding' %}
-					<span class="badge bg-info">🚀 Crowdfunding</span>
+					<span class="badge bg-info">Crowdfunding</span>
 				{% else %}
-					<span class="badge bg-success">🎁 Don</span>
+					<span class="badge bg-info">Don</span>
 				{% endif %}
-				<a href="{{ donationUrl }}" target="_blank" class="btn btn-sm btn-outline-primary">🔗 Ouvrir le formulaire</a>
-			</h5>
+				<a href="{{ donationUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-secondary">Ouvrir le formulaire</a>
+			</div>
 
 			<div class="accordion mt-4 mb-5" id="widgetsAccordion">
 
@@ -212,7 +214,7 @@
 				<div class="accordion-item">
 					<h2 class="accordion-header" id="headingCardWidget">
 						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCardWidget" aria-expanded="false" aria-controls="collapseCardWidget">
-							🃏 Widget carte de don
+							Widget carte de don
 						</button>
 					</h2>
 					<div id="collapseCardWidget" class="accordion-collapse collapse" aria-labelledby="headingCardWidget" data-bs-parent="#widgetsAccordion">
@@ -284,7 +286,7 @@
 								</div>
 
 								{# ── Prévisualisation ── #}
-								<div class="card-widget-preview mt-3 p-3" style="border: 1px dashed #555; border-radius: 12px;">
+								<div class="card-widget-preview ha-preview-frame mt-3">
 									<div id="cardPreview" style="display:flex; max-width:720px; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.10); background-color:{{ cardWidget.background_color }}; color:{{ cardWidget.text_color }};">
 										<div id="cardPreviewImage" style="flex:0 0 220px; min-height:280px; background-size:cover; background-position:center; {% if cardWidgetPictureUrl %}background-image:url('{{ cardWidgetPictureUrl }}');{% else %}background:#374151;{% endif %}"></div>
 										<div style="flex:1; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; gap:14px;">
@@ -315,10 +317,8 @@
 								</div>
 
 								<div class="d-flex align-items-center justify-content-between mt-3">
-									<h6 class="mb-0">
-										URL : <a href="{{ widgetCardUrl }}" target="_blank">{{ widgetCardUrl }}</a>
-									</h6>
-									<button type="submit" class="btn btn-primary" name="save_card_widget">💾 Enregistrer</button>
+									<p class="mb-0 text-break"><strong>Adresse du widget :</strong> <a href="{{ widgetCardUrl }}" target="_blank">{{ widgetCardUrl }}</a></p>
+									<button type="submit" class="btn btn-primary" name="save_card_widget">Enregistrer</button>
 								</div>
 
 								{# ── Export iframe ── #}
@@ -327,7 +327,7 @@
 									<div class="input-group">
 										<input type="text" class="form-control font-monospace" id="cardIframeCode" readonly
 											   value='<iframe src="{{ widgetCardUrl }}" title="Widget de collecte" style="width:100%;max-width:720px;height:560px;border:none;overflow:hidden;" scrolling="no" allowtransparency="true"></iframe>'>
-										<button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('cardIframeCode').value);this.textContent='✅ Copié !';setTimeout(()=>this.textContent='📋 Copier',2000)">📋 Copier</button>
+										<button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('cardIframeCode').value);this.textContent='Copié';setTimeout(()=>this.textContent='Copier',2000)">Copier</button>
 									</div>
 									<div class="form-text">L’iframe doit prendre 100 % de la largeur du bloc parent (ne pas forcer <code>width="720"</code>) pour que la carte bascule en colonne sur mobile.</div>
 								</div>
@@ -340,7 +340,7 @@
 				<div class="accordion-item">
 					<h2 class="accordion-header" id="headingDonationBar">
 						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDonationBar" aria-expanded="false" aria-controls="collapseDonationBar">
-							🎯 Widget barre de don
+							Widget barre de don
 						</button>
 					</h2>
 					<div id="collapseDonationBar" class="accordion-collapse collapse" aria-labelledby="headingDonationBar" data-bs-parent="#widgetsAccordion">
@@ -385,17 +385,15 @@
 									</div>
 								</div>
 								<div class="d-flex align-items-center justify-content-between mt-3">
-									<h6 class="mb-0">
-										URL : <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a>
-									</h6>
-									<button type="submit" class="btn btn-primary" name="save_donation_goal">💾 Enregistrer</button>
+									<p class="mb-0 text-break"><strong>Adresse du widget :</strong> <a href="{{ widgetDonationGoalUrl }}" target="_blank">{{ widgetDonationGoalUrl }}</a></p>
+									<button type="submit" class="btn btn-primary" name="save_donation_goal">Enregistrer</button>
 								</div>
 								<div class="mt-3">
 									<label for="donationIframeCode" class="form-label fw-semibold">Code iframe à intégrer sur votre site :</label>
 									<div class="input-group">
 										<input type="text" class="form-control font-monospace" id="donationIframeCode" readonly
 											   value='<iframe src="{{ widgetDonationGoalUrl }}" title="Barre de collecte" style="width:100%;height:80px;border:none;overflow:hidden;" scrolling="no" allowtransparency="true"></iframe>'>
-										<button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('donationIframeCode').value);this.textContent='✅ Copié !';setTimeout(()=>this.textContent='📋 Copier',2000)">📋 Copier</button>
+										<button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('donationIframeCode').value);this.textContent='Copié';setTimeout(()=>this.textContent='Copier',2000)">Copier</button>
 									</div>
 									<div class="form-text">L’iframe doit prendre 100 % de la largeur du bloc parent pour que la jauge reste lisible sur mobile.</div>
 								</div>
@@ -408,7 +406,7 @@
 				<div class="accordion-item">
 					<h2 class="accordion-header" id="headingAlertBox">
 						<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAlertBox" aria-expanded="false" aria-controls="collapseAlertBox">
-							🔔 Widget alerte
+							Widget alerte
 						</button>
 					</h2>
 					<div id="collapseAlertBox" class="accordion-collapse collapse" aria-labelledby="headingAlertBox" data-bs-parent="#widgetsAccordion">
@@ -463,16 +461,14 @@
 									</div>
 								</div>
 								<div class="d-flex align-items-center justify-content-between mt-3">
-									<h6 class="mb-0">
-										URL : <a href="{{ widgetAlertBoxUrl }}" target="_blank">{{ widgetAlertBoxUrl }}</a>
-									</h6>
+									<p class="mb-0 text-break"><strong>Adresse du widget :</strong> <a href="{{ widgetAlertBoxUrl }}" target="_blank">{{ widgetAlertBoxUrl }}</a></p>
 									<div>
-										<button type="button" id="previewBtn" class="btn btn-info">👁️ Prévisualiser</button>
-										<button type="submit" class="btn btn-primary" name="save_alert_box">💾 Enregistrer</button>
+										<button type="button" id="previewBtn" class="btn btn-secondary">Prévisualiser</button>
+										<button type="submit" class="btn btn-primary" name="save_alert_box">Enregistrer</button>
 									</div>
 								</div>
 							</form>
-							<div class="widget-alert-box mt-3" style="min-height: 300px; border: 1px dashed #ccc; padding: 10px"></div>
+							<div class="widget-alert-box ha-preview-frame mt-3" style="min-height: 300px;"></div>
 						</div>
 					</div>
 				</div>
@@ -513,14 +509,14 @@
 				const json = await resp.json();
 				if (resp.ok) {
 					document.getElementById('testAmountDisplay').textContent = (json.amount / 100).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
-					alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>✅ Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
+					alertBox.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-1 px-2 mb-0"><small>Don simulé : ' + pseudo + ' — ' + (amount/100) + ' €</small><button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>';
 					alertBox.style.display = 'block';
 				} else {
-					alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ ' + (json.error || 'Erreur') + '</small></div>';
+					alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>' + (json.error || 'Erreur') + '</small></div>';
 					alertBox.style.display = 'block';
 				}
 			} catch(err) {
-				alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>❌ Erreur réseau</small></div>';
+				alertBox.innerHTML = '<div class="alert alert-danger py-1 px-2 mb-0"><small>Erreur réseau</small></div>';
 				alertBox.style.display = 'block';
 			}
 		});

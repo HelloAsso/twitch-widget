@@ -31,9 +31,8 @@ function initGoalsManager() {
         chipsEl.innerHTML = '';
         goals.forEach((g) => {
             const chip = document.createElement('span');
-            chip.className = 'badge bg-primary rounded-pill d-flex align-items-center gap-2 px-3 py-2';
-            chip.style.fontSize = '0.95rem';
-            chip.innerHTML = `${g} €<button type="button" class="btn-close btn-close-white" aria-label="Supprimer" style="font-size:0.6rem;"></button>`;
+            chip.className = 'ha-chip';
+            chip.innerHTML = `${g.toLocaleString('fr-FR')} €<button type="button" class="btn-close" aria-label="Supprimer" style="font-size:0.6rem;"></button>`;
             chip.querySelector('.btn-close').addEventListener('click', () => {
                 const updated = getGoals().filter((v) => v !== g);
                 syncHidden(updated);

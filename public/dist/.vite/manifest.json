@@ -24,7 +24,7 @@
     "src": "src/Assets/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-DHjgYWhv.css"
+      "assets/app-IC46Y1eN.css"
     ]
   },
   "src/Assets/js/cardEvent.js": {
@@ -84,5 +84,14 @@
     "name": "utilities",
     "src": "src/Assets/js/utilities.js",
     "isEntry": true
+  },
+  "src/Assets/js/widgetStyles.js": {
+    "file": "widgetStyles.min.js",
+    "name": "widgetStyles",
+    "src": "src/Assets/js/widgetStyles.js",
+    "isEntry": true,
+    "css": [
+      "assets/widgetStyles-CGaSKe7b.css"
+    ]
   }
 }

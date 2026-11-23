@@ -1,124 +1,71 @@
-
-{% block title %}HelloAsso Widgets{% endblock %}
+{% block title %}HelloAsso Stream{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
-	<div class="container" style="max-width: 480px;">
-		<h1 class="my-4 text-center">HelloAsso Widgets</h1>
-		<form action="/login" method="POST">
-			<div class="form-group">
-				<label for="email">Email</label>
-				<input type="text" class="form-control" id="email" name="email" required>
-			</div>
-			<div class="form-group">
-				<label for="password">Mot de passe</label>
-				<input type="password" class="form-control" id="password" name="password" required>
-			</div>
-			<div class="form-group">
-				<a href="/forgot_password">Mot de passe oublié ?</a>
-			</div>
-			<button type="submit" class="btn btn-primary mt-3 w-100">Connexion 🚀</button>
-			<div class="text-center mt-3">
-				<a href="/register">Pas encore de compte ? Créer un compte</a>
-			</div>
-		</form>
-	</div>
-	{% if login_failed %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Erreur</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+	<section class="ha-landing">
+		<div class="container ha-landing__grid">
+			<div class="ha-landing__intro">
+				<span class="ha-eyebrow">Pour les associations</span>
+				<h1 class="ha-title-brand">HelloAsso Stream</h1>
+				<p class="ha-lead mb-0">
+					Affichez la progression de votre collecte et une alerte à chaque don, en direct pendant votre live caritatif sur Twitch, YouTube ou ailleurs.
+					Comme tous les services HelloAsso, il est offert aux associations grâce aux contributions volontaires des citoyens.
+				</p>
+				<div class="ha-notice">
+					<p><strong>Cet espace est destiné aux associations.</strong></p>
+					<p>
+						Vous êtes un streamer ? Contactez l'association de votre choix pour qu'elle crée un compte HelloAsso et vous partage le lien d'accès à la campagne,
+						<a href="{{ helpCenterUrl }}" target="_blank" rel="noopener">en lui partageant comment fonctionne HelloAsso Stream</a>.
+					</p>
 				</div>
-				<div class="toast-body">
-					Email ou mot de passe invalide 😞
+			</div>
+
+			<div class="ha-auth-card">
+				<h2>Connexion</h2>
+				<form action="/login" method="POST">
+					<div class="form-group">
+						<label for="email">Email</label>
+						<input type="email" class="form-control" id="email" name="email" autocomplete="email" required>
+					</div>
+					<div class="form-group">
+						<label for="password">Mot de passe</label>
+						<input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required>
+					</div>
+					<a href="/forgot_password" class="align-self-start">Mot de passe oublié ?</a>
+					<button type="submit" class="btn btn-primary w-100 mt-2">Se connecter</button>
+				</form>
+				<div class="ha-auth-card__links">
+					<span>Pas encore de compte pour votre association ?</span>
+					<a href="/register" class="btn btn-secondary w-100">Créer un compte</a>
 				</div>
 			</div>
 		</div>
+	</section>
+
+	{% if login_failed %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: 'Email ou mot de passe invalide.' } %}
 	{% endif %}
 
 	{% if mail_sent %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Mail envoyé</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Si un compte existe, un email de réinitilisation de mot de passe vient d'être envoyé
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { title: 'Email envoyé', body: "Si un compte existe pour cette adresse, un email de réinitialisation du mot de passe vient de vous être envoyé." } %}
 	{% endif %}
 
 	{% if password_reset %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Mot de passe réinitialisé</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Vous pouvez vous connecter 💪
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { title: 'Mot de passe réinitialisé', body: 'Vous pouvez vous connecter.' } %}
 	{% endif %}
 
 	{% if register_success %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Inscription réussie</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Un email de vérification vient de vous être envoyé 📧 Consultez votre boîte mail pour activer votre compte.
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { title: 'Inscription réussie', body: "Un email de vérification vient de vous être envoyé. Consultez votre boîte mail pour activer votre compte." } %}
 	{% endif %}
 
 	{% if email_verified %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Email vérifié</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Votre email a été confirmé, vous pouvez vous connecter 🎉
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { title: 'Email vérifié', body: 'Votre email est confirmé, vous pouvez vous connecter.' } %}
 	{% endif %}
 
 	{% if email_verify_error %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Erreur</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Le lien de vérification est invalide ou a expiré 😞
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: 'Le lien de vérification est invalide ou a expiré.' } %}
 	{% endif %}
 
 	{% if email_not_verified %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Email non vérifié</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					Votre adresse email n'est pas encore vérifiée. Un nouvel email de vérification vient de vous être envoyé 📧
-				</div>
-			</div>
-		</div>
+		{% include '_toast.html.twig' with { type: 'error', title: 'Email non vérifié', body: "Votre adresse email n'est pas encore vérifiée. Un nouvel email de vérification vient de vous être envoyé." } %}
 	{% endif %}
-{% endblock %}
-{% block scripts %}
 {% endblock %}

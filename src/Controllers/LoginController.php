@@ -8,6 +8,8 @@ use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Models\User;
 use App\Services\ApiWrapper;
+use App\Services\BrandedEmail;
+use App\Services\HelloAssoLinks;
 use App\Services\Mailer;
 use Exception;
 use Monolog\Logger;
@@ -165,7 +167,7 @@ class LoginController
         try {
             $this->mailer->send(
                 $user->email,
-                "Confirmez votre adresse email",
+                "Activez votre compte HelloAsso Stream",
                 $this->buildVerificationEmail($verifyUrl),
             );
         } catch (Exception $e) {
@@ -181,22 +183,42 @@ class LoginController
      */
     private function buildVerificationEmail(string $verifyUrl): string
     {
-        return <<<HTML
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-            <h1 style="color: #2C88D9;">Confirmez votre adresse email 📧</h1>
-            <p>Bonjour,</p>
-            <p>Merci de vous être inscrit sur <strong>HelloAsso Stream</strong> !</p>
-            <p>Pour activer votre compte, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous :</p>
-            <p style="text-align: center; margin: 30px 0;">
-                <a href="{$verifyUrl}" style="background-color: #2C88D9; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Confirmer mon email</a>
-            </p>
-            <p style="font-size: 12px; color: #888;">Ou copiez ce lien dans votre navigateur : {$verifyUrl}</p>
-            <p style="font-size: 12px; color: #888;">Ce lien est valable 1 heure.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p>Si vous n'êtes pas à l'origine de cette inscription, vous pouvez ignorer cet email.</p>
-            <p>L'équipe HelloAsso</p>
-        </div>
-        HTML;
+        $e = BrandedEmail::e(...);
+
+        return BrandedEmail::render(
+            $_SERVER['WEBSITE_DOMAIN'] ?? '',
+            'Activez votre compte',
+            BrandedEmail::paragraph('Bonjour,')
+            . BrandedEmail::paragraph('Merci d\'avoir créé votre compte <strong>HelloAsso Stream</strong>. Confirmez votre adresse email pour l\'activer :')
+            . BrandedEmail::button('Activer mon compte', $verifyUrl)
+            . BrandedEmail::note('Ce lien est valable 1 heure. S\'il ne fonctionne pas, copiez cette adresse dans votre navigateur : ' . $e($verifyUrl))
+            . BrandedEmail::subtitle('Et ensuite ?')
+            . BrandedEmail::paragraph('Créez votre premier stream, personnalisez vos widgets et ajoutez-les dans OBS. Le centre d\'aide vous guide pas à pas :')
+            . BrandedEmail::paragraph(BrandedEmail::link('Découvrir comment fonctionne HelloAsso Stream', HelloAssoLinks::HELP_CENTER))
+            . BrandedEmail::separator()
+            . BrandedEmail::note('Vous n\'êtes pas à l\'origine de cette inscription ? Ignorez simplement cet email.')
+            . BrandedEmail::paragraph('L\'équipe HelloAsso'),
+        );
+    }
+
+    /**
+     * Génère le contenu HTML de l'email de réinitialisation de mot de passe.
+     */
+    private function buildResetPasswordEmail(string $resetUrl): string
+    {
+        $e = BrandedEmail::e(...);
+
+        return BrandedEmail::render(
+            $_SERVER['WEBSITE_DOMAIN'] ?? '',
+            'Nouveau mot de passe',
+            BrandedEmail::paragraph('Bonjour,')
+            . BrandedEmail::paragraph('Vous avez demandé à réinitialiser le mot de passe de votre compte <strong>HelloAsso Stream</strong>.')
+            . BrandedEmail::button('Choisir un nouveau mot de passe', $resetUrl)
+            . BrandedEmail::note('Ce lien est valable 1 heure. S\'il ne fonctionne pas, copiez cette adresse dans votre navigateur : ' . $e($resetUrl))
+            . BrandedEmail::separator()
+            . BrandedEmail::note('Vous n\'êtes pas à l\'origine de cette demande ? Ignorez cet email : votre mot de passe reste inchangé.')
+            . BrandedEmail::paragraph('L\'équipe HelloAsso'),
+        );
     }
 
     /**
@@ -216,8 +238,8 @@ class LoginController
             try {
                 $this->mailer->send(
                     $user->email,
-                    "Mot de passe oublié",
-                    "<p>Vous avez fait une demande de réinitialisation de mot de passe. Merci de le définir sur <a href=\"{$resetUrl}\">cette page</a><br/>Ou en suivant ce lien {$resetUrl}</p>",
+                    "Choisissez un nouveau mot de passe",
+                    $this->buildResetPasswordEmail($resetUrl),
                 );
             } catch (Exception $e) {
                 $this->logger->error('Échec de l\'envoi de l\'email de réinitialisation', [
@@ -345,7 +367,7 @@ class LoginController
             }
         }
 
-        $response->getBody()->write('Votre compte ' . $tokenData['organization_slug'] . ' à bien été lié à HelloAssoCharityStream, vous pouvez fermer cette page.');
+        $response->getBody()->write('Votre compte ' . $tokenData['organization_slug'] . ' a bien été lié à HelloAsso Stream, vous pouvez fermer cette page.');
         return $response;
     }
 }

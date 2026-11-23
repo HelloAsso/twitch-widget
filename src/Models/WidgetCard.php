@@ -12,11 +12,11 @@ class WidgetCard
     public string $title = '';
     public string $description = '';
     public string $background_color = '#ffffff';
-    public string $bar_color = '#2563eb';
-    public string $bar_background_color = '#e5e7eb';
-    public string $text_color = '#1a1a1a';
-    public string $tag_color = '#166534';
-    public string $tag_background_color = '#dcfce7';
+    public string $bar_color = '#4a8100';
+    public string $bar_background_color = '#cdced0';
+    public string $text_color = '#101010';
+    public string $tag_color = '#572a37';
+    public string $tag_background_color = '#f1edff';
     public int $start_amount = 0;
     public int $start_donors = 0;
     public ?string $cache_data = null;

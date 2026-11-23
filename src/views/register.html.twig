@@ -1,63 +1,51 @@
-
-{% block title %}Créer un compte — HelloAsso Widgets{% endblock %}
+{% block title %}Créer un compte · HelloAsso Stream{% endblock %}
 {% extends "layout.html.twig" %}
 {% block content %}
-	<div class="container" style="max-width: 480px;">
-		<h1 class="my-4 text-center">Créer un compte</h1>
-		<form action="/register" method="POST" id="registerForm" novalidate>
-			<div class="form-group mb-3">
-				<label for="email">Email</label>
-				<input type="email" class="form-control" id="email" name="email" placeholder="vous@exemple.com" required>
-			</div>
-			<div class="form-group mb-3">
-				<label for="password">Mot de passe</label>
-				<input type="password" class="form-control" id="password" name="password" required
-					oninput="checkPasswordStrength()">
-				<div class="mt-2" id="passwordRules">
-					<small id="rule-length" class="text-danger d-block">✗ Au moins 8 caractères</small>
-					<small id="rule-upper" class="text-danger d-block">✗ Au moins une majuscule</small>
-					<small id="rule-lower" class="text-danger d-block">✗ Au moins une minuscule</small>
-					<small id="rule-digit" class="text-danger d-block">✗ Au moins un chiffre</small>
-					<small id="rule-special" class="text-danger d-block">✗ Au moins un caractère spécial</small>
+	<section class="container ha-auth-page">
+		<div class="ha-auth-card">
+			<span class="ha-eyebrow">Espace associations</span>
+			<h2>Créer un compte</h2>
+			<form action="/register" method="POST" id="registerForm" novalidate>
+				<div class="form-group">
+					<label for="email">Email</label>
+					<input type="email" class="form-control" id="email" name="email" placeholder="vous@exemple.com" autocomplete="email" required>
 				</div>
-			</div>
-			<div class="form-group mb-3">
-				<label for="passwordRepeat">Confirmer le mot de passe</label>
-				<input type="password" class="form-control" id="passwordRepeat" name="passwordRepeat" required
-					oninput="checkPasswordMatch()">
-				<small id="rule-match" class="text-danger d-block mt-1" style="display:none !important;"></small>
-			</div>
-			<button type="submit" class="btn btn-success w-100 mt-3" id="submitBtn" disabled>
-				Créer mon compte 🚀
-			</button>
-			<div class="text-center mt-3">
-				<a href="/">Déjà un compte ? Se connecter</a>
-			</div>
-		</form>
-	</div>
-
-	{% if register_error %}
-		<div class="toast-container position-fixed bottom-0 end-0 p-3">
-			<div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">Erreur</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+				<div class="form-group">
+					<label for="password">Mot de passe</label>
+					<input type="password" class="form-control" id="password" name="password" autocomplete="new-password" required
+						oninput="checkPasswordStrength()" aria-describedby="passwordRules">
+					<ul class="ha-rules" id="passwordRules">
+						<li id="rule-length">Au moins 8 caractères</li>
+						<li id="rule-upper">Au moins une majuscule</li>
+						<li id="rule-lower">Au moins une minuscule</li>
+						<li id="rule-digit">Au moins un chiffre</li>
+						<li id="rule-special">Au moins un caractère spécial</li>
+					</ul>
 				</div>
-				<div class="toast-body">
-					{{ register_error }}
+				<div class="form-group">
+					<label for="passwordRepeat">Confirmer le mot de passe</label>
+					<input type="password" class="form-control" id="passwordRepeat" name="passwordRepeat" autocomplete="new-password" required
+						oninput="checkPasswordMatch()">
+					<p id="rule-match" class="ha-match mb-0" aria-live="polite" hidden></p>
 				</div>
+				<button type="submit" class="btn btn-primary w-100 mt-2" id="submitBtn" disabled>
+					Créer mon compte
+				</button>
+			</form>
+			<div class="ha-auth-card__links">
+				<span>Déjà un compte ?</span>
+				<a href="/" class="btn btn-secondary w-100">Se connecter</a>
 			</div>
 		</div>
+	</section>
+
+	{% if register_error %}
+		{% include '_toast.html.twig' with { type: 'error', title: 'Erreur', body: register_error } %}
 	{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-	document.addEventListener('DOMContentLoaded', function() {
-		var toastEl = document.getElementById('liveToast');
-		if (toastEl) { new bootstrap.Toast(toastEl).show(); }
-	});
-
 	function checkPasswordStrength() {
 		var pw = document.getElementById('password').value;
 		setRule('rule-length', pw.length >= 8);
@@ -74,28 +62,18 @@
 		var pw2 = document.getElementById('passwordRepeat').value;
 		var el = document.getElementById('rule-match');
 		if (pw2.length === 0) {
-			el.style.display = 'none';
-		} else if (pw === pw2) {
-			el.style.display = 'block';
-			el.className = 'text-success d-block mt-1';
-			el.textContent = '✓ Les mots de passe correspondent';
+			el.hidden = true;
 		} else {
-			el.style.display = 'block';
-			el.className = 'text-danger d-block mt-1';
-			el.textContent = '✗ Les mots de passe ne correspondent pas';
+			el.hidden = false;
+			el.textContent = pw === pw2
+				? 'Les mots de passe correspondent.'
+				: 'Les mots de passe ne correspondent pas.';
 		}
 		updateSubmitBtn();
 	}
 
 	function setRule(id, valid) {
-		var el = document.getElementById(id);
-		if (valid) {
-			el.className = 'text-success d-block';
-			el.textContent = '✓' + el.textContent.substring(1);
-		} else {
-			el.className = 'text-danger d-block';
-			el.textContent = '✗' + el.textContent.substring(1);
-		}
+		document.getElementById(id).classList.toggle('is-valid', valid);
 	}
 
 	function updateSubmitBtn() {
@@ -112,4 +90,3 @@
 	}
 </script>
 {% endblock %}
-

@@ -13,6 +13,8 @@ use App\Repositories\StreamDonationHistoryRepository;
 use App\Repositories\StreamRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\WidgetRepository;
+use App\Services\BrandedEmail;
+use App\Services\HelloAssoLinks;
 use App\Services\ApiWrapper;
 use App\Services\Mailer;
 use Exception;
@@ -133,7 +135,7 @@ class AdminController
         try {
             $this->mailer->send(
                 $user->email,
-                "Bienvenue sur HelloAsso Stream !",
+                "Bienvenue sur HelloAsso Stream",
                 $this->buildWelcomeEmail($resetUrl),
             );
         } catch (\Exception $e) {
@@ -194,7 +196,7 @@ class AdminController
         try {
             $this->mailer->send(
                 $user->email,
-                "Bienvenue sur HelloAsso Stream !",
+                "Bienvenue sur HelloAsso Stream",
                 $this->buildWelcomeEmail($resetUrl),
             );
         } catch (\Exception $e) {
@@ -211,27 +213,23 @@ class AdminController
      */
     private function buildWelcomeEmail(string $resetUrl): string
     {
-        return <<<HTML
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-            <h1 style="color: #2C88D9;">Bienvenue sur HelloAsso Stream ! 🎉</h1>
-            <p>Bonjour,</p>
-            <p>Un compte vient d'être créé pour vous sur <strong>HelloAsso Stream</strong>, l'outil qui vous permet de suivre vos collectes en temps réel.</p>
-            <p>Pour commencer, définissez votre mot de passe en cliquant sur le bouton ci-dessous :</p>
-            <p style="text-align: center; margin: 30px 0;">
-                <a href="{$resetUrl}" style="background-color: #2C88D9; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Définir mon mot de passe</a>
-            </p>
-            <p style="font-size: 12px; color: #888;">Ou copiez ce lien dans votre navigateur : {$resetUrl}</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <h2 style="color: #2C88D9;">Que pourrez-vous faire une fois connecté ?</h2>
-            <h3>📊 Créer un Stream</h3>
-            <p>Un <strong>stream</strong> vous permet d'avoir un <strong>compteur en temps réel</strong> lié à un formulaire de don HelloAsso. Idéal pour afficher la progression d'une collecte lors d'un live ou sur votre site.</p>
-            <h3>🎯 Créer un Évènement</h3>
-            <p>Un <strong>évènement</strong> vous permet d'avoir un <strong>compteur en temps réel</strong> qui agrège <strong>plusieurs streams</strong> (et donc plusieurs formulaires de don). Parfait pour suivre une campagne de collecte globale composée de plusieurs initiatives.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p>À très vite sur la plateforme ! 🚀</p>
-            <p>L'équipe HelloAsso</p>
-        </div>
-        HTML;
+        $e = BrandedEmail::e(...);
+
+        return BrandedEmail::render(
+            $_SERVER['WEBSITE_DOMAIN'] ?? '',
+            'Bienvenue',
+            BrandedEmail::paragraph('Bonjour,')
+            . BrandedEmail::paragraph('Un compte <strong>HelloAsso Stream</strong> vient d\'être créé pour vous. Vous pourrez y suivre vos collectes en direct pendant vos lives caritatifs.')
+            . BrandedEmail::paragraph('Pour commencer, choisissez votre mot de passe :')
+            . BrandedEmail::button('Choisir mon mot de passe', $resetUrl)
+            . BrandedEmail::note('Ce lien est valable 1 heure. Passé ce délai, utilisez « Mot de passe oublié » sur la page de connexion. Adresse du lien : ' . $e($resetUrl))
+            . BrandedEmail::subtitle('Stream ou événement ?')
+            . BrandedEmail::paragraph('<strong>Un stream</strong> est relié à un formulaire de don ou à une campagne de crowdfunding HelloAsso. Il récupère ses dons en temps réel et les affiche pendant le live : carte de don, barre de don et alerte à chaque don.')
+            . BrandedEmail::paragraph('<strong>Un événement</strong> regroupe plusieurs streams qui collectent pour la même cause et additionne leurs dons dans un seul compteur.')
+            . BrandedEmail::paragraph(BrandedEmail::link('Découvrir comment fonctionne HelloAsso Stream', HelloAssoLinks::HELP_CENTER))
+            . BrandedEmail::separator()
+            . BrandedEmail::paragraph('À très vite,<br>L\'équipe HelloAsso'),
+        );
     }
 
     public function newEvent(Request $request, Response $response): Response
@@ -928,35 +926,44 @@ class AdminController
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Connexion HelloAsso</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion HelloAsso · HelloAsso Stream</title>
     <style>
-        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #1a1a2e; color: #eee; }
-        .card { background: #16213e; padding: 2rem; border-radius: 12px; text-align: center; max-width: 400px; }
-        .success { color: #4ade80; font-size: 2rem; }
-        .error { color: #f87171; }
+        @font-face { font-family: "ITC Franklin Gothic"; src: url("/fonts/ITCFranklinGothic-700-v2.woff2") format("woff2"); font-weight: 100 900; }
+        @font-face { font-family: "ABC Diatype Rounded"; src: url("/fonts/ABCDiatypeRounded-500.woff2") format("woff2"); font-weight: 500; }
+        body { font-family: "ABC Diatype Rounded", Arial, sans-serif; font-weight: 500; line-height: 1.3; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; background: #FFFFFF; color: #434649; }
+        .card { border: 1px solid #CDCED0; padding: 40px; max-width: 480px; width: 100%; box-sizing: border-box; }
+        .title { font-family: "ITC Franklin Gothic", Impact, sans-serif; font-weight: 400; font-size: 26px; line-height: 1; text-transform: uppercase; color: #101010; margin: 0 0 16px; }
+        p { margin: 0 0 8px; }
     </style>
 </head>
 <body>
 <div class="card">
-    <div id="msg"><p>Connexion en cours, veuillez patienter...</p></div>
+    <p class="title" id="title">Connexion en cours</p>
+    <p id="msg">Veuillez patienter…</p>
 </div>
 <script>
     var organizationSlug = {$organizationSlugJson};
     var forms = {$formsJson};
     var error = {$errorJson};
 
+    function show(title, message) {
+        document.getElementById('title').textContent = title;
+        document.getElementById('msg').textContent = message;
+    }
+
     if (error) {
-        document.getElementById('msg').innerHTML = '<p class="error">❌ Erreur : ' + error + '</p><p>Vous pouvez fermer cet onglet.</p>';
+        show('Erreur', error + ' Vous pouvez fermer cet onglet.');
     } else if (window.opener && !window.opener.closed) {
         window.opener.postMessage({
             type: 'ha_stream_auth_success',
             organizationSlug: organizationSlug,
             forms: forms
         }, window.location.origin);
-        document.getElementById('msg').innerHTML = '<p class="success">✅</p><p>Association connectée ! Fermeture en cours...</p>';
+        show('Association connectée', 'Fermeture de la fenêtre en cours…');
         setTimeout(function() { window.close(); }, 1500);
     } else {
-        document.getElementById('msg').innerHTML = '<p class="success">✅ Association connectée !</p><p>Vous pouvez fermer cet onglet et retourner à la page d\'administration.</p>';
+        show('Association connectée', 'Vous pouvez fermer cet onglet et revenir à HelloAsso Stream.');
     }
 </script>
 </body>
