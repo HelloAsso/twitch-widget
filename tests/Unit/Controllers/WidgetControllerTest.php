@@ -18,6 +18,8 @@ use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
 use Exception;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -38,6 +40,8 @@ class WidgetControllerTest extends TestCase
     private WidgetRepository&MockObject $widgetRepository;
     private GoalRepository&MockObject $goalRepository;
     private StreamDonationHistoryRepository&MockObject $donationHistoryRepository;
+    private TestHandler $logHandler;
+    private Logger $logger;
     private WidgetController $controller;
 
     protected function setUp(): void
@@ -50,6 +54,9 @@ class WidgetControllerTest extends TestCase
         $this->widgetRepository = $this->createMock(WidgetRepository::class);
         $this->goalRepository = $this->createMock(GoalRepository::class);
         $this->donationHistoryRepository = $this->createMock(StreamDonationHistoryRepository::class);
+        // Vrai logger avec un handler qui garde les enregistrements, pour vérifier ce qui est loggé
+        $this->logHandler = new TestHandler();
+        $this->logger = new Logger('test', [$this->logHandler]);
 
         $this->goalRepository->method('selectAmountsByStreamGuid')->willReturn([1000]);
         $this->goalRepository->method('selectAmountsByEventGuid')->willReturn([1000]);
@@ -63,6 +70,7 @@ class WidgetControllerTest extends TestCase
             $this->widgetRepository,
             $this->goalRepository,
             $this->donationHistoryRepository,
+            $this->logger,
         );
     }
 
@@ -231,6 +239,28 @@ class WidgetControllerTest extends TestCase
         $result = $this->controller->widgetAlertFetch($request, new Response(), ['id' => 'error-stream']);
 
         $this->assertEquals(500, $result->getStatusCode());
+        $this->assertTrue($this->logHandler->hasError('Erreur lors du fetch du widget'));
+        $record = $this->logHandler->getRecords()[0];
+        $this->assertSame('stream_alert', $record->context['widget']);
+        $this->assertSame('error-stream', $record->context['stream_id']);
+        $this->assertSame(500, $record->context['http_status']);
+        $this->assertInstanceOf(Exception::class, $record->context['exception']);
+    }
+
+    public function testWidgetAlertFetchLogsExpiredTokenAsWarningOnly(): void
+    {
+        $stream = $this->buildStream('expired-stream');
+        $this->streamRepository->method('selectByGuid')->willReturn($stream);
+        $this->widgetRepository->method('selectAlertWidgetCacheData')->willReturn(null);
+        $this->apiWrapper->method('getAllOrders')->willThrowException(new Exception('Token expiré', 401));
+
+        $request = (new ServerRequestFactory())->createServerRequest('GET', '/widget-stream-alert/expired-stream/fetch');
+        $result = $this->controller->widgetAlertFetch($request, new Response(), ['id' => 'expired-stream']);
+
+        $this->assertEquals(401, $result->getStatusCode());
+        // Un token expiré fait boucler OBS sur cette route : un avertissement, pas une erreur
+        $this->assertTrue($this->logHandler->hasWarning('Erreur lors du fetch du widget'));
+        $this->assertFalse($this->logHandler->hasErrorRecords());
     }
 
     // =====================================================================

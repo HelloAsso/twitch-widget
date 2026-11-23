@@ -12,6 +12,8 @@ use App\Repositories\StreamRepository;
 use App\Repositories\WidgetRepository;
 use App\Services\ApiWrapper;
 use Exception;
+use Monolog\Level;
+use Monolog\Logger;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
@@ -31,6 +33,7 @@ class WidgetController
         private WidgetRepository $widgetRepository,
         private GoalRepository $goalRepository,
         private StreamDonationHistoryRepository $donationHistoryRepository,
+        private Logger $logger,
     ) {
         $this->cacheTtl = (int) ($_SERVER['WIDGET_CACHE_TTL'] ?? 30);
     }
@@ -83,9 +86,39 @@ class WidgetController
 
     private function renderWidgetError(Response $response, string $message, Exception $e): Response
     {
-        error_log('[Widget] ' . $message . ' : ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+        $this->logger->error('Échec du rendu du widget', ['reason' => $message, 'exception' => $e]);
         return $this->view->render($response, 'widget/error.html.twig', [
             'message' => $message,
+        ]);
+    }
+
+    /**
+     * L'appel API d'initialisation a échoué mais le widget s'affiche quand même avec son cache : simple avertissement.
+     *
+     * @param array<string, string> $ids Identifiants de la ressource concernée (stream_guid, event_guid...)
+     */
+    private function logApiInitFallback(string $widget, array $ids, Exception $e): void
+    {
+        $this->logger->warning('Erreur API à l\'initialisation du widget, rendu avec le cache', [
+            'widget' => $widget,
+            ...$ids,
+            'exception' => $e,
+        ]);
+    }
+
+    /**
+     * Les routes /fetch sont appelées en boucle par OBS : un 401 (token expiré, attendu et déjà signalé
+     * dans l'admin) n'est qu'un avertissement, pour ne pas inonder les logs à chaque poll.
+     *
+     * @param array<string, string> $ids Identifiants de la ressource concernée
+     */
+    private function logFetchError(string $widget, array $ids, Exception $e, int $status): void
+    {
+        $this->logger->log($status === 401 ? Level::Warning : Level::Error, 'Erreur lors du fetch du widget', [
+            'widget' => $widget,
+            'http_status' => $status,
+            ...$ids,
+            'exception' => $e,
         ]);
     }
 
@@ -367,7 +400,7 @@ class WidgetController
                 $currentAmount = $data['cacheData']['amount'];
                 $event = $data['event'];
             } catch (Exception $e) {
-                error_log('[WidgetEventDonation] Erreur API init pour event ' . $eventGuid . ' : ' . $e->getMessage());
+                $this->logApiInitFallback('event_donation', ['event_guid' => $eventGuid], $e);
                 $event = $this->eventRepository->selectByGuid($eventGuid);
                 $cacheData = $this->widgetRepository->selectEventDonationWidgetCacheData($event);
                 $currentAmount = $cacheData['amount'] ?? 0;
@@ -456,7 +489,7 @@ class WidgetController
                     } catch (Exception $e) {
                         // Token invalide ou erreur API : on rend le widget avec le cache existant
                         // Le polling (fetch) réessaiera automatiquement
-                        error_log('[WidgetAlert] Erreur API init pour stream ' . $charityStream->guid . ' : ' . $e->getMessage());
+                        $this->logApiInitFallback('stream_alert', ['stream_guid' => $charityStream->guid], $e);
                     }
                 }
             }
@@ -532,7 +565,7 @@ class WidgetController
             $message = $status === 401
                 ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
                 : 'Impossible de récupérer les commandes.';
-            error_log('[WidgetAlertFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            $this->logFetchError('stream_alert', ['stream_id' => $charityStreamId], $e, $status);
             return $this->jsonError($response, $message, $status);
         }
     }
@@ -555,7 +588,7 @@ class WidgetController
                 $stream = $data['stream'];
             } catch (Exception $e) {
                 // Token invalide ou erreur API : on rend le widget avec le cache existant
-                error_log('[WidgetDonation] Erreur API init pour stream ' . $streamGuid . ' : ' . $e->getMessage());
+                $this->logApiInitFallback('stream_donation', ['stream_guid' => $streamGuid], $e);
                 $stream = $this->streamRepository->selectByGuid($streamGuid);
                 $cacheData = $this->widgetRepository->selectStreamDonationWidgetCacheData($stream);
                 $currentAmount = $cacheData['amount'] ?? 0;
@@ -599,7 +632,7 @@ class WidgetController
             $message = $status === 401
                 ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
                 : 'Impossible de récupérer les commandes.';
-            error_log('[WidgetDonationFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            $this->logFetchError('stream_donation', ['stream_id' => $charityStreamId], $e, $status);
             return $this->jsonError($response, $message, $status);
         }
     }
@@ -623,7 +656,7 @@ class WidgetController
                 $stream = $data['stream'];
             } catch (Exception $e) {
                 // Token invalide ou erreur API : on rend le widget avec le cache existant
-                error_log('[WidgetCard] Erreur API init pour stream ' . $streamGuid . ' : ' . $e->getMessage());
+                $this->logApiInitFallback('stream_card', ['stream_guid' => $streamGuid], $e);
                 $stream = $this->streamRepository->selectByGuid($streamGuid);
                 $cacheData = $this->widgetRepository->selectStreamCardWidgetCacheData($stream);
                 $currentAmount = $cacheData['amount'] ?? 0;
@@ -678,7 +711,7 @@ class WidgetController
             $message = $status === 401
                 ? 'Token invalide ou expiré pour ce stream. Reconnectez l\'association.'
                 : 'Impossible de récupérer les données.';
-            error_log('[WidgetCardFetch] Erreur pour stream ' . $charityStreamId . ' : ' . $e->getMessage());
+            $this->logFetchError('stream_card', ['stream_id' => $charityStreamId], $e, $status);
             return $this->jsonError($response, $message, $status);
         }
     }
@@ -701,7 +734,7 @@ class WidgetController
                 $donors = $data['donors'];
                 $event = $data['event'];
             } catch (Exception $e) {
-                error_log('[WidgetEventCard] Erreur API init pour event ' . $eventGuid . ' : ' . $e->getMessage());
+                $this->logApiInitFallback('event_card', ['event_guid' => $eventGuid], $e);
                 $event = $this->eventRepository->selectByGuid($eventGuid);
                 $cacheData = $this->widgetRepository->selectEventCardWidgetCacheData($event);
                 $currentAmount = $cacheData['amount'] ?? 0;

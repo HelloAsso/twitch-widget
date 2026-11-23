@@ -156,6 +156,7 @@ twitch-widget/
 ├── src/                   # Application source code
 │   ├── Assets/            # Assets folders (scss + js)
 │   ├── Controllers/      # Request handlers
+│   ├── Logging/          # Logger factory and Datadog JSON formatter
 │   ├── Models/           # Data models
 │   ├── Repositories/     # Data access layer
 │   ├── Services/         # Business logic services
@@ -258,3 +259,37 @@ Key environment variables include:
 - Email service (BREVO_API_KEY, optional MAIL_FROM_EMAIL / MAIL_FROM_NAME)
 - Application domain (WEBSITE_DOMAIN)
 - Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 30)
+- Logs (LOGLEVEL, LOG_OUTPUT, optionnellement DD_SERVICE / DD_ENV / DD_VERSION), voir [Logs et Datadog](#logs-et-datadog)
+
+### Logs et Datadog
+
+Tous les logs passent par Monolog (`App\Logging\LoggerFactory`), avec trois canaux : `app` (web), `api` (appels HelloAsso) et `cron`.
+La variable `LOG_OUTPUT` choisit la sortie :
+
+| `LOG_OUTPUT` | Sortie | Usage |
+|-|-|-|
+| `file` (défaut) | fichiers `logs/<APP_ENV>/<canal>.log`, rotation sur 7 jours | développement local |
+| `errorlog` | une ligne JSON par log via `error_log()` | Clever Cloud, où le disque est éphémère |
+
+En sortie `errorlog`, chaque ligne suit les attributs standards de Datadog : `date`, `status` (niveau en texte), `message`, `logger.name`, `service`, `env`, `version`, puis `error.kind` / `error.message` / `error.stack` quand une exception est passée dans le contexte (`['exception' => $e]`), et le reste dans `context`.
+Les tags se déduisent de l'environnement : `service` = `DD_SERVICE` (défaut `twitch-widget`), `env` = `DD_ENV` sinon `APP_ENV`, `version` = `DD_VERSION` sinon `APP_VERSION` (le commit déployé).
+
+**Brancher une app Clever Cloud sur Datadog** (site EU), une fois par app :
+
+```bash
+clever env set LOG_OUTPUT errorlog --alias sandbox   # ou --alias prod
+clever env set DD_ENV sandbox --alias sandbox        # prod pour --alias prod
+
+# La clé API Datadog va dans l'URL du drain : la lire depuis une variable, ne jamais la commiter
+clever drain create datadog \
+  "https://http-intake.logs.datadoghq.eu/v1/input/$DD_API_KEY?ddsource=clevercloud&service=twitch-widget&ddtags=env:sandbox" \
+  --alias sandbox
+```
+
+Vérifier ensuite avec `clever logs --alias sandbox` (les lignes doivent être du JSON brut) puis, dans Datadog, `service:twitch-widget env:sandbox`.
+Si les lignes arrivent préfixées par la plateforme (par exemple `PHP message:`), Datadog ne les parse pas tout seul : ajouter au pipeline un parseur Grok `prefixed_json [^{]*%{data::json}`.
+
+Le drain ne transmet que les logs applicatifs (`--kind LOG`, la valeur par défaut). Les logs d'accès (`--kind ACCESSLOG`) ne sont pas envoyés : les routes `/fetch` des widgets sont appelées en boucle par OBS et noieraient le reste.
+Pour la même raison, un 401 sur ces routes (token expiré, déjà signalé dans l'admin) est loggé en `warning` et non en `error`.
+
+Les traces APM ne sont pas en place : `dd-trace-php` a besoin d'un agent Datadog joignable depuis Clever Cloud. Une fois l'APM activé avec `DD_LOGS_INJECTION=true`, `trace_id` et `span_id` sont ajoutés aux logs sans modifier ce code.
