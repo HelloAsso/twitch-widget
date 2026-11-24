@@ -263,6 +263,8 @@ Cliquez sur **💸 Simuler un don** pour envoyer le don fictif. Les widgets se m
 
 Si un live est en cours, le don simulé apparaît aussi dans la [vue Live](#8-vue-live--suivre-les-dons-en-direct).
 
+Sur un stream, le don simulé déclenche aussi l'**alerte** sur le widget d'alerte (onglet du navigateur ou source OBS) dans les 10 secondes, sans recharger la page. Chaque widget ouvert l'affiche une seule fois. Un widget ouvert après la simulation ne rejoue pas les dons déjà simulés.
+
 ### Remettre à zéro
 
 Cliquez sur **🔄 Remettre à zéro** pour réinitialiser le compteur de test à 0 €.
