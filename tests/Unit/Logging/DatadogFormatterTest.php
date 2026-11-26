@@ -131,7 +131,7 @@ class DatadogFormatterTest extends TestCase
         )));
 
         $this->assertLessThan(4100, strlen($data['error']['stack']));
-        $this->assertStringEndsWith('(tronqué)', $data['error']['stack']);
+        $this->assertStringEndsWith('[truncated]', $data['error']['stack']);
         // Le message complet reste disponible dans son propre attribut
         $this->assertSame(10000, strlen($data['error']['message']));
     }
@@ -183,7 +183,7 @@ class DatadogFormatterTest extends TestCase
         $this->assertSame(RuntimeException::class, $data['error']['kind']);
         $this->assertSame('API HelloAsso injoignable', $data['error']['message']);
         $this->assertSame(['widget' => 'stream_alert'], $data['context']);
-        $this->assertStringEndsWith('(tronqué)', $data['error']['stack']);
+        $this->assertStringEndsWith('[truncated]', $data['error']['stack']);
     }
 
     public function testShrinksALongMessageWhenThereIsNoStack(): void
@@ -196,7 +196,7 @@ class DatadogFormatterTest extends TestCase
 
         $this->assertLessThanOrEqual(500, strlen($line));
         $this->assertStringStartsWith("405 Method Not Allowed\n#0 /app/x.php", $data['message']);
-        $this->assertStringEndsWith('(tronqué)', $data['message']);
+        $this->assertStringEndsWith('[truncated]', $data['message']);
         $this->assertSame(['widget' => 'w'], $data['context']);
     }
 
@@ -227,6 +227,95 @@ class DatadogFormatterTest extends TestCase
         $this->assertSame('Boom', $data['message']);
         $this->assertArrayNotHasKey('context', $data);
         $this->assertArrayNotHasKey('extra', $data);
+    }
+
+    /**
+     * Reproduit ce qu'Apache (mod_proxy_fcgi) fait d'un message d'error_log sur Clever Cloud, constaté
+     * dans `clever logs` : antislash doublés, retours à la ligne en « \n », octets non ASCII en « \xHH ».
+     */
+    private function throughApacheErrorLog(string $message): string
+    {
+        $out = '';
+        foreach (str_split($message) as $char) {
+            $byte = ord($char);
+            $out .= match (true) {
+                $char === '\\' => '\\\\',
+                $char === "\n" => '\\n',
+                $byte < 0x20, $byte >= 0x7F => sprintf('\\x%02x', $byte),
+                default => $char,
+            };
+        }
+
+        return $out;
+    }
+
+    public function testDefaultLineDoesNotSurviveApacheRewriting(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget');
+
+        $line = $formatter->format($this->record(Level::Error, 'Échec du rendu du widget'));
+
+        $this->assertNull(
+            json_decode($this->throughApacheErrorLog($line), true),
+            'Un accent devient « \xc3\xa9 », qui n\'est pas un échappement JSON valide',
+        );
+    }
+
+    public function testPlainLineSurvivesApacheRewriting(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', 'sandbox', 'abc123', plain: true);
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            "Échec du rendu \"x\" : Slim\\Exception\\Boom\nligne 2 — fin",
+            [
+                'widget' => 'stream_alert',
+                'note' => "l'API a répondu « 500 »",
+                'exception' => new RuntimeException("Impossible d'atteindre l'API à 100 %"),
+            ],
+        ));
+        $data = json_decode($this->throughApacheErrorLog($line), true);
+
+        $this->assertIsArray($data, 'La ligne doit rester du JSON valide après passage par Apache');
+        $this->assertSame("Echec du rendu 'x' : Slim/Exception/Boom | ligne 2 - fin", $data['message']);
+        $this->assertSame('stream_alert', $data['context']['widget']);
+        $this->assertSame("l'API a repondu ' 500 '", $data['context']['note']);
+        $this->assertSame(RuntimeException::class, $data['error']['kind']);
+        $this->assertSame("Impossible d'atteindre l'API a 100 %", $data['error']['message']);
+    }
+
+    public function testPlainModeOnlyEmitsPrintableAscii(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', plain: true);
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            "Café “crème” \\ \"q\" 漢字 \xff\n\ttab",
+            ['clé' => ['sous' => 'été']],
+        ));
+        $data = $this->decode($line);
+
+        $this->assertDoesNotMatchRegularExpression('/[^\x20-\x7E]/', $line);
+        $this->assertStringNotContainsString('\\', $line);
+        $this->assertSame("Cafe 'creme' / 'q' ? ? | ?tab", $data['message']);
+        $this->assertSame(['cle' => ['sous' => 'ete']], $data['context']);
+    }
+
+    public function testPlainAndCappedLineSurvivesApacheRewriting(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', 'prod', 'abc123', maxLineBytes: 500, plain: true);
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            str_repeat('é', 3000),
+            ['exception' => new RuntimeException(str_repeat('à', 3000))],
+        ));
+        $received = $this->throughApacheErrorLog($line);
+        $data = json_decode($received, true);
+
+        $this->assertLessThanOrEqual(500, strlen($received));
+        $this->assertIsArray($data);
+        $this->assertStringEndsWith('[truncated]', $data['message']);
     }
 
     public function testStaysUnderTheLimitWhateverIsTooLong(): void

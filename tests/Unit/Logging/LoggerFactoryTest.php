@@ -161,6 +161,36 @@ class LoggerFactoryTest extends TestCase
         $this->assertGreaterThan(5000, strlen($line));
     }
 
+    public function testLogPlainOneForcesAsciiOnlyLines(): void
+    {
+        $logger = LoggerFactory::create('app', 'app', null, ['LOG_OUTPUT' => 'errorlog', 'LOG_PLAIN' => '1']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), "Échec du rendu \"x\"\nfin");
+
+        $this->assertDoesNotMatchRegularExpression('/[^\x20-\x7E]/', $line);
+        $this->assertStringNotContainsString('\\', $line);
+        $this->assertStringContainsString("Echec du rendu 'x' | fin", $line);
+    }
+
+    public function testLogPlainZeroKeepsAccents(): void
+    {
+        $logger = LoggerFactory::create('app', 'app', null, ['LOG_OUTPUT' => 'errorlog', 'LOG_PLAIN' => '0']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), 'Échec du rendu');
+
+        $this->assertStringContainsString('Échec du rendu', $line);
+    }
+
+    public function testPlainIsOffInCliByDefault(): void
+    {
+        // Le cron tourne en CLI : sa ligne arrive intacte, on garde les accents
+        $logger = LoggerFactory::create('cron', 'cron', null, ['LOG_OUTPUT' => 'errorlog']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), 'Cron démarré');
+
+        $this->assertStringContainsString('Cron démarré', $line);
+    }
+
     private function formatLine(\Monolog\Formatter\FormatterInterface $formatter, string $message): string
     {
         return $formatter->format(new \Monolog\LogRecord(new \DateTimeImmutable(), 'app', Level::Error, $message));

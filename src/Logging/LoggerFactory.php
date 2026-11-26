@@ -55,6 +55,7 @@ final class LoggerFactory
                 env: self::nonEmpty($server['DD_ENV'] ?? null) ?? self::nonEmpty($server['APP_ENV'] ?? null),
                 version: self::nonEmpty($server['DD_VERSION'] ?? null) ?? self::nonEmpty($server['APP_VERSION'] ?? null),
                 maxLineBytes: self::maxLineBytes($server),
+                plain: self::plain($server),
             ));
             $logger->pushHandler($handler);
 
@@ -84,6 +85,23 @@ final class LoggerFactory
         }
 
         return PHP_SAPI === 'cli' ? null : self::DEFAULT_MAX_LINE_BYTES;
+    }
+
+    /**
+     * LOG_PLAIN (1/0) force le mode « ASCII sans guillemet ni antislash ». À défaut : actif sous
+     * PHP-FPM, où Apache réécrit les messages d'error_log (antislash doublés, accents en \xHH) et
+     * casse l'échappement JSON ; inactif en CLI (cron), où la ligne arrive intacte.
+     *
+     * @param array<string, mixed> $server
+     */
+    private static function plain(array $server): bool
+    {
+        $configured = $server['LOG_PLAIN'] ?? null;
+        if (is_string($configured) && $configured !== '') {
+            return filter_var($configured, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return PHP_SAPI !== 'cli';
     }
 
     private static function nonEmpty(mixed $value): ?string

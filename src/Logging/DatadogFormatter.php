@@ -25,7 +25,20 @@ class DatadogFormatter extends JsonFormatter
     /** Évite les lignes démesurées (les piles d'appels PHP sont longues). */
     private const MAX_STACK_LENGTH = 4000;
 
-    private const TRUNCATION_MARKER = '... (tronqué)';
+    /** ASCII pur : ce marqueur est ajouté après le passage en texte simple. */
+    private const TRUNCATION_MARKER = '... [truncated]';
+
+    /** Translittération des caractères courants en français (le reste devient « ? »). */
+    private const TRANSLITERATION = [
+        'à' => 'a', 'â' => 'a', 'ä' => 'a', 'á' => 'a', 'ç' => 'c', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+        'î' => 'i', 'ï' => 'i', 'í' => 'i', 'ô' => 'o', 'ö' => 'o', 'ó' => 'o', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+        'ú' => 'u', 'ÿ' => 'y', 'ñ' => 'n', 'œ' => 'oe', 'æ' => 'ae',
+        'À' => 'A', 'Â' => 'A', 'Ä' => 'A', 'Á' => 'A', 'Ç' => 'C', 'É' => 'E', 'È' => 'E', 'Ê' => 'E', 'Ë' => 'E',
+        'Î' => 'I', 'Ï' => 'I', 'Í' => 'I', 'Ô' => 'O', 'Ö' => 'O', 'Ó' => 'O', 'Ù' => 'U', 'Û' => 'U', 'Ü' => 'U',
+        'Ú' => 'U', 'Ÿ' => 'Y', 'Ñ' => 'N', 'Œ' => 'OE', 'Æ' => 'AE',
+        '’' => "'", '‘' => "'", '“' => "'", '”' => "'", '«' => "'", '»' => "'", '–' => '-', '—' => '-',
+        '…' => '...', '€' => 'EUR', '°' => 'o', "\u{a0}" => ' ',
+    ];
 
     /** Plancher en octets avant de sacrifier le message du log lui-même. */
     private const MIN_MESSAGE_BYTES = 200;
@@ -34,12 +47,17 @@ class DatadogFormatter extends JsonFormatter
      * @param int|null $maxLineBytes Taille maximale d'une ligne, en octets ; null = pas de limite.
      *                               Sous PHP-FPM, le runtime coupe les messages d'error_log vers 1 Ko :
      *                               une ligne JSON plus longue arrive tronquée, donc invalide.
+     * @param bool     $plain        N'émet que de l'ASCII imprimable, sans guillemet ni antislash dans les
+     *                               valeurs. Sous Apache + PHP-FPM, la plateforme réécrit les messages
+     *                               d'error_log (antislash doublés, octets non ASCII en \xHH) : un échappement
+     *                               JSON (\n, \", é) n'y survit pas et la ligne devient illisible.
      */
     public function __construct(
         private readonly string $service,
         private readonly ?string $env = null,
         private readonly ?string $version = null,
         private readonly ?int $maxLineBytes = null,
+        private readonly bool $plain = false,
     ) {
         // Pas de saut de ligne final : error_log() ajoute le sien
         parent::__construct(self::BATCH_MODE_JSON, false);
@@ -80,12 +98,43 @@ class DatadogFormatter extends JsonFormatter
         }
 
         $log = $this->normalize($log);
+        if ($this->plain) {
+            $log = $this->toPlain($log);
+        }
         $line = $this->toJson($log, true);
         if ($this->maxLineBytes !== null && strlen($line) > $this->maxLineBytes) {
             $line = $this->fit($log, $this->maxLineBytes);
         }
 
         return $line . ($this->appendNewline ? "\n" : '');
+    }
+
+    /**
+     * Réduit toutes les chaînes (valeurs et clés) à de l'ASCII imprimable sans « " » ni « \ » :
+     * accents translittérés, retours à la ligne remplacés par « | », guillemets par « ' »,
+     * antislash par « / », tout autre caractère par « ? ».
+     */
+    private function toPlain(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            $plain = [];
+            foreach ($value as $key => $item) {
+                $plain[is_string($key) ? $this->plainString($key) : $key] = $this->toPlain($item);
+            }
+
+            return $plain;
+        }
+
+        return is_string($value) ? $this->plainString($value) : $value;
+    }
+
+    private function plainString(string $value): string
+    {
+        $value = strtr($value, self::TRANSLITERATION);
+        $value = preg_replace('/\r\n|\r|\n/', ' | ', $value) ?? '';
+        $value = strtr($value, ['"' => "'", '\\' => '/']);
+
+        return preg_replace('/[^\x20-\x7E]+/', '?', $value) ?? '';
     }
 
     /**
@@ -148,7 +197,7 @@ class DatadogFormatter extends JsonFormatter
         // (string) $e inclut le message, le fichier, la pile et les exceptions précédentes
         $stack = (string) $e;
         if (strlen($stack) > self::MAX_STACK_LENGTH) {
-            $stack = substr($stack, 0, self::MAX_STACK_LENGTH) . '... (tronqué)';
+            $stack = substr($stack, 0, self::MAX_STACK_LENGTH) . self::TRUNCATION_MARKER;
         }
 
         return [
