@@ -131,6 +131,41 @@ class LoggerFactoryTest extends TestCase
         $this->assertDirectoryDoesNotExist($logDir);
     }
 
+    public function testLogMaxLineFromEnvironmentLimitsTheLineSize(): void
+    {
+        $logger = LoggerFactory::create('app', 'app', null, ['LOG_OUTPUT' => 'errorlog', 'LOG_MAX_LINE' => '300']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), str_repeat('a', 5000));
+
+        $this->assertLessThanOrEqual(300, strlen($line));
+        $this->assertIsArray(json_decode($line, true), 'La ligne doit rester du JSON valide');
+    }
+
+    public function testLogMaxLineZeroDisablesTheLimit(): void
+    {
+        $logger = LoggerFactory::create('app', 'app', null, ['LOG_OUTPUT' => 'errorlog', 'LOG_MAX_LINE' => '0']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), str_repeat('a', 5000));
+
+        $this->assertGreaterThan(5000, strlen($line));
+    }
+
+    public function testNoLineLimitInCliByDefault(): void
+    {
+        // Le cron tourne en CLI : rien n'y coupe la sortie, on ne tronque donc pas
+        $this->assertSame('cli', PHP_SAPI);
+        $logger = LoggerFactory::create('cron', 'cron', null, ['LOG_OUTPUT' => 'errorlog']);
+
+        $line = $this->formatLine($logger->getHandlers()[0]->getFormatter(), str_repeat('a', 5000));
+
+        $this->assertGreaterThan(5000, strlen($line));
+    }
+
+    private function formatLine(\Monolog\Formatter\FormatterInterface $formatter, string $message): string
+    {
+        return $formatter->format(new \Monolog\LogRecord(new \DateTimeImmutable(), 'app', Level::Error, $message));
+    }
+
     /**
      * @return array<string, mixed>
      */

@@ -25,6 +25,12 @@ final class LoggerFactory
     public const DEFAULT_SERVICE = 'twitch-widget';
 
     /**
+     * Sous PHP-FPM, le runtime Clever Cloud coupe les messages d'error_log vers 1 Ko (constaté : coupure
+     * à ~1 045 caractères, suffixe « ... »). On garde une marge pour que la ligne JSON reste valide.
+     */
+    public const DEFAULT_MAX_LINE_BYTES = 1000;
+
+    /**
      * @param string                $channel Nom du canal Monolog (champ `logger.name` dans Datadog)
      * @param string                $name    Nom du fichier de log en sortie `file` (sans extension)
      * @param Level|int|string|null $level   Niveau minimal ; à défaut, LOGLEVEL puis DEBUG
@@ -48,6 +54,7 @@ final class LoggerFactory
                 service: self::nonEmpty($server['DD_SERVICE'] ?? null) ?? self::DEFAULT_SERVICE,
                 env: self::nonEmpty($server['DD_ENV'] ?? null) ?? self::nonEmpty($server['APP_ENV'] ?? null),
                 version: self::nonEmpty($server['DD_VERSION'] ?? null) ?? self::nonEmpty($server['APP_VERSION'] ?? null),
+                maxLineBytes: self::maxLineBytes($server),
             ));
             $logger->pushHandler($handler);
 
@@ -61,6 +68,22 @@ final class LoggerFactory
         $logger->pushHandler(new RotatingFileHandler($logDir . '/' . $name . '.log', 7, $level));
 
         return $logger;
+    }
+
+    /**
+     * LOG_MAX_LINE force la limite (0 = aucune). À défaut : 1 000 octets sous PHP-FPM (web),
+     * aucune limite en CLI, où rien ne coupe la sortie (cron).
+     *
+     * @param array<string, mixed> $server
+     */
+    private static function maxLineBytes(array $server): ?int
+    {
+        $configured = $server['LOG_MAX_LINE'] ?? null;
+        if (is_numeric($configured)) {
+            return (int) $configured > 0 ? (int) $configured : null;
+        }
+
+        return PHP_SAPI === 'cli' ? null : self::DEFAULT_MAX_LINE_BYTES;
     }
 
     private static function nonEmpty(mixed $value): ?string

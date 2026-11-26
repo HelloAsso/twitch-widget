@@ -10,9 +10,12 @@ use Monolog\LogRecord;
 use Throwable;
 
 /**
- * Formate chaque log en une ligne JSON que Datadog interprète sans pipeline dédié :
- * attributs réservés (date, status, message, service), `logger.name`, et `error.*`
- * pour l'exception passée dans le contexte sous la clé `exception`.
+ * Formate chaque log en une ligne JSON : attributs réservés de Datadog (date, status,
+ * message, service), `logger.name`, et `error.*` pour l'exception passée dans le contexte
+ * sous la clé `exception`.
+ *
+ * Sur Clever Cloud, la plateforme enveloppe la ligne (Apache pour le web, crond pour le cron) :
+ * il faut un pipeline Datadog pour en extraire le JSON avant que ces attributs soient lus.
  *
  * Le niveau Monolog (int) n'est pas repris tel quel : Datadog ne comprend un niveau
  * numérique que pour les sévérités syslog (0-7), on envoie donc `status` en texte.
@@ -22,10 +25,21 @@ class DatadogFormatter extends JsonFormatter
     /** Évite les lignes démesurées (les piles d'appels PHP sont longues). */
     private const MAX_STACK_LENGTH = 4000;
 
+    private const TRUNCATION_MARKER = '... (tronqué)';
+
+    /** Plancher en octets avant de sacrifier le message du log lui-même. */
+    private const MIN_MESSAGE_BYTES = 200;
+
+    /**
+     * @param int|null $maxLineBytes Taille maximale d'une ligne, en octets ; null = pas de limite.
+     *                               Sous PHP-FPM, le runtime coupe les messages d'error_log vers 1 Ko :
+     *                               une ligne JSON plus longue arrive tronquée, donc invalide.
+     */
     public function __construct(
         private readonly string $service,
         private readonly ?string $env = null,
         private readonly ?string $version = null,
+        private readonly ?int $maxLineBytes = null,
     ) {
         // Pas de saut de ligne final : error_log() ajoute le sien
         parent::__construct(self::BATCH_MODE_JSON, false);
@@ -65,7 +79,65 @@ class DatadogFormatter extends JsonFormatter
             $log['extra'] = $record->extra;
         }
 
-        return $this->toJson($this->normalize($log), true) . ($this->appendNewline ? "\n" : '');
+        $log = $this->normalize($log);
+        $line = $this->toJson($log, true);
+        if ($this->maxLineBytes !== null && strlen($line) > $this->maxLineBytes) {
+            $line = $this->fit($log, $this->maxLineBytes);
+        }
+
+        return $line . ($this->appendNewline ? "\n" : '');
+    }
+
+    /**
+     * Ramène la ligne sous la limite en sacrifiant d'abord ce qui sert le moins :
+     * la pile, puis le message du log, puis celui de l'exception, puis `extra` et `context`.
+     * Le JSON reste toujours valide (on raccourcit des valeurs, jamais la ligne encodée).
+     *
+     * @param array<string, mixed> $log
+     */
+    private function fit(array $log, int $max): string
+    {
+        $line = $this->toJson($log, true);
+
+        if (isset($log['error']['stack']) && is_string($log['error']['stack']) && strlen($line) > $max) {
+            $log['error']['stack'] = $this->shrink($log['error']['stack'], strlen($line) - $max, 0);
+            $line = $this->toJson($log, true);
+        }
+        if (is_string($log['message']) && strlen($line) > $max) {
+            $log['message'] = $this->shrink($log['message'], strlen($line) - $max, self::MIN_MESSAGE_BYTES);
+            $line = $this->toJson($log, true);
+        }
+        if (isset($log['error']['message']) && is_string($log['error']['message']) && strlen($line) > $max) {
+            $log['error']['message'] = $this->shrink($log['error']['message'], strlen($line) - $max, intdiv(self::MIN_MESSAGE_BYTES, 2));
+            $line = $this->toJson($log, true);
+        }
+        foreach (['extra', 'context'] as $key) {
+            if (isset($log[$key]) && strlen($line) > $max) {
+                unset($log[$key]);
+                $line = $this->toJson($log, true);
+            }
+        }
+        if (is_string($log['message']) && strlen($line) > $max) {
+            // Dernier recours : même le message passe sous le plancher
+            $log['message'] = $this->shrink($log['message'], strlen($line) - $max, 0);
+            $line = $this->toJson($log, true);
+        }
+
+        return $line;
+    }
+
+    /**
+     * Retire au moins $excess octets à $value (sans couper un caractère UTF-8 en deux),
+     * en en gardant au moins $min, et ajoute le marqueur de troncature.
+     */
+    private function shrink(string $value, int $excess, int $min): string
+    {
+        $keep = max($min, strlen($value) - $excess - strlen(self::TRUNCATION_MARKER));
+        if ($keep >= strlen($value)) {
+            return $value;
+        }
+
+        return mb_strcut($value, 0, $keep, 'UTF-8') . self::TRUNCATION_MARKER;
     }
 
     /**

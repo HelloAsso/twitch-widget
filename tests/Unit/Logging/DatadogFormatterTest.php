@@ -156,4 +156,93 @@ class DatadogFormatterTest extends TestCase
         $this->assertNotSame('', $line);
         $this->assertIsArray(json_decode($line, true), 'La ligne doit rester du JSON valide');
     }
+
+    public function testHasNoLineLimitByDefault(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget');
+
+        $data = $this->decode($formatter->format($this->record(Level::Error, str_repeat('a', 5000))));
+
+        $this->assertSame(5000, strlen($data['message']));
+    }
+
+    public function testShrinksTheStackFirstToStayUnderTheLimit(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', 'prod', 'abc123', maxLineBytes: 600);
+        $exception = new RuntimeException('API HelloAsso injoignable');
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            'Erreur lors du fetch du widget',
+            ['widget' => 'stream_alert', 'exception' => $exception],
+        ));
+        $data = $this->decode($line);
+
+        $this->assertLessThanOrEqual(600, strlen($line));
+        $this->assertSame('Erreur lors du fetch du widget', $data['message'], 'Le message du log doit rester entier');
+        $this->assertSame(RuntimeException::class, $data['error']['kind']);
+        $this->assertSame('API HelloAsso injoignable', $data['error']['message']);
+        $this->assertSame(['widget' => 'stream_alert'], $data['context']);
+        $this->assertStringEndsWith('(tronqué)', $data['error']['stack']);
+    }
+
+    public function testShrinksALongMessageWhenThereIsNoStack(): void
+    {
+        // Cas réel : Slim met toute la pile dans le message du log
+        $formatter = new DatadogFormatter('twitch-widget', null, null, maxLineBytes: 500);
+
+        $line = $formatter->format($this->record(Level::Error, "405 Method Not Allowed\n" . str_repeat('#0 /app/x.php ', 400), ['widget' => 'w']));
+        $data = $this->decode($line);
+
+        $this->assertLessThanOrEqual(500, strlen($line));
+        $this->assertStringStartsWith("405 Method Not Allowed\n#0 /app/x.php", $data['message']);
+        $this->assertStringEndsWith('(tronqué)', $data['message']);
+        $this->assertSame(['widget' => 'w'], $data['context']);
+    }
+
+    public function testLimitCountsBytesAndKeepsUtf8Valid(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', maxLineBytes: 400);
+
+        $line = $formatter->format($this->record(Level::Error, str_repeat('é', 3000)));
+
+        $this->assertLessThanOrEqual(400, strlen($line));
+        $this->assertTrue(mb_check_encoding($line, 'UTF-8'));
+        $this->assertStringContainsString('éééé', $this->decode($line)['message']);
+    }
+
+    public function testDropsContextAndExtraWhenNothingElseCanShrink(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', maxLineBytes: 300);
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            'Boom',
+            ['payload' => str_repeat('x', 2000)],
+            ['trace' => str_repeat('y', 2000)],
+        ));
+        $data = $this->decode($line);
+
+        $this->assertLessThanOrEqual(300, strlen($line));
+        $this->assertSame('Boom', $data['message']);
+        $this->assertArrayNotHasKey('context', $data);
+        $this->assertArrayNotHasKey('extra', $data);
+    }
+
+    public function testStaysUnderTheLimitWhateverIsTooLong(): void
+    {
+        $formatter = new DatadogFormatter('twitch-widget', 'prod', 'abc123', maxLineBytes: 400);
+
+        $line = $formatter->format($this->record(
+            Level::Error,
+            str_repeat('m', 5000),
+            ['payload' => str_repeat('x', 5000), 'exception' => new RuntimeException(str_repeat('e', 5000))],
+            ['trace' => str_repeat('y', 5000)],
+        ));
+        $data = $this->decode($line);
+
+        $this->assertLessThanOrEqual(400, strlen($line));
+        $this->assertSame('error', $data['status']);
+        $this->assertSame(RuntimeException::class, $data['error']['kind']);
+    }
 }

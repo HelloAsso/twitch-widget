@@ -259,7 +259,7 @@ Key environment variables include:
 - Email service (BREVO_API_KEY, optional MAIL_FROM_EMAIL / MAIL_FROM_NAME)
 - Application domain (WEBSITE_DOMAIN)
 - Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 30)
-- Logs (LOGLEVEL, LOG_OUTPUT, optionnellement DD_SERVICE / DD_ENV / DD_VERSION), voir [Logs et Datadog](#logs-et-datadog)
+- Logs (LOGLEVEL, LOG_OUTPUT, optionnellement LOG_MAX_LINE et DD_SERVICE / DD_ENV / DD_VERSION), voir [Logs et Datadog](#logs-et-datadog)
 
 ### Logs et Datadog
 
@@ -273,6 +273,9 @@ La variable `LOG_OUTPUT` choisit la sortie :
 
 En sortie `errorlog`, chaque ligne suit les attributs standards de Datadog : `date`, `status` (niveau en texte), `message`, `logger.name`, `service`, `env`, `version`, puis `error.kind` / `error.message` / `error.stack` quand une exception est passée dans le contexte (`['exception' => $e]`), et le reste dans `context`.
 Les tags se déduisent de l'environnement : `service` = `DD_SERVICE` (défaut `twitch-widget`), `env` = `DD_ENV` sinon `APP_ENV`, `version` = `DD_VERSION` sinon `APP_VERSION` (le commit déployé).
+
+Sous PHP-FPM, le runtime Clever Cloud coupe les messages d'`error_log()` vers 1 Ko (constaté : coupure à ~1 045 caractères), ce qui rendrait le JSON invalide.
+Le formateur ramène donc chaque ligne à 1 000 octets (`LOG_MAX_LINE`, `0` pour désactiver ; aucune limite en CLI, donc pour le cron) en raccourcissant d'abord la pile, puis le message, puis `extra` et `context`.
 
 **Brancher une app Clever Cloud sur Datadog** (site EU), une fois par app :
 
