@@ -1,10 +1,10 @@
 <?php
 
+use App\Logging\LoggerFactory;
 use App\Repositories\AccessTokenRepository;
 use App\Repositories\AuthorizationCodeRepository;
 use App\Services\ApiWrapper;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
+use Monolog\Level;
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -18,14 +18,8 @@ $pdo = new PDO($dsn, $_SERVER['DBUSER'], $_SERVER['DBPASSWORD'], [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
-$logger = new Logger('cron');
-$env = $_SERVER['APP_ENV'] ?? 'production';
-$logDir = __DIR__ . '/logs/' . $env;
-if (!is_dir($logDir)) {
-    mkdir($logDir, 0755, true);
-}
-$logFile = $logDir . '/cron.log';
-$logger->pushHandler(new StreamHandler($logFile, Logger::DEBUG));
+// Toujours en DEBUG, quel que soit LOGLEVEL : le cron ne tourne qu'une fois par heure
+$logger = LoggerFactory::create('cron', 'cron', Level::Debug);
 
 $accessTokenRepository = new AccessTokenRepository($pdo, $_SERVER['DBPREFIX']);
 $authorizationCodeRepository = new AuthorizationCodeRepository($pdo, $_SERVER['DBPREFIX']);

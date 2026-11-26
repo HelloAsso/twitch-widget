@@ -8,6 +8,7 @@ use App\Controllers\HomeController;
 use App\Controllers\LoginController;
 use App\Controllers\AdminController;
 use App\Controllers\WidgetController;
+use App\Logging\LoggerFactory;
 use App\Middlewares\AuthAdminMiddleware;
 use App\Middlewares\AuthApiMiddleware;
 use App\Middlewares\AuthMiddleware;
@@ -27,7 +28,6 @@ use DI\Container;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use Monolog\Handler\RotatingFileHandler;
 
 use Slim\Factory\AppFactory;
 use Slim\Flash\Messages;
@@ -39,28 +39,9 @@ $dotenv->safeLoad();
 App\Services\CleverCloudEnv::load();
 
 $container = new Container();
-$container->set('logger.api', function () {
-    $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
-    $env = $_SERVER['APP_ENV'] ?? 'production';
-    $logDir = __DIR__ . '/../logs/' . $env;
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
-    }
-    $logger = new Logger('api');
-    $logger->pushHandler(new RotatingFileHandler($logDir . '/api.log', 7, $level));
-    return $logger;
-});
-$container->set(Logger::class, function () {
-    $level = $_SERVER['LOGLEVEL'] ?? Logger::DEBUG;
-    $env = $_SERVER['APP_ENV'] ?? 'production';
-    $logDir = __DIR__ . '/../logs/' . $env;
-    if (!is_dir($logDir)) {
-        mkdir($logDir, 0755, true);
-    }
-    $logger = new Logger('app');
-    $logger->pushHandler(new RotatingFileHandler($logDir . '/app.log', 7, $level));
-    return $logger;
-});
+// Fichiers en local, JSON via error_log() (collecté par Clever Cloud puis envoyé à Datadog) si LOG_OUTPUT=errorlog
+$container->set('logger.api', fn () => LoggerFactory::create('api', 'api'));
+$container->set(Logger::class, fn () => LoggerFactory::create('app', 'app'));
 
 $container->set(PDO::class, function () {
     $dsn = "mysql:host={$_SERVER['DBURL']};port={$_SERVER['DBPORT']};dbname={$_SERVER['DBNAME']};charset=utf8mb4";
