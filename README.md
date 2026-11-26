@@ -259,7 +259,7 @@ Key environment variables include:
 - Email service (BREVO_API_KEY, optional MAIL_FROM_EMAIL / MAIL_FROM_NAME)
 - Application domain (WEBSITE_DOMAIN)
 - Widget cache TTL in seconds (WIDGET_CACHE_TTL, default: 30)
-- Logs (LOGLEVEL, LOG_OUTPUT, optionnellement LOG_MAX_LINE et DD_SERVICE / DD_ENV / DD_VERSION), voir [Logs et Datadog](#logs-et-datadog)
+- Logs (LOGLEVEL, LOG_OUTPUT, optionnellement LOG_MAX_LINE, LOG_PLAIN et DD_SERVICE / DD_ENV / DD_VERSION), voir [Logs et Datadog](#logs-et-datadog)
 
 ### Logs et Datadog
 
@@ -277,6 +277,9 @@ Les tags se déduisent de l'environnement : `service` = `DD_SERVICE` (défaut `t
 Sous PHP-FPM, le runtime Clever Cloud coupe les messages d'`error_log()` vers 1 Ko (constaté : coupure à ~1 045 caractères), ce qui rendrait le JSON invalide.
 Le formateur ramène donc chaque ligne à 1 000 octets (`LOG_MAX_LINE`, `0` pour désactiver ; aucune limite en CLI, donc pour le cron) en raccourcissant d'abord la pile, puis le message, puis `extra` et `context`.
 
+Apache réécrit aussi ces messages avant que Clever Cloud ne les collecte : antislashs doublés, retours à la ligne en `\n`, octets non ASCII en `\xc3\xa9`. Un échappement JSON (`\n`, `\"`, `é`) n'y survit pas, et un simple accent suffit à rendre la ligne illisible.
+Le formateur n'émet donc que de l'ASCII imprimable, sans guillemet ni antislash dans les valeurs (`LOG_PLAIN`, `1` ou `0` pour forcer ; actif par défaut hors CLI) : accents translittérés (« é » devient « e »), retours à la ligne remplacés par ` | `, guillemets par des apostrophes, antislashs par des `/`. Le cron, qui tourne en CLI, garde ses accents.
+
 **Brancher une app Clever Cloud sur Datadog** (site EU), une fois par app :
 
 ```bash
@@ -289,8 +292,21 @@ clever drain create datadog \
   --alias sandbox
 ```
 
-Vérifier ensuite avec `clever logs --alias sandbox` (les lignes doivent être du JSON brut) puis, dans Datadog, `service:twitch-widget env:sandbox`.
-Si les lignes arrivent préfixées par la plateforme (par exemple `PHP message:`), Datadog ne les parse pas tout seul : ajouter au pipeline un parseur Grok `prefixed_json [^{]*%{data::json}`.
+Vérifier ensuite avec `clever logs --alias sandbox` : chaque log y apparaît sur une ligne `… AH01071: Got error 'PHP message: {"date":…}'` (web, enveloppe d'Apache) ou `(bas) CMDOUT ({"date":…})` (cron, enveloppe de crond). Puis, dans Datadog, chercher `service:twitch-widget env:sandbox`.
+
+**Côté Datadog, une seule fois pour toute l'org.** Les index de l'org sont tous filtrés par service : un log qui ne correspond à aucun index est ingéré puis jeté (on ne le voit que dans la métrique `datadog.estimated_usage.logs.ingested_events`, avec `datadog_index:N/A`). Il faut donc :
+
+1. un **index** `twitch-widget` : filtre `service:twitch-widget`, 7 jours de rétention, 10 000 événements par jour (créé) ;
+2. un **pipeline** `twitch-widget (Clever Cloud)`, qui demande la permission `logs_write_pipelines`. La définition complète est dans [docs/datadog/pipeline-twitch-widget.json](docs/datadog/pipeline-twitch-widget.json) : à importer par l'API (`POST /api/v1/logs/config/pipelines` sur `api.datadoghq.eu`) ou à recréer à la main (Logs → Configuration → Pipelines). Il contient un parseur Grok, puis des remappers `date`, `status` et `message`. Les deux règles Grok, qui extraient le JSON de l'enveloppe :
+
+```text
+php_web \[%{data:apache.timestamp}\] \[proxy_fcgi:error\] %{data:apache.context} AH01071: Got error 'PHP message: %{data::json}'%{data:apache.suffix}
+php_cron \(%{notSpace:cron.user}\) CMDOUT \(%{data::json}\)
+```
+
+Tant que le pipeline n'existe pas, les logs sont visibles mais en texte brut, et **tous les logs web ressortent en `status:error`** : Clever Cloud classe en `err` tout ce qui passe par `error_log()`. Ne pas créer de monitor sur le statut avant. Une fois le pipeline en place, `@logger.name`, `@error.kind`, `@context.*` et le vrai `status` sont exploitables.
+
+Apache ajoute un suffixe `, referer <url>` quand la requête a un en-tête Referer, d'où le `%{data:apache.suffix}` final. Les lignes de cron qui ne sont pas du JSON (par exemple `0 token(s) à rafraîchir`) ne sont pas parsées et restent en texte brut.
 
 Le drain ne transmet que les logs applicatifs (`--kind LOG`, la valeur par défaut). Les logs d'accès (`--kind ACCESSLOG`) ne sont pas envoyés : les routes `/fetch` des widgets sont appelées en boucle par OBS et noieraient le reste.
 Pour la même raison, un 401 sur ces routes (token expiré, déjà signalé dans l'admin) est loggé en `warning` et non en `error`.

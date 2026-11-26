@@ -1,0 +1,42 @@
+{
+  "name": "twitch-widget (Clever Cloud)",
+  "is_enabled": true,
+  "filter": {
+    "query": "service:twitch-widget"
+  },
+  "processors": [
+    {
+      "type": "grok-parser",
+      "name": "Extraire le JSON (enveloppe Apache web / crond)",
+      "is_enabled": true,
+      "source": "message",
+      "samples": [
+        "[Thu Nov 26 08:23:56.513404 2026] [proxy_fcgi:error] [pid 3088:tid 139910262531776] [client 91.208.207.222:59942] [159.254.21.238] AH01071: Got error 'PHP message: {\"date\":\"2026-11-26T08:23:56.510+00:00\",\"status\":\"error\",\"message\":\"405 Method Not Allowed | Type: Slim/Exception/HttpMethodNotAllowedException\",\"logger\":{\"name\":\"app\"},\"service\":\"twitch-widget\",\"env\":\"sandbox\",\"version\":\"7d256cdf946025017dc13df6e6cfb641a53f3306\"}'",
+        "[Thu Nov 26 08:23:56.231533 2026] [proxy_fcgi:error] [pid 3090:tid 139910203782848] [client 91.208.207.217:42522] [159.254.21.238] AH01071: Got error 'PHP message: {\"date\":\"2026-11-26T08:23:56.228+00:00\",\"status\":\"error\",\"message\":\"405 Method Not Allowed\",\"logger\":{\"name\":\"app\"},\"service\":\"twitch-widget\",\"env\":\"sandbox\",\"version\":\"7d256cdf946025017dc13df6e6cfb641a53f3306\"}', referer https://example.org/test",
+        "(bas) CMDOUT ({\"date\":\"2026-11-26T08:00:01.339+00:00\",\"status\":\"info\",\"message\":\"Cron demarre. IP du serveur : 127.0.0.1\",\"logger\":{\"name\":\"cron\"},\"service\":\"twitch-widget\",\"env\":\"sandbox\",\"version\":\"82cb4fb388d99a646662e7dd975a6266c0eeb7a3\"})"
+      ],
+      "grok": {
+        "support_rules": "",
+        "match_rules": "php_web \\[%{data:apache.timestamp}\\] \\[proxy_fcgi:error\\] %{data:apache.context} AH01071: Got error 'PHP message: %{data::json}'%{data:apache.suffix}\nphp_cron \\(%{notSpace:cron.user}\\) CMDOUT \\(%{data::json}\\)"
+      }
+    },
+    {
+      "type": "date-remapper",
+      "name": "Date du log (attribut date)",
+      "is_enabled": true,
+      "sources": ["date"]
+    },
+    {
+      "type": "status-remapper",
+      "name": "Niveau du log (attribut status)",
+      "is_enabled": true,
+      "sources": ["status"]
+    },
+    {
+      "type": "message-remapper",
+      "name": "Message du log (attribut message)",
+      "is_enabled": true,
+      "sources": ["message"]
+    }
+  ]
+}
